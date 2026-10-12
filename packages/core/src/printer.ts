@@ -185,12 +185,16 @@ export class Printer {
     while (Date.now() < deadline) {
       this.guard(signal);
       const status = await this.request("print status", CMD.PRINT_STATUS, [1], STATUS_TIMEOUT_MS).catch(ignoreNoReply);
-      const [state, page, progress, feed] = status?.data ?? [];
+      // Status reply: page as a 16-bit number, then print progress and feed progress in percent.
+      const [pageHigh, pageLow, progress, feed] = status?.data ?? [];
+      const page = pageHigh === undefined || pageLow === undefined ? undefined : (pageHigh << 8) | pageLow;
       if (progress !== undefined && feed !== undefined) {
         onProgress?.({ stage: "printing", percent: Math.min(progress, feed, PERCENT_DONE) });
       }
-      // Done condition of the prototype: no error, page 1, both progress counters at 100.
-      if (state === 0 && page === 1 && progress === PERCENT_DONE && feed === PERCENT_DONE) return;
+      // Done: the last copy is the current page and both progress counters are at 100.
+      // (The prototype only printed one copy and checked for page 1; ending the job at page 1 of 2
+      // cut the second copy short on a real B1.)
+      if (page === copies && progress === PERCENT_DONE && feed === PERCENT_DONE) return;
       await sleep(POLL_INTERVAL_MS);
     }
     throw new PrintTimeoutError();

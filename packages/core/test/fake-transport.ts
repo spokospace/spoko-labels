@@ -74,14 +74,15 @@ const REPLY: Readonly<Record<number, number>> = {
   [CMD.GET_INFO]: 0x4a,
 };
 
-const DONE: number[] = [0, 1, 100, 100];
+/** Status of a finished job: the last page (= number of copies, 16-bit) is current, both counters at 100. */
+const done = (copies: number): number[] => [copies >> 8, copies & 0xff, 100, 100];
 
 export interface AutoReplyOptions {
   /** Commands that get no reply at all. */
   silent?: readonly number[];
   /** Commands answered with a refusal (data byte 0). */
   refuse?: readonly number[];
-  /** Status replies in order; the last one repeats. Default: done immediately. */
+  /** Status replies in order; the last one repeats. Default: done immediately (for the copies of the job). */
   status?: readonly number[][];
   /** Reply data per `GET_INFO` selector; selectors not listed get no reply. */
   info?: Readonly<Record<number, number[]>>;
@@ -94,9 +95,11 @@ export interface AutoReplyOptions {
 /** A printer that acknowledges everything, with switches for the failure modes the tests need. */
 export function autoReply(options: AutoReplyOptions = {}): Responder {
   let statusCalls = 0;
+  let copies = 1;
   return (packet, fake) => {
     options.onWrite?.(packet, fake);
     const { cmd } = packet;
+    if (cmd === CMD.SET_PAGE_SIZE) copies = ((packet.data[4] as number) << 8) | (packet.data[5] as number);
     if (cmd === CMD.PRINT_EMPTY_ROW || cmd === CMD.PRINT_BITMAP_ROW) {
       if (options.lineChecks) fake.emitPacket(CMD.PRINTER_CHECK_LINE, [0, 1, 0, 0]);
       return;
@@ -107,8 +110,8 @@ export function autoReply(options: AutoReplyOptions = {}): Responder {
     if (reply === undefined) return;
     if (options.refuse?.includes(cmd)) return fake.emitPacket(reply, [0]);
     if (cmd === CMD.PRINT_STATUS) {
-      const sequence = options.status ?? [DONE];
-      const data = sequence[Math.min(statusCalls++, sequence.length - 1)] ?? DONE;
+      const sequence = options.status ?? [done(copies)];
+      const data = sequence[Math.min(statusCalls++, sequence.length - 1)] ?? done(copies);
       return fake.emitPacket(reply, data);
     }
     if (cmd === CMD.GET_INFO) {

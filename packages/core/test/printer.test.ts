@@ -229,6 +229,19 @@ describe("Printer.print: status polling", () => {
     expect(calls).toBe(3);
   });
 
+  it("with copies > 1 waits for the last copy, not just page 1 (page 1 of 2 once cut the job short on a B1)", async () => {
+    const { fake, printer } = setup({ status: [[0, 1, 100, 100], [0, 2, 50, 50], [0, 2, 100, 100]] });
+    await settled(printer.print(ROWS, { copies: 2 }));
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_STATUS)).toHaveLength(3);
+    expect(fake.cmds.at(-1)).toBe(CMD.PRINT_END);
+  });
+
+  it("does not finish a one-copy job on a status for another page", async () => {
+    const { fake, printer } = setup({ status: [[0, 0, 100, 100], [0, 1, 100, 100]] });
+    await settled(printer.print(ROWS));
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_STATUS)).toHaveLength(2);
+  });
+
   it("times out after 30 s for one copy", async () => {
     const { printer } = setup({ status: [[0, 1, 10, 10]] });
     const start = Date.now();
