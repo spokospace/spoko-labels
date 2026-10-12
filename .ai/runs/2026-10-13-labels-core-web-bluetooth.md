@@ -29,6 +29,7 @@ Add `WebBluetoothTransport`, `Printer.connect()` and the package README on top o
 1. `WebBluetoothTransport` and its tests.
 2. `Printer.connect()` and entry point exports.
 3. Package README.
+4. Hardware-check example page for the maintainer (added after planning, at the maintainer's request).
 
 ## Progress
 
@@ -41,3 +42,4 @@ PR: #4
 - [x] 3.1 WebBluetoothTransport with fake navigator.bluetooth tests — 9ed4514
 - [x] 3.2 Printer.connect and exports — 9ed4514
 - [x] 3.3 Package README — 9ed4514
+- [x] 3.4 Hardware-check example page — 038abe1
