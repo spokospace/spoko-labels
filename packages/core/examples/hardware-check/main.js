@@ -1,12 +1,17 @@
 // Manual hardware check for @spokospace/labels-core. Needs `pnpm build` first (imports ../../dist).
-import { B1, CMD, imageToRows, Printer, WebBluetoothTransport } from "../../dist/index.js";
+import { B1, CMD, encodePacket, imageToRows, INFO_KEY, Printer, WebBluetoothTransport } from "../../dist/index.js";
 import { HEIGHT, LABELS, WIDTH } from "./labels.js";
 
 const $ = (id) => document.getElementById(id);
 const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(" ");
 
 let printer = null;
+/** Set when connected with raw packet logging on: the Probe button needs direct access to the link. */
+let probeTransport = null;
 let running = false;
+
+/** Keep printer identifiers out of the log, which is meant to be pasted into a public pull request. */
+const maskName = (name) => String(name).replace(/^([^-\s]+-).+$/, "$1***");
 
 // ---------- log ----------
 
@@ -29,6 +34,7 @@ function describe(error) {
 /** Wraps a transport so every non-row packet and every notification is logged as hex. */
 function loggingTransport(inner) {
   let rowPackets = 0;
+  let serialRequested = false;
   const flushRows = () => {
     if (rowPackets) log(`   ... ${rowPackets} row packet(s) written`);
     rowPackets = 0;
@@ -42,6 +48,7 @@ function loggingTransport(inner) {
         rowPackets++;
       } else {
         flushRows();
+        serialRequested = packet[2] === CMD.GET_INFO && packet[4] === INFO_KEY.SERIAL;
         log(`-> ${hex(packet)}`);
       }
       return inner.write(packet);
@@ -49,7 +56,9 @@ function loggingTransport(inner) {
     onData: (listener) =>
       inner.onData((bytes) => {
         flushRows();
-        log(`<- ${hex(bytes)}`);
+        // the reply to the serial number request contains the serial as ASCII
+        log(serialRequested ? `<- (serial number reply, ${bytes.length} bytes, not logged)` : `<- ${hex(bytes)}`);
+        serialRequested = false;
         listener(bytes);
       }),
     onDisconnect: (listener) => inner.onDisconnect(listener),
@@ -71,6 +80,7 @@ function refresh() {
   for (const id of ["disconnect", "info", "print", "sweep", "abortAfterRows", "abortWhilePolling"]) {
     $(id).disabled = !connected || (running && id !== "disconnect");
   }
+  $("probe").disabled = !connected || running || !probeTransport;
   $("connect").disabled = running;
   $("reconnect").disabled = running;
   $("abort").disabled = !running;
@@ -119,9 +129,11 @@ async function connectFromClick(raw) {
   try {
     if (raw) {
       const transport = await WebBluetoothTransport.request();
-      printer = new Printer(loggingTransport(transport));
-      log(`Connected to "${transport.deviceName}" (raw packet logging on)`);
+      probeTransport = loggingTransport(transport);
+      printer = new Printer(probeTransport);
+      log(`Connected to "${maskName(transport.deviceName)}" (raw packet logging on)`);
     } else {
+      probeTransport = null;
       printer = await Printer.connect();
       log("Connected with Printer.connect()");
     }
@@ -142,8 +154,9 @@ $("reconnect").addEventListener("click", async () => {
   if (!transport) {
     log("reconnect() resolved null (flag off, no remembered printer, or printer not reachable)");
   } else {
-    printer = new Printer(raw ? loggingTransport(transport) : transport);
-    log(`reconnect() connected to "${transport.deviceName}"`);
+    probeTransport = raw ? loggingTransport(transport) : null;
+    printer = new Printer(probeTransport ?? transport);
+    log(`reconnect() connected to "${maskName(transport.deviceName)}"`);
   }
   refresh();
 });
@@ -157,9 +170,37 @@ $("disconnect").addEventListener("click", async () => {
 $("info").addEventListener("click", async () => {
   setRunning(true);
   try {
-    log(`info(): ${JSON.stringify(await printer.info())}`);
+    const { serial, ...rest } = await printer.info();
+    log(`info(): ${JSON.stringify(serial === undefined ? rest : { ...rest, serial: "(received, not logged)" })}`);
   } catch (error) {
     log(`info() failed: ${describe(error)}`);
+  }
+  setRunning(false);
+});
+
+// ---------- probe ----------
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Send read-only queries and let the raw log show the replies: what does the printer report about itself and the label? */
+$("probe").addEventListener("click", async () => {
+  setRunning(true);
+  log("Probe: sending read-only queries; replies appear as '<-' lines. Run it once per label roll.");
+  const queries = [
+    ["CONNECT", CMD.CONNECT, [1]],
+    ["HEARTBEAT", CMD.HEARTBEAT, [1]],
+    ["RFID / label info (0x1A)", 0x1a, [1]],
+    ...[1, 2, 3, 6, 7, 8, 9, 10, 12].map((key) => [`GET_INFO ${key}`, CMD.GET_INFO, [key]]),
+  ];
+  try {
+    for (const [name, cmd, data] of queries) {
+      log(`probe ${name}`);
+      await probeTransport.write(encodePacket(cmd, data));
+      await wait(600);
+    }
+    log("Probe finished. No reply after a query means the printer ignores it.");
+  } catch (error) {
+    log(`Probe failed: ${describe(error)}`);
   }
   setRunning(false);
 });

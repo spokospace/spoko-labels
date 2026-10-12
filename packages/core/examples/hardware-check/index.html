@@ -32,7 +32,11 @@
       <button id="disconnect">Disconnect</button>
       <label><input type="checkbox" id="rawlog"> log raw packets</label>
     </div>
-    <div class="row"><button id="info">info()</button></div>
+    <div class="row">
+      <button id="info">info()</button>
+      <button id="probe" title="Needs 'log raw packets'">Probe label / status (read-only)</button>
+    </div>
+    <p class="hint">Probe sends read-only queries (heartbeat, RFID, printer settings) and shows the raw replies. Tick "log raw packets" before connecting. Run it once per label roll, with the lid closed. The serial number is never written to the log.</p>
   </section>
 
   <section>
