@@ -1,0 +1,42 @@
+# AGENTS.md
+
+spoko-labels prints labels on NIIMBOT label printers straight from the browser over Web Bluetooth (BLE). It is a pnpm + TypeScript monorepo: a printer protocol library, a label template engine (text, QR, lines; data bound to columns), an importer for templates designed in the NIIMBOT desktop app, an embeddable "print label" dialog for other web apps, and a public web app that loads data from xlsx files or an API. First hardware target: NIIMBOT B1 (203 dpi, 384-dot head, 50×30 mm labels). MIT licensed; code, docs, issues and PRs are in English.
+
+## Status
+
+The repository is being bootstrapped. The working prototype (Python + plain JS) lives outside this repo and is being ported package by package through specs in `.ai/specs/`. Paths below marked *(planned)* do not exist yet — create them as the spec says, do not invent a different layout.
+
+## Task routing
+
+| When the task involves… | Read first | Key rules |
+|---|---|---|
+| Printer protocol, BLE connection (`packages/core`, *planned*) | `.ai/specs/` (core spec), `BACKWARD_COMPATIBILITY.md` | Packets are `55 55 CMD LEN DATA… CHK AA AA`, `CHK = XOR(CMD, LEN, DATA…)`. Skip unsolicited `0xD3` ("line check") packets when waiting for a reply. `navigator.bluetooth.requestDevice()` must be the first `await` after a click — anything awaited before it loses the user gesture. Silent reconnect (`getDevices()`) is optional browser support, never required. Any protocol change needs a hardware check on a real printer, stated in the PR. |
+| Template rendering (`packages/render`, *planned*) | render spec, `BACKWARD_COMPATIBILITY.md` (template format) | 8 dots per mm; output is thresholded to pure black/white (`< 128` = black). QR modules are whole dots. Template geometry is in mm. Rendering changes must keep the golden-image tests passing or update them deliberately with before/after images in the PR. |
+| Niimbot template import (`packages/niimbot-import`, *planned*) | import spec | Niimbot `fontSize` is the em size in mm; its `letterSpacing` renders ~1.65× wider than the stored value (measured on app thumbnails). Field bindings like `C0` mean "column C of the data source". Treat the Niimbot data format as unstable: parse defensively, fail per template, never crash the whole import. |
+| Embeddable dialog (`packages/embed`, *planned*) | embed spec, `BACKWARD_COMPATIBILITY.md` (embed API) | No framework dependency in the public API. Everything the host passes is data (rows + columns); the host never runs our code with its credentials beyond what it imports. |
+| Web app (`apps/web`, *planned*) | web app spec | Data the user loads (xlsx, API responses) stays in the browser unless a spec says otherwise. UI strings go through the i18n dictionary (PL + EN). Works on Chrome/Edge desktop and Android; show a clear message elsewhere (no Web Bluetooth on iOS/Firefox; Brave needs a flag). |
+| Fonts and bundled assets | `LICENSE`, the asset's own license | Only redistribute fonts whose license allows it (e.g. SIL OFL) and keep the license file next to the font. |
+| Tooling, CI, release | `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `eslint.config.js` | pnpm only. Pin new dependencies to versions that have been out for at least a week. Do not rely on GitHub Actions for validation; run the validation gate locally. |
+| Agent pipeline, labels, process | `SDLC.md`, `.ai/agentic.config.json`, `.ai/trackers/github.md` | Follow the label state machine and the claim protocol in `SDLC.md`. |
+
+## Never commit
+
+- Personal templates, real product/tool data, printer serials or MAC addresses. Examples and fixtures are made up.
+- Fonts or other assets without a redistributable license.
+- Secrets or tokens of any kind.
+
+## Validation gate
+
+Run in this order before every PR (see `SDLC.md`):
+
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+## Related documents
+
+- `SDLC.md` — ticket flow, labels, claim protocol
+- `CODE_REVIEW.md` — review rules applied by `om-code-review`
+- `BACKWARD_COMPATIBILITY.md` — protected contract surfaces
+- `.ai/agentic.config.json` — pipeline configuration read by every `om-*` skill
