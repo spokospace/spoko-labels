@@ -41,6 +41,46 @@ export const LABELS = {
     ctx.fillText(caption || "ruler: 10 mm ticks", 60, 100);
     return canvas;
   },
+  "Margin probe (numbered mm scales)": () => {
+    // Every edge carries a scale in millimetres measured from that edge of the 48 x 30 mm image
+    // (8 dots = 1 mm). The smallest number you can still read on the printed label on each side
+    // tells how much of that edge is lost.
+    const { canvas, ctx } = base();
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    const tick = (x, y, w, h) => ctx.fillRect(x, y, w, h);
+    for (let mm = 0; mm <= 48; mm++) {
+      const x = Math.min(mm * 8, WIDTH - 1);
+      const long = mm % 5 === 0;
+      tick(x, 0, 1, long ? 14 : 7); // top, numbered from the left edge
+      tick(x, HEIGHT - (long ? 14 : 7), 1, long ? 14 : 7); // bottom
+      if (long && mm > 0 && mm < 47) {
+        ctx.fillText(String(mm), x, 22);
+        ctx.fillText(String(mm), x, HEIGHT - 22);
+      }
+    }
+    ctx.textAlign = "left";
+    for (let mm = 0; mm <= 30; mm++) {
+      const y = Math.min(mm * 8, HEIGHT - 1);
+      const long = mm % 5 === 0;
+      tick(0, y, long ? 14 : 7, 1); // left, numbered from the top edge
+      tick(WIDTH - (long ? 14 : 7), y, long ? 14 : 7, 1); // right
+      if (long && mm > 0 && mm < 30) {
+        ctx.fillText(String(mm), 18, y);
+        ctx.textAlign = "right";
+        ctx.fillText(String(mm), WIDTH - 18, y);
+        ctx.textAlign = "left";
+      }
+    }
+    ctx.textAlign = "center";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText("TOP", WIDTH / 2, 70);
+    ctx.font = "13px sans-serif";
+    ctx.fillText("numbers = mm from that edge", WIDTH / 2, 100);
+    ctx.fillText("top row = first row sent", WIDTH / 2, 120);
+    return canvas;
+  },
   "Density test (black blocks and stripes)": (caption) => {
     const { canvas, ctx } = base();
     ctx.fillRect(16, 16, 160, 90);
