@@ -19,11 +19,11 @@ import { WebBluetoothTransport } from "./web-bluetooth.js";
 const STEP_TIMEOUT_MS = 2000;
 const STATUS_TIMEOUT_MS = 1000;
 const POLL_INTERVAL_MS = 300;
-/** Status poll budget: `BASE + PER_EXTRA_COPY * (copies - 1)`. */
-const POLL_BUDGET_BASE_MS = 30_000;
-const POLL_BUDGET_PER_EXTRA_COPY_MS = 5000;
+/** How long to poll for the end of one printed label before giving up. */
+const POLL_BUDGET_MS = 30_000;
 const ABORT_PRINT_END_TIMEOUT_MS = 1000;
-const MAX_COPIES = 0xffff;
+/** Every copy is a separate print job, so the number is kept to a practical size. */
+const MAX_COPIES = 255;
 /** Gap labels; the only label type supported for the B1. */
 const LABEL_TYPE_GAP = 1;
 const PERCENT_DONE = 100;
@@ -51,7 +51,10 @@ export interface PrintProgress {
 export interface PrintOptions {
   /** Print density, an integer inside the model's `densityRange`. */
   density?: number;
-  /** Copies of the page, 1..65535. */
+  /**
+   * Copies of the page, 1..255. The printer is sent one complete print job per copy: on a real B1 the
+   * copy count inside the page size packet printed a single label, a job per copy is what works.
+   */
   copies?: number;
   onProgress?: (progress: PrintProgress) => void;
   /**
@@ -137,7 +140,13 @@ export class Printer {
       try {
         await this.ensureHandshake();
         this.guard(signal);
-        await this.sendPage(packets, rows.length, density, copies, onProgress, signal);
+        for (let copy = 0; copy < copies; copy++) {
+          this.guard(signal);
+          // progress of the whole call: copy 1 of 3 at 50% is 16%
+          const scaled = onProgress && ((p: PrintProgress) =>
+            onProgress({ stage: p.stage, percent: Math.floor((copy * 100 + p.percent) / copies) }));
+          await this.sendPage(packets, rows.length, density, scaled, signal);
+        }
       } catch (error) {
         if (error instanceof AbortedError) await this.finishAfterAbort();
         throw error;
@@ -151,7 +160,6 @@ export class Printer {
     packets: readonly Uint8Array[],
     rowCount: number,
     density: number,
-    copies: number,
     onProgress: PrintOptions["onProgress"],
     signal: AbortSignal | undefined,
   ): Promise<void> {
@@ -163,7 +171,7 @@ export class Printer {
     await step("label type", CMD.SET_LABEL_TYPE, [LABEL_TYPE_GAP]);
     await step("print start", CMD.PRINT_START, [...u16(1), 0, 0, 0, 0, 0]);
     await step("page start", CMD.PAGE_START);
-    await step("page size", CMD.SET_PAGE_SIZE, [...u16(rowCount), ...u16(this.model.headDots), ...u16(copies)]);
+    await step("page size", CMD.SET_PAGE_SIZE, [...u16(rowCount), ...u16(this.model.headDots), ...u16(1)]);
 
     for (const [i, packet] of packets.entries()) {
       this.guard(signal);
@@ -172,16 +180,15 @@ export class Printer {
       await sleep(this.model.rowGapMs);
     }
     await step("page end", CMD.PAGE_END);
-    await this.waitUntilPrinted(copies, onProgress, signal);
+    await this.waitUntilPrinted(onProgress, signal);
     await this.request("print end", CMD.PRINT_END).catch(ignoreNoReply);
   }
 
   private async waitUntilPrinted(
-    copies: number,
     onProgress: PrintOptions["onProgress"],
     signal: AbortSignal | undefined,
   ): Promise<void> {
-    const deadline = Date.now() + POLL_BUDGET_BASE_MS + POLL_BUDGET_PER_EXTRA_COPY_MS * (copies - 1);
+    const deadline = Date.now() + POLL_BUDGET_MS;
     while (Date.now() < deadline) {
       this.guard(signal);
       const status = await this.request("print status", CMD.PRINT_STATUS, [1], STATUS_TIMEOUT_MS).catch(ignoreNoReply);
@@ -191,10 +198,8 @@ export class Printer {
       if (progress !== undefined && feed !== undefined) {
         onProgress?.({ stage: "printing", percent: Math.min(progress, feed, PERCENT_DONE) });
       }
-      // Done: the last copy is the current page and both progress counters are at 100.
-      // (The prototype only printed one copy and checked for page 1; ending the job at page 1 of 2
-      // cut the second copy short on a real B1.)
-      if (page === copies && progress === PERCENT_DONE && feed === PERCENT_DONE) return;
+      // Done: page 1 (every job prints one label) with both progress counters at 100.
+      if (page === 1 && progress === PERCENT_DONE && feed === PERCENT_DONE) return;
       await sleep(POLL_INTERVAL_MS);
     }
     throw new PrintTimeoutError();

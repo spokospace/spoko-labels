@@ -35,7 +35,7 @@ button.addEventListener("click", async () => {
 | `Printer.connect(model?)` | Opens the chooser and returns a connected `Printer`. |
 | `new Printer(transport, model?)` | A printer over any `Transport` (for tests, or another link). |
 | `printer.info()` | `{ battery?, serial?, firmware? }`. A value the printer does not answer is left out. `battery` is a small level (3 on a B1), not a percentage. `firmware` is formatted as `"5.26"` (the printer reports two bytes, 5 and 26, which is the integer 1306; this is what the official NIIMBOT app shows); the unformatted integer is in `firmwareRaw`. |
-| `printer.print(rows, options?)` | Prints one page. Options: `density` (integer within the model's range), `copies` (1 to 65535), `onProgress({ stage, percent })`, `signal` (`AbortSignal`). |
+| `printer.print(rows, options?)` | Prints one page. Options: `density` (integer within the model's range), `copies` (1 to 255; each copy is a separate print job), `onProgress({ stage, percent })`, `signal` (`AbortSignal`). |
 | `printer.disconnect()`, `printer.connected` | Close the link, check the link. |
 | `WebBluetoothTransport` | `isSupported()`, `request(model?)`, `reconnect(model?, { timeoutMs? })`, `deviceName`. |
 | `imageToRows(image, model?)` | RGBA image to 1-bit rows of `headDots / 8` bytes. |
@@ -63,7 +63,7 @@ Every error extends `LabelsCoreError` and has a stable `code`. The messages are 
 | `disconnected` | `DisconnectedError` | The link dropped, or a write failed even in 20-byte chunks. |
 | `no-response` | `NoResponseError` | No reply within 2 s; `step` names the command. |
 | `refused` | `RefusedError` | The printer refused a command; `step` names it. |
-| `print-timeout` | `PrintTimeoutError` | The printer did not report the page as finished within `30 s + 5 s x (copies - 1)`. |
+| `print-timeout` | `PrintTimeoutError` | The printer did not report the page as finished within 30 s (per printed label). |
 | `busy` | `PrinterBusyError` | Another command is running on this printer. |
 | `aborted` | `AbortedError` | The `AbortSignal` fired. |
 | `invalid-argument` | `InvalidArgumentError` | Bad density, copies, rows or image. |

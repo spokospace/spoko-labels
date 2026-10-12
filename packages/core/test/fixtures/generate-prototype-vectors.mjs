@@ -106,22 +106,24 @@ const rowSets = [
 }));
 
 // The packet sequence of the prototype's Printer.printRows (density, label type, print start, page start,
-// page size, image packets, page end, status poll, print end). `copies` is parameterized here; the
-// prototype itself always prints one copy.
+// page size, image packets, page end, status poll, print end). The prototype prints one copy; copies are
+// sent as one complete job each, because a copy count inside the page size packet printed a single label
+// on a real B1.
 const u16 = (n) => [(n >> 8) & 0xff, n & 0xff];
-function printSequence(rows, density, copies) {
+function printJob(rows, density) {
   return [
     ref.packet(0x21, [density]),
     ref.packet(0x23, [1]),
     ref.packet(0x01, [...u16(1), 0, 0, 0, 0, 0]),
     ref.packet(0x03),
-    ref.packet(0x13, [...u16(rows.length), ...u16(384), ...u16(copies)]),
+    ref.packet(0x13, [...u16(rows.length), ...u16(384), ...u16(1)]),
     ...ref.imagePackets(rows),
     ref.packet(0xe3),
     ref.packet(0xa3, [1]),
     ref.packet(0xf3),
   ].map(hex);
 }
+const printSequence = (rows, density, copies) => Array.from({ length: copies }, () => printJob(rows, density)).flat();
 const sequenceRows = [row(0), row(0), row(0xaa), row(0xaa), row(0xff)];
 const sequences = [
   { name: "density3Copy1", density: 3, copies: 1 },
