@@ -74,7 +74,22 @@ describe("Printer.info", () => {
         [INFO_KEY.FIRMWARE]: [0x05, 0x1a],
       },
     });
-    expect(await settled(printer.info())).toEqual({ battery: 3, serial: "TEST-0001", firmware: "1306" });
+    expect(await settled(printer.info())).toEqual({
+      battery: 3,
+      serial: "TEST-0001",
+      firmware: "13.06",
+      firmwareRaw: 1306,
+    });
+  });
+
+  it.each([
+    [[0x05, 0x1a], "13.06", 1306],
+    [[0x03, 0x89], "9.05", 905],
+    [[0x00, 0x05], "0.05", 5],
+    [[0x27, 0x0f], "99.99", 9999],
+  ])("formats the firmware value %j as %s", async (bytes, formatted, raw) => {
+    const { printer } = setup({ info: { [INFO_KEY.FIRMWARE]: bytes } });
+    expect(await settled(printer.info())).toEqual({ firmware: formatted, firmwareRaw: raw });
   });
 
   it("leaves out values the printer does not answer", async () => {

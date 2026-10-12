@@ -32,8 +32,13 @@ export interface PrinterInfo {
   /** Battery level as reported by the printer. */
   battery?: number;
   serial?: string;
-  /** Firmware version as the raw decimal value the printer reports. */
+  /**
+   * Firmware version as "major.minor", for example "13.06". The printer reports it as one integer in
+   * hundredths (1306); the formatting was observed on a B1 and is not documented by the vendor.
+   */
   firmware?: string;
+  /** The integer the printer reported for the firmware version, unformatted. */
+  firmwareRaw?: number;
 }
 
 export interface PrintProgress {
@@ -103,7 +108,10 @@ export class Printer {
       const serial = await this.query(INFO_KEY.SERIAL);
       if (serial) info.serial = new TextDecoder().decode(serial.data);
       const firmware = await this.query(INFO_KEY.FIRMWARE);
-      if (firmware) info.firmware = String(bytesToNumber(firmware.data));
+      if (firmware) {
+        info.firmwareRaw = bytesToNumber(firmware.data);
+        info.firmware = formatFirmware(info.firmwareRaw);
+      }
       return info;
     });
   }
@@ -259,6 +267,10 @@ export class Printer {
     }
   }
 }
+
+/** 1306 -> "13.06", 905 -> "9.05", 5 -> "0.05". */
+const formatFirmware = (raw: number): string =>
+  `${Math.floor(raw / 100)}.${String(raw % 100).padStart(2, "0")}`;
 
 const bytesToNumber = (bytes: Uint8Array): number => bytes.reduce((acc, b) => acc * 256 + b, 0);
 
