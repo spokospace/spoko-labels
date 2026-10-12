@@ -28,13 +28,15 @@ Create `packages/core` (`@spokospace/labels-core`) with the pure, hardware-free 
 
 ## Progress
 
+PR: #2
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: protocol codec
 
-- [ ] 1.1 Package scaffold and smoke test
-- [ ] 1.2 Commands, errors and B1 model descriptor
-- [ ] 1.3 Packet encoder
-- [ ] 1.4 Streaming packet parser
-- [ ] 1.5 Row encoder
-- [ ] 1.6 Image to rows helper
+- [x] 1.1 Package scaffold and smoke test — 55d73a1
+- [x] 1.2 Commands, errors and B1 model descriptor — 55d73a1
+- [x] 1.3 Packet encoder — 55d73a1
+- [x] 1.4 Streaming packet parser — 55d73a1
+- [x] 1.5 Row encoder — 55d73a1
+- [x] 1.6 Image to rows helper — 55d73a1
