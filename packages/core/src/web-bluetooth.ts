@@ -60,6 +60,7 @@ function waitForAdvertisement(device: BluetoothDeviceLike, timeoutMs: number, si
 }
 
 const errorName = (error: unknown): string => (error instanceof Error ? error.name : "");
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : "");
 
 /** Transport over a Web Bluetooth GATT characteristic. Build one with `request()` or `reconnect()`. */
 export class WebBluetoothTransport implements Transport {
@@ -100,10 +101,14 @@ export class WebBluetoothTransport implements Transport {
         optionalServices: [SERVICE_UUID],
       });
     } catch (error) {
-      // A closed chooser is a NotFoundError; NotAllowed/Security mean Web Bluetooth is blocked here
-      // (no user gesture, insecure context, permissions policy).
+      // NotAllowed/Security mean Web Bluetooth is blocked here (no user gesture, insecure context, policy).
       const name = errorName(error);
-      if (name === "NotFoundError") throw new ChooserCancelledError(undefined, { cause: error });
+      if (name === "NotFoundError") {
+        // Chrome reuses NotFoundError for a closed chooser ("User cancelled ...") and for Bluetooth that is
+        // switched off or disabled ("Bluetooth adapter not available", "Web Bluetooth API globally disabled").
+        if (/cancel/i.test(errorMessage(error))) throw new ChooserCancelledError(undefined, { cause: error });
+        throw new BluetoothUnsupportedError("Bluetooth is switched off or disabled", { cause: error });
+      }
       if (name === "NotAllowedError" || name === "SecurityError") {
         throw new BluetoothUnsupportedError("Web Bluetooth is blocked for this page", { cause: error });
       }

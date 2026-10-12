@@ -57,7 +57,7 @@ Every error extends `LabelsCoreError` and has a stable `code`. The messages are 
 
 | `code` | Class | When |
 |---|---|---|
-| `bluetooth-unsupported` | `BluetoothUnsupportedError` | No Web Bluetooth (iOS, Firefox, Brave without its flag), or the page is blocked from using it (no user gesture, insecure context, permissions policy; see `cause`). |
+| `bluetooth-unsupported` | `BluetoothUnsupportedError` | No Web Bluetooth (iOS, Firefox, Brave without its flag), Bluetooth switched off or disabled in the browser, or the page is blocked from using it (no user gesture, insecure context, permissions policy). See `cause` for the browser's own message. |
 | `chooser-cancelled` | `ChooserCancelledError` | The chooser was closed without picking a printer. |
 | `device-unreachable` | `DeviceUnreachableError` | The printer could not be connected: not advertising (for example connected to a phone), GATT connect failed or timed out after 10 s, or the NIIMBOT service is missing. |
 | `disconnected` | `DisconnectedError` | The link dropped, or a write failed even in 20-byte chunks. |

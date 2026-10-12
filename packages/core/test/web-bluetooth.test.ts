@@ -87,9 +87,20 @@ describe("WebBluetoothTransport.request", () => {
   });
 
   it("maps a closed chooser (NotFoundError) to chooser-cancelled", async () => {
-    install(fakeBluetooth(() => Promise.reject(domError("NotFoundError", "User cancelled the chooser"))));
+    install(fakeBluetooth(() => Promise.reject(domError("NotFoundError", "User cancelled the requestDevice() chooser."))));
     expect(await rejection(WebBluetoothTransport.request())).toBeInstanceOf(ChooserCancelledError);
   });
+
+  it.each(["Web Bluetooth API globally disabled.", "Bluetooth adapter not available."])(
+    "maps a NotFoundError that is not a cancelled chooser (%s) to bluetooth-unsupported",
+    async (message) => {
+      const cause = domError("NotFoundError", message);
+      install(fakeBluetooth(() => Promise.reject(cause)));
+      const error = await rejection(WebBluetoothTransport.request());
+      expect(error).toBeInstanceOf(BluetoothUnsupportedError);
+      expect((error as BluetoothUnsupportedError).cause).toBe(cause);
+    },
+  );
 
   it.each(["NotAllowedError", "SecurityError"])("maps %s to bluetooth-unsupported and keeps the cause", async (name) => {
     const cause = domError(name);
