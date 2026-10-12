@@ -33,8 +33,9 @@ export interface PrinterInfo {
   battery?: number;
   serial?: string;
   /**
-   * Firmware version as "major.minor", for example "13.06". The printer reports it as one integer in
-   * hundredths (1306); the formatting was observed on a B1 and is not documented by the vendor.
+   * Firmware version as "major.minor", for example "5.26". The printer reports two bytes (major, minor),
+   * which read together are the integer 1306. Matches what the official NIIMBOT app shows for a B1;
+   * not documented by the vendor.
    */
   firmware?: string;
   /** The integer the printer reported for the firmware version, unformatted. */
@@ -268,9 +269,8 @@ export class Printer {
   }
 }
 
-/** 1306 -> "13.06", 905 -> "9.05", 5 -> "0.05". */
-const formatFirmware = (raw: number): string =>
-  `${Math.floor(raw / 100)}.${String(raw % 100).padStart(2, "0")}`;
+/** The high byte is the major version, the low byte the minor: 0x051a (1306) -> "5.26", 5 -> "0.05". */
+const formatFirmware = (raw: number): string => `${raw >> 8}.${String(raw & 0xff).padStart(2, "0")}`;
 
 const bytesToNumber = (bytes: Uint8Array): number => bytes.reduce((acc, b) => acc * 256 + b, 0);
 
