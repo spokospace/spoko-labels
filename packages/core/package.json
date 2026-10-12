@@ -1,0 +1,21 @@
+{
+  "name": "@spokospace/labels-core",
+  "version": "0.0.0",
+  "description": "NIIMBOT printer protocol and Web Bluetooth connection for printing labels from the browser.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
