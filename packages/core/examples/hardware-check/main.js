@@ -3,6 +3,7 @@ import { B1, CMD, encodePacket, imageToRows, INFO_KEY, Printer, WebBluetoothTran
 import { HEIGHT, LABELS, WIDTH } from "./labels.js";
 
 const $ = (id) => document.getElementById(id);
+const RFID_REPLY = 0x1b;
 const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(" ");
 
 let printer = null;
@@ -31,6 +32,29 @@ function describe(error) {
   return parts.join(" ");
 }
 
+/**
+ * The RFID reply (0x1b) identifies the label roll: tag UID, then two length-prefixed ASCII strings, then counters.
+ * Mask the identifiers (and any repeat of the UID) so the log can be pasted publicly; counters stay visible.
+ */
+function redactRfid(bytes) {
+  const out = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"));
+  const end = bytes.length - 3; // checksum and tail
+  const mask = (from, to) => {
+    for (let i = from; i < to && i < end; i++) out[i] = "xx";
+  };
+  const uid = bytes.slice(4, 12);
+  mask(4, 12);
+  let at = 12;
+  for (let field = 0; field < 2 && at < end; field++) {
+    mask(at + 1, at + 1 + bytes[at]);
+    at += 1 + bytes[at];
+  }
+  for (let i = at; i + uid.length <= end; i++) {
+    if (uid.every((b, j) => bytes[i + j] === b)) mask(i, i + uid.length);
+  }
+  return out.join(" ");
+}
+
 /** Wraps a transport so every non-row packet and every notification is logged as hex. */
 function loggingTransport(inner) {
   let rowPackets = 0;
@@ -57,7 +81,9 @@ function loggingTransport(inner) {
       inner.onData((bytes) => {
         flushRows();
         // the reply to the serial number request contains the serial as ASCII
-        log(serialRequested ? `<- (serial number reply, ${bytes.length} bytes, not logged)` : `<- ${hex(bytes)}`);
+        if (serialRequested) log(`<- (serial number reply, ${bytes.length} bytes, not logged)`);
+        else if (bytes[2] === RFID_REPLY) log(`<- ${redactRfid(bytes)}`);
+        else log(`<- ${hex(bytes)}`);
         serialRequested = false;
         listener(bytes);
       }),
