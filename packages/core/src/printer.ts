@@ -13,6 +13,7 @@ import { CMD, INFO_KEY } from "./protocol/commands.js";
 import { encodePacket, PacketParser, u16, type Packet } from "./protocol/packet.js";
 import { encodeRows } from "./protocol/rows.js";
 import type { Transport } from "./transport.js";
+import { WebBluetoothTransport } from "./web-bluetooth.js";
 
 /** How long a command waits for its reply. */
 const STEP_TIMEOUT_MS = 2000;
@@ -75,6 +76,14 @@ export class Printer {
   ) {
     transport.onData((bytes) => this.handleData(bytes));
     transport.onDisconnect(() => this.settle((p) => p.reject(new DisconnectedError())));
+  }
+
+  /**
+   * Open the browser's device chooser and connect to a printer over Web Bluetooth.
+   * Must be called straight from a click handler, with nothing awaited before it.
+   */
+  static async connect(model: PrinterModel = B1): Promise<Printer> {
+    return new Printer(await WebBluetoothTransport.request(model), model);
   }
 
   get connected(): boolean {
