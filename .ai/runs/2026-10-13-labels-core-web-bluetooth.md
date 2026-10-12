@@ -32,10 +32,12 @@ Add `WebBluetoothTransport`, `Printer.connect()` and the package README on top o
 
 ## Progress
 
+PR: #4
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 3: Web Bluetooth and docs
 
-- [ ] 3.1 WebBluetoothTransport with fake navigator.bluetooth tests
-- [ ] 3.2 Printer.connect and exports
-- [ ] 3.3 Package README
+- [x] 3.1 WebBluetoothTransport with fake navigator.bluetooth tests — 9ed4514
+- [x] 3.2 Printer.connect and exports — 9ed4514
+- [x] 3.3 Package README — 9ed4514
