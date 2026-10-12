@@ -922,6 +922,59 @@ export const rowVectors: readonly { name: string; rows: string[]; packets: strin
   }
 ];
 
+export const sequenceVectors: readonly { name: string; density: number; copies: number; rows: string[]; packets: string[] }[] = [
+  {
+    "name": "density3Copy1",
+    "density": 3,
+    "copies": 1,
+    "rows": [
+      "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    ],
+    "packets": [
+      "555521010323aaaa",
+      "555523010123aaaa",
+      "555501070001000000000007aaaa",
+      "555503010103aaaa",
+      "5555130600050180000190aaaa",
+      "5555840300000285aaaa",
+      "55558536000240404002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaf3aaaa",
+      "55558536000480808001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff36aaaa",
+      "5555e30101e3aaaa",
+      "5555a30101a3aaaa",
+      "5555f30101f3aaaa"
+    ]
+  },
+  {
+    "name": "density5Copies2",
+    "density": 5,
+    "copies": 2,
+    "rows": [
+      "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    ],
+    "packets": [
+      "555521010525aaaa",
+      "555523010123aaaa",
+      "555501070001000000000007aaaa",
+      "555503010103aaaa",
+      "5555130600050180000293aaaa",
+      "5555840300000285aaaa",
+      "55558536000240404002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaf3aaaa",
+      "55558536000480808001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff36aaaa",
+      "5555e30101e3aaaa",
+      "5555a30101a3aaaa",
+      "5555f30101f3aaaa"
+    ]
+  }
+];
+
 export const imageVectors: readonly { name: string; width: number; height: number; seed: number; rows: string[] }[] = [
   {
     "name": "narrow",
