@@ -336,4 +336,4 @@ $("density").max = String(B1.densityRange.max);
 $("density").value = String(B1.defaultDensity);
 updatePreview();
 refresh();
-log(`Page loaded. B1 density range in the library: ${B1.densityRange.min}..${B1.densityRange.max} (provisional).`);
+log(`Page loaded. B1 density range in the library: ${B1.densityRange.min}..${B1.densityRange.max} .`);

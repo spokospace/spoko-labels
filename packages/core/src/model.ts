@@ -14,8 +14,8 @@ export interface PrinterModel {
 
 /**
  * NIIMBOT B1: 203 dpi, 384-dot head (48 mm), 50x30 mm labels.
- * `densityRange` is provisional: the reference implementation only ever used 3.
- * It is confirmed or narrowed by the hardware check before the transport ships.
+ * `densityRange` 1..5 with default 3: the official NIIMBOT app's device catalogue lists the same range and
+ * default for the B1, and a real B1 accepted densities 1, 3 and 5 (hardware check).
  */
 export const B1: PrinterModel = {
   id: "B1",
