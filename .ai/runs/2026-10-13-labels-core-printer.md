@@ -33,10 +33,12 @@ Add the `Transport` interface and a `Printer` class (`info()`, `print()`) on top
 
 ## Progress
 
+PR: #3
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 2: printer logic
 
-- [ ] 2.1 Transport interface and fake transport
-- [ ] 2.2 Printer info and handshake
-- [ ] 2.3 Printer print flow
+- [x] 2.1 Transport interface and fake transport — 55d920b
+- [x] 2.2 Printer info and handshake — 55d920b
+- [x] 2.3 Printer print flow — 55d920b
