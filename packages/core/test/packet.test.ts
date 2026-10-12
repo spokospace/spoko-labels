@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CMD, encodePacket, InvalidArgumentError, PacketParser, u16, type ParsedFrame } from "../src/index.js";
+import { CMD, encodePacket, InvalidArgumentError, PacketParser, type ParsedFrame } from "../src/index.js";
+import { u16 } from "../src/protocol/packet.js";
 import { fromHex, toHex } from "./helpers.js";
 import { packetVectors } from "./fixtures/prototype-vectors.js";
 
