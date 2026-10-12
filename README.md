@@ -33,6 +33,10 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 
 Contributions follow [SDLC.md](SDLC.md); AI agents start with [AGENTS.md](AGENTS.md).
 
+## Acknowledgements
+
+The agent skills in `.claude/skills/` (the `om-*` spec, implementation, review and merge pipeline described in [SDLC.md](SDLC.md)) come from [open-mercato/skills](https://github.com/open-mercato/skills/). The exact versions in use are pinned in [skills-lock.json](skills-lock.json).
+
 ## Not affiliated
 
 This is an independent project. It is not affiliated with or endorsed by NIIMBOT.
