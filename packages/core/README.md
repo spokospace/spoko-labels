@@ -77,6 +77,15 @@ Chrome and Edge on Windows, macOS, Linux and Android. Brave needs `brave://flags
 
 The `Printer` only needs a `Transport`. Implement the four-method interface over an in-memory buffer to test your integration without hardware; this repository's own tests do that with a scripted fake.
 
+## Hardware check page
+
+`examples/hardware-check/` is a small manual page for trying the package on a real printer: connect, `info()`, print made-up test labels at any density and copy count, abort at different moments, and log raw packets. It is meant for the hardware verification of a new release, not as an app.
+
+```bash
+pnpm --filter @spokospace/labels-core example
+# then open http://localhost:8080/examples/hardware-check/ in Chrome or Edge
+```
+
 ## License
 
 MIT
