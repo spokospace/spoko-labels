@@ -55,6 +55,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe("Printer connection state", () => {
+  it("mirrors the transport and closes it on disconnect", async () => {
+    const { fake, printer } = setup();
+    expect(printer.connected).toBe(true);
+    await printer.disconnect();
+    expect(fake.connected).toBe(false);
+    expect(printer.connected).toBe(false);
+  });
+});
+
 describe("Printer.info", () => {
   it("returns battery, serial and firmware", async () => {
     const { printer } = setup({
