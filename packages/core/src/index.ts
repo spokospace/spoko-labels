@@ -3,6 +3,8 @@ export { encodePacket, PacketParser, type Packet, type ParsedFrame } from "./pro
 export { encodeRows, MAX_ROWS } from "./protocol/rows.js";
 export { imageToRows, type ImageLike } from "./image.js";
 export { B1, type PrinterModel } from "./model.js";
+export type { Transport } from "./transport.js";
+export { Printer, type PrinterInfo, type PrintOptions, type PrintProgress } from "./printer.js";
 export {
   AbortedError,
   BluetoothUnsupportedError,
