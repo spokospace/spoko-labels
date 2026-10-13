@@ -41,9 +41,13 @@ export interface TextLayout {
   extent: DotRect | null;
 }
 
+/** Code points, counted without allocating: every UTF-16 unit except the low half of a surrogate pair. */
 const codePointCount = (s: string): number => {
   let n = 0;
-  for (const _ of s) n++;
+  for (let i = 0; i < s.length; i++) {
+    const unit = s.charCodeAt(i);
+    if (unit < 0xdc00 || unit > 0xdfff) n++;
+  }
   return n;
 };
 
