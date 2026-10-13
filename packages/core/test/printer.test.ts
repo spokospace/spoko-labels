@@ -144,11 +144,25 @@ describe("Printer.readRfid", () => {
     expect(await settled(printer.readRfid())).toBeNull();
   });
 
+  it("rejects with ProtocolError on a malformed reply instead of reporting no tag", async () => {
+    const { printer } = setup({
+      onWrite: (packet, fake) => {
+        if (packet.cmd === CMD.GET_RFID) {
+          const bad = encodePacket(0x1b, TAG);
+          bad[bad.length - 3] = (bad[bad.length - 3] as number) ^ 0xff;
+          fake.emit(bad);
+        }
+      },
+      silent: [CMD.GET_RFID],
+    });
+    expect(await rejection(printer.readRfid())).toBeInstanceOf(ProtocolError);
+  });
+
   it("handshakes once, then asks for the tag", async () => {
     const { fake, printer } = setup({ rfid: TAG });
     await settled(printer.readRfid());
-    expect(fake.cmds[0]).toBe(CMD.CONNECT);
-    expect(fake.cmds).toContain(CMD.GET_RFID);
+    await settled(printer.readRfid());
+    expect(fake.cmds).toEqual([CMD.CONNECT, CMD.GET_RFID, CMD.GET_RFID]);
   });
 });
 

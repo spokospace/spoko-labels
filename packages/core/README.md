@@ -57,9 +57,9 @@ const roll = await printer.readRfid();
 if (roll) console.log(`${roll.total - roll.used} of ${roll.total} labels left, type ${roll.type}`);
 ```
 
-Use it to detect which roll is loaded (so the app can pick the matching template) and to show how many labels are left. `total - used` is the remaining count. Dimensions are not always on the tag — the official app looks them up from a server by `serial`/`barcode` — so there are no width/height fields yet; whether the B1 reports them is one of the things the hardware check below should settle.
+Use it to detect which roll is loaded (so the app can pick the matching template) and to show how many labels are left. `total - used` is the remaining count. Dimensions are not always on the tag — the official app looks them up from a server by `serial`/`barcode` — so there are no width/height fields yet; whether the B1 reports them is one of the things the hardware check should settle.
 
-> **Not yet verified on a real B1.** The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor. Treat the fields as best effort until a hardware check on a real B1 confirms them (compare `total`/`used`/`type` and the raw reply across a 50×30 roll and another size, such as 12×40).
+> **Not yet verified on a real B1.** The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor. Treat the fields as best effort until a hardware check on a real B1 confirms them: the `readRfid()` button on the [hardware check page](#hardware-check-page) compares `total`/`used`/`type` and the raw reply across a 50×30 roll and another size, such as 12×40.
 
 ### Aborting
 
@@ -97,7 +97,7 @@ The `Printer` only needs a `Transport`. Implement the four-method interface over
 
 ## Hardware check page
 
-`examples/hardware-check/` is a small manual page for trying the package on a real printer: connect, `info()`, print made-up test labels at any density and copy count, abort at different moments, and log raw packets. It is meant for the hardware verification of a new release, not as an app.
+`examples/hardware-check/` is a small manual page for trying the package on a real printer: connect, `info()`, `readRfid()`, print made-up test labels at any density and copy count, abort at different moments, and log raw packets. It is meant for the hardware verification of a new release, not as an app.
 
 ```bash
 pnpm --filter @spokospace/labels-core example

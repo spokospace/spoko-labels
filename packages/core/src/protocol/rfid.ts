@@ -1,8 +1,8 @@
 /**
  * The RFID tag on a NIIMBOT roll, as the printer reports it over `GET_RFID`. The printer reads the
  * tag itself; this is the same data the official app reads to show which roll is loaded and how many
- * labels are left. Dimensions are not always on the tag — the official app looks them up from a
- * server by `serial`/`barcode` — so `widthMm`/`heightMm` may be absent even when a tag is present.
+ * labels are left. There are no label dimensions here: the official app looks them up from a server by
+ * `serial`/`barcode`, and whether the B1 reports them at all is not known yet.
  */
 export interface RfidInfo {
   /** Tag UID as lowercase hex, 8 bytes as the printer reports them (an NTAG213 has a 7-byte UID plus a check byte). */
@@ -29,14 +29,15 @@ const toHex = (bytes: Uint8Array): string => Array.from(bytes, (b) => b.toString
 
 /**
  * Parse a `GET_RFID` reply. Returns `null` when no tag is present or the printer does not report one
- * (the reply is then too short to hold the fixed fields), and parses defensively: a length prefix that
- * runs past the end of the reply yields `null` rather than throwing.
+ * (the reply then starts with a `0` byte, where a tag UID starts with its non-zero manufacturer code),
+ * and parses defensively: a reply too short for the fixed fields, or a length prefix that runs past
+ * the end of the reply, yields `null` rather than throwing.
  *
  * The layout is taken from community reverse engineering of NIIMBOT printers, not from the vendor, and
  * has not yet been verified against a real B1.
  */
 export function parseRfid(data: Uint8Array): RfidInfo | null {
-  if (data.length < UID_BYTES) return null;
+  if (data.length < UID_BYTES || data[0] === 0) return null;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const uid = toHex(data.subarray(0, UID_BYTES));
 

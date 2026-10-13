@@ -116,7 +116,7 @@ function refresh() {
       : connected
         ? "Connected"
         : "Not connected";
-  for (const id of ["disconnect", "info", "print", "sweep", "abortAfterRows", "abortWhilePolling"]) {
+  for (const id of ["disconnect", "info", "rfid", "print", "sweep", "abortAfterRows", "abortWhilePolling"]) {
     $(id).disabled = !connected || (running && id !== "disconnect");
   }
   $("probe").disabled = !connected || running || !probeTransport;
@@ -220,6 +220,24 @@ $("info").addEventListener("click", async () => {
   setRunning(false);
 });
 
+$("rfid").addEventListener("click", async () => {
+  setRunning(true);
+  try {
+    const roll = await printer.readRfid();
+    if (!roll) {
+      log("readRfid(): null (no tag, or the printer did not report one)");
+    } else {
+      // identifiers stay out of the log: only their lengths are shown
+      const { uid, barcode, serial, total, used, type } = roll;
+      const masked = { uid: `(${uid.length / 2} bytes)`, barcode: `(${barcode.length} chars)`, serial: `(${serial.length} chars)` };
+      log(`readRfid(): ${JSON.stringify({ ...masked, total, used, left: total - used, type })}`);
+    }
+  } catch (error) {
+    log(`readRfid() failed: ${describe(error)}`);
+  }
+  setRunning(false);
+});
+
 // ---------- probe ----------
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -231,7 +249,7 @@ $("probe").addEventListener("click", async () => {
   const queries = [
     ["CONNECT", CMD.CONNECT, [1]],
     ["HEARTBEAT", CMD.HEARTBEAT, [1]],
-    ["RFID / label info (0x1A)", 0x1a, [1]],
+    ["RFID / label info (0x1A)", CMD.GET_RFID, [1]],
     ...[1, 2, 3, 6, 7, 8, 9, 10, 12].map((key) => [`GET_INFO ${key}`, CMD.GET_INFO, [key]]),
   ];
   try {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseRfid, type RfidInfo } from "../src/index.js";
+import { u16 } from "../src/protocol/packet.js";
 
 /** Build a `GET_RFID` reply body from made-up field values. `uid` is 8 bytes. */
 function tagReply(info: RfidInfo, uidBytes: number[]): Uint8Array {
@@ -12,10 +13,8 @@ function tagReply(info: RfidInfo, uidBytes: number[]): Uint8Array {
     ...barcode,
     serial.length,
     ...serial,
-    (info.total >> 8) & 0xff,
-    info.total & 0xff,
-    (info.used >> 8) & 0xff,
-    info.used & 0xff,
+    ...u16(info.total),
+    ...u16(info.used),
     info.type,
   ]);
 }
@@ -41,7 +40,7 @@ describe("parseRfid", () => {
   });
 
   it("derives what is left from total minus used", () => {
-    const uid = [0, 0, 0, 0, 0, 0, 0, 1];
+    const uid = [4, 0, 0, 0, 0, 0, 0, 1];
     const info = parseRfid(tagReply({ uid: "", barcode: "L", serial: "S", total: 300, used: 123, type: 5 }, uid));
     expect(info && info.total - info.used).toBe(177);
   });
@@ -51,8 +50,12 @@ describe("parseRfid", () => {
     expect(parseRfid(new Uint8Array(0))).toBeNull();
   });
 
+  it("returns null for a no-tag reply padded with zeros, rather than an all-zero tag", () => {
+    expect(parseRfid(new Uint8Array(20))).toBeNull();
+  });
+
   it("returns null for a reply too short to hold the fixed fields", () => {
-    expect(parseRfid(new Uint8Array(14))).toBeNull();
+    expect(parseRfid(Uint8Array.of(4, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0))).toBeNull();
   });
 
   it("returns null when a length prefix runs past the end of the reply", () => {

@@ -137,7 +137,7 @@ export class Printer {
    * Read the loaded roll's RFID tag: label type, serial and the used/total label count — the same
    * data the official NIIMBOT app reads to show which roll is loaded and how many labels are left.
    * The printer reads the tag itself; this only asks it for the result. Resolves to `null` when no
-   * tag is present or the printer does not report one.
+   * tag is present or the printer does not answer; a malformed reply rejects with `ProtocolError`.
    *
    * The reply layout comes from community reverse engineering, not the vendor, and is not yet verified
    * on a real B1; treat the fields as best effort until a hardware check confirms them.
@@ -145,7 +145,11 @@ export class Printer {
   async readRfid(): Promise<RfidInfo | null> {
     return this.locked(async () => {
       await this.ensureHandshake();
-      const reply = await this.request("rfid", CMD.GET_RFID).catch(ignoreNoReply);
+      // Only silence counts as "no tag": a garbled reply rejects with `protocol` instead of looking like an empty roll.
+      const reply = await this.request("rfid", CMD.GET_RFID).catch((error: unknown) => {
+        if (error instanceof NoResponseError) return undefined;
+        throw error;
+      });
       return reply ? parseRfid(reply.data) : null;
     });
   }
