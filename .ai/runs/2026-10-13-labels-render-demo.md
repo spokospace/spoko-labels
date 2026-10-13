@@ -28,12 +28,14 @@ A dependency-free demo page in `packages/render/examples/demo/` that renders mad
 
 ## Progress
 
+PR: #26
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 3: demo page
 
-- [ ] 3.1 Server, example script and import map
-- [ ] 3.2 Made-up templates with a validation and render test
-- [ ] 3.3 Demo page: editor, row form, preview with overlays, warnings
-- [ ] 3.4 Printing through labels-core and the HarmonyOS Sans notice
+- [x] 3.1 Server, example script and import map — 75a7fb5
+- [x] 3.2 Made-up templates with a validation and render test — f8a735a
+- [x] 3.3 Demo page: editor, row form, preview with overlays, warnings — 3b6e275
+- [x] 3.4 Printing through labels-core and the HarmonyOS Sans notice — 3b6e275
 - [ ] 3.5 README section and hardware-check steps
