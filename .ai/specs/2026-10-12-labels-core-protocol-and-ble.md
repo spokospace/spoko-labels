@@ -1,6 +1,6 @@
 # @spokospace/labels-core: NIIMBOT protocol and Web Bluetooth transport
 
-> **Status: implemented** in #2 (codec), #3 (`Printer`) and #4 (Web Bluetooth, hardware check on a B1), with a follow-up in #21 (Bluetooth switched off). The sections below are the design as approved; where the implementation differs, [What changed during implementation](#-what-changed-during-implementation) wins and `packages/core/README.md` documents the shipped behavior.
+> **Status: implemented** in #2 (codec), #3 (`Printer`) and #4 (Web Bluetooth, hardware check on a B1), with a follow-up in #21 (a Bluetooth-off notice on the hardware-check page). The sections below are the design as approved; where the implementation differs, [What changed during implementation](#-what-changed-during-implementation) wins and `packages/core/README.md` documents the shipped behavior.
 
 ## 📝 TLDR
 Web apps that want to print on a NIIMBOT B1 have no reusable library today: the only working code is a prototype that mixes the BLE transport, the packet codec, the print sequence and localized messages in one class. Proposed (future behavior): `packages/core` ports it to strict, dependency-free TypeScript as a pure codec, a transport interface with a Web Bluetooth implementation, a `Printer` class and an image-to-rows helper. Render, embed and the web app build on it.
@@ -71,11 +71,11 @@ class Printer {
   disconnect(): Promise<void>;
   readonly connected: boolean;
 }
-interface PrintOptions { density?: number; copies?: number; onProgress?: (p: PrintProgress) => void; signal?: AbortSignal }
+interface PrintOptions { density?: number; copies?: number; onProgress?: (p: PrintProgress) => void; signal?: AbortSignal }   // superseded: also offsetMm, see What changed
 
 function imageToRows(image: ImageLike, model?: PrinterModel): Uint8Array[];
 ```
-Validation: `density` must be an integer inside `model.densityRange` and `copies` an integer in 1..65535, otherwise `InvalidArgumentError`. Each row must be `headDots / 8` bytes long. At least one row, at most 65535.
+Validation: `density` must be an integer inside `model.densityRange` and `copies` an integer in 1..65535 (superseded: 1..255, see What changed), otherwise `InvalidArgumentError`. Each row must be `headDots / 8` bytes long. At least one row, at most 65535.
 
 `imageToRows`: centered crop for wider images, centered padding for narrower ones, gray `(299R + 587G + 114B) / 1000 < 128` and alpha `> 0` means black (bit 0x80 is the leftmost dot).
 
@@ -94,12 +94,12 @@ Compatibility: a new package, so no existing surface breaks. From the first rele
 ## 📝 Print sequence (port of the reference, B1)
 `SetDensity 0x21` → `SetLabelType 0x23 [1]` → `PrintStart 0x01 [u16 pages=1, 0×5]` → `PageStart 0x03 [1]` → `SetPageSize 0x13 [u16 rows, u16 headDots, u16 copies]` → row packets (10 ms gap) → `PageEnd 0xE3` → poll `PrintStatus 0xA3` (up to 100 times, 300 ms apart, done at page 1 and 100/100) → `PrintEnd 0xF3`. Each acknowledged step: no reply within 2 s is `no-response`; reply data byte 0 is `refused`. Connection handshake sends `Connect 0xC1`.
 
-Timing: each acknowledged step waits 2 s. The status poll budget is `30 s + 5 s × (copies − 1)` (300 ms apart), then `print-timeout`.
+Timing: each acknowledged step waits 2 s. The status poll budget is `30 s + 5 s × (copies − 1)` (300 ms apart), then `print-timeout` (superseded: 30 s per job, see What changed).
 
 `signal` abort semantics (the printer's behavior after an abort is verified on hardware, see Hardware checks):
 - Already aborted at call time: reject with `aborted` immediately, nothing is written.
 - Before `PrintStart` is acknowledged or while rows are being sent: stop sending, best-effort `PrintEnd`, reject with `aborted`.
-- After `PageEnd` (during polling): the page is already in the printer, so abort stops polling, sends a best-effort `PrintEnd` and rejects with `aborted`; the label may still print.
+- After `PageEnd` (during polling): the page is already in the printer, so abort stops polling, sends a best-effort `PrintEnd` and rejects with `aborted`; the label may still print (superseded: on the B1 it does not, see What changed).
 - If the best-effort `PrintEnd` fails or gets no reply, the error is swallowed and `aborted` is still thrown.
 
 Busy lock: `print()` and `info()` hold it in a `try/finally`, so it is released on success, error, timeout, abort and disconnect.
@@ -168,7 +168,7 @@ Found while building it or on the B1 hardware check (#4):
 - **Firmware format.** The reply is two bytes (major, minor), so firmware is reported as `"5.26"` (what the official app shows), with the raw integer in a new `PrinterInfo.firmwareRaw`.
 - **No per-copy poll budget.** The `30 s + 5 s × (copies − 1)` budget was dropped: with one job per copy, each job gets the same 30 s budget.
 - **Abort cancels the label.** On the B1, aborting while rows were sent and aborting during status polling both left nothing printed, and the next print worked; the spec had said the label may still print after `PageEnd`.
-- **Bluetooth switched off.** Chrome reports it with the same `NotFoundError` as a cancelled chooser; only a "cancel" message maps to `chooser-cancelled`, anything else is `bluetooth-unsupported` with the browser's message as `cause` (#4, #21).
+- **Bluetooth switched off.** Chrome reports it with the same `NotFoundError` as a cancelled chooser; only a "cancel" message maps to `chooser-cancelled`, anything else is `bluetooth-unsupported` with the browser's message as `cause` (#4; a notice on the hardware-check page followed in #21).
 - **Density range 1..5 confirmed** (default 3), matching the official app's device catalogue; the effect is subtle.
 
 ## 🧪 Hardware checks (resolved)

@@ -3,7 +3,7 @@
 Print labels on NIIMBOT printers straight from the browser over Web Bluetooth (BLE). This package is the protocol and connection layer: packet codec, a transport interface, a Web Bluetooth transport, a `Printer` class and a helper that turns an image into print rows. It has no runtime dependencies. Rendering labels, templates and UI live in other packages.
 
 > **Status: pre-release (`0.0.0`).** The API may still change in a minor version (see `BACKWARD_COMPATIBILITY.md`).
-> **NIIMBOT B1: checked on a real printer** (firmware 5.26, 50x30 mm gap labels): connect, `info()`, printing at densities 1 to 5, `copies`, the calibration offset and aborting. The results and the paths that are still covered only by unit tests are listed in the pull request that introduced the transport (#4) and tracked in #16. No other model is supported yet.
+> **NIIMBOT B1: checked on a real printer** (firmware 5.26, 50x30 mm gap labels): connect, `info()`, printing at densities 1, 3 and 5 (the accepted range is 1 to 5), `copies`, the calibration offset and aborting. The results and the paths that are still covered only by unit tests are listed in the pull request that introduced the transport (#4) and tracked in #16. No other model is supported yet.
 
 ## Quick start
 
