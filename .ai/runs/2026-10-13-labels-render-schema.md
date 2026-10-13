@@ -37,13 +37,15 @@ Create `@spokospace/labels-render` with the template format v1 types, `validateT
 
 ## Progress
 
+PR: #24
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: schema and validation
 
-- [ ] 1.1 Scaffold packages/render
-- [ ] 1.2 Schema types, defaults and limits
-- [ ] 1.3 validateTemplate with tests
-- [ ] 1.4 Safe-area and printable-area checks with tests
-- [ ] 1.5 Content binding with tests
-- [ ] 1.6 Package README
+- [x] 1.1 Scaffold packages/render — 955e605
+- [x] 1.2 Schema types, defaults and limits — 95b4af8
+- [x] 1.3 validateTemplate with tests — 28931a3
+- [x] 1.4 Safe-area and printable-area checks with tests — a3d764e
+- [x] 1.5 Content binding with tests — ad92efb
+- [x] 1.6 Package README — b4091ae
