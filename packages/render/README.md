@@ -19,7 +19,7 @@ All geometry is in millimetres. The origin is the top-left corner of the label a
       "type": "text",
       "x": 2, "y": 2, "width": 30, "height": 7,
       "content": { "bind": "Name" },
-      "font": { "family": "Barlow Semi Condensed", "size": 4, "bold": true },
+      "font": { "family": "HarmonyOS Sans", "size": 4, "bold": true },
       "wrap": true
     },
     { "type": "line", "x": 2, "y": 10, "width": 46, "height": 0.4 },

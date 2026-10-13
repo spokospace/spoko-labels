@@ -46,7 +46,7 @@ export type TextFit = "shrink" | "none";
 export type QrLevel = "L" | "M" | "Q" | "H";
 
 export interface FontSpec {
-  /** A family name registered with the renderer, for example "Barlow Semi Condensed". */
+  /** A family name registered with the renderer, for example "HarmonyOS Sans". */
   family: string;
   /** Em size in mm. */
   size: number;

@@ -10,7 +10,7 @@ const text = (extra: Record<string, unknown> = {}) => ({
   width: 30,
   height: 6,
   content: { text: "Box 12" },
-  font: { family: "Barlow Semi Condensed", size: 4 },
+  font: { family: "HarmonyOS Sans", size: 4 },
   ...extra,
 });
 const qr = (extra: Record<string, unknown> = {}) => ({
@@ -49,7 +49,7 @@ describe("validateTemplate: valid input", () => {
           width: 30,
           height: 6,
           content: { text: "Box 12" },
-          font: { family: "Barlow Semi Condensed", size: 4, bold: false, fallback: [] },
+          font: { family: "HarmonyOS Sans", size: 4, bold: false, fallback: [] },
           letterSpacing: 0,
           lineSpacing: 0,
           align: "left",
@@ -75,7 +75,7 @@ describe("validateTemplate: valid input", () => {
           text({
             id: "title",
             content: { bind: "Name", bindIndex: 2 },
-            font: { family: "Viga", size: 3, bold: true, fallback: ["Barlow Semi Condensed"] },
+            font: { family: "Viga", size: 3, bold: true, fallback: ["HarmonyOS Sans"] },
             letterSpacing: -0.2,
             lineSpacing: 0.5,
             align: "center",
@@ -95,7 +95,7 @@ describe("validateTemplate: valid input", () => {
     expect(t?.elements[0]).toMatchObject({
       id: "title",
       content: { bind: "Name", bindIndex: 2 },
-      font: { family: "Viga", size: 3, bold: true, fallback: ["Barlow Semi Condensed"] },
+      font: { family: "Viga", size: 3, bold: true, fallback: ["HarmonyOS Sans"] },
       align: "center",
       verticalAlign: "bottom",
       wrap: true,
@@ -216,7 +216,7 @@ describe("validateTemplate: element-level errors remove only that element", () =
     ["hostile font size", text({ font: { family: "Viga", size: 1e6 } }), ["error out-of-range /elements/0/font/size"]],
     ["font size over 50 mm", text({ font: { family: "Viga", size: 50.1 } }), ["error out-of-range /elements/0/font/size"]],
     ["bold not a boolean", text({ font: { family: "Viga", size: 4, bold: "yes" } }), ["error invalid-type /elements/0/font/bold"]],
-    ["fallback not an array", text({ font: { family: "Viga", size: 4, fallback: "Barlow" } }), ["error invalid-type /elements/0/font/fallback"]],
+    ["fallback not an array", text({ font: { family: "Viga", size: 4, fallback: "HarmonyOS Sans" } }), ["error invalid-type /elements/0/font/fallback"]],
     [
       "nine fallbacks",
       text({ font: { family: "Viga", size: 4, fallback: Array.from({ length: 9 }, (_, i) => `F${i}`) } }),
