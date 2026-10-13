@@ -105,6 +105,16 @@ describe("checkPlacement: printable area", () => {
     expect(checkPlacement(rect(0, 0, 50, 30), plain, 72)).toEqual([]);
   });
 
+  it("measures across the label's height when it is printed turned a quarter", () => {
+    const upright: LabelGeometry = { size: { width: 30, height: 50 }, shape: { kind: "rectangle" }, safeMargin: 0, printRotation: 90 };
+    expect(checkPlacement(rect(0, 1, 30, 48), upright, 48)).toEqual([]);
+    expect(checkPlacement(rect(0, 0.9, 5, 5), upright, 48)).toEqual(["outside-printable-area"]);
+    expect(checkPlacement(rect(0, 1, 30, 48), { ...upright, printRotation: 270 }, 48)).toEqual([]);
+    expect(checkPlacement(rect(0, 49.1, 5, 0.5), { ...upright, printRotation: 270 }, 48)).toEqual(["outside-printable-area"]);
+    // A half turn keeps the head across the width.
+    expect(checkPlacement(rect(0, 0, 30, 50), { ...upright, printRotation: 180 }, 48)).toEqual([]);
+  });
+
   it("reports the printable strip together with outside-label", () => {
     expect(checkPlacement(rect(-1, 0, 5, 5), plain, 48)).toEqual(["outside-label", "outside-printable-area"]);
   });

@@ -118,8 +118,7 @@ describe("extractTemplates", () => {
     const [template] = extractTemplates(isarFile(upright)).templates;
     expect(template).toMatchObject({ width: 30, height: 50, rotate: 270, rollNames: [ROLL] });
     const [imported] = importTemplates([template]).templates;
-    expect(imported?.template.size).toEqual({ width: 30, height: 50 });
-    expect(imported?.printRotation).toBe(270);
+    expect(imported?.template).toMatchObject({ size: { width: 30, height: 50 }, printRotation: 270 });
   });
 
   it("keeps the roll-name size when the object's layout does not match the known schema", () => {

@@ -51,6 +51,46 @@ const blackCount = (data: Uint8ClampedArray) => {
   return n;
 };
 
+describe("render: printRotation", () => {
+  // A 30 x 50 mm label with a 1 mm square in its top-left corner: 240 x 400 dots, the mark at dots 0..7.
+  const marked = (printRotation?: number) =>
+    template([{ type: "line", x: 0, y: 0, width: 1, height: 1 }], {
+      size: { width: 30, height: 50 },
+      ...(printRotation === undefined ? {} : { printRotation }),
+    });
+
+  it("turns the image clockwise and echoes the turn", () => {
+    const cases: [number | undefined, number, number, [number, number]][] = [
+      [undefined, 240, 400, [0, 0]],
+      [0, 240, 400, [0, 0]],
+      [90, 400, 240, [399, 0]], // the top-left corner goes to the top right
+      [180, 240, 400, [239, 399]],
+      [270, 400, 240, [0, 239]], // and to the bottom left
+    ];
+    for (const [rotation, width, height, [x, y]] of cases) {
+      const { image, printRotation } = render(marked(rotation), {}, options());
+      expect([image.width, image.height, printRotation]).toEqual([width, height, rotation ?? 0]);
+      expect(isBlack(image.data, width, x, y)).toBe(true);
+      expect(blackCount(image.data)).toBe(64);
+    }
+  });
+
+  it("checks what was drawn against the side the head crosses", () => {
+    // Text too big for its box, aligned to the bottom, spills above it: into the 1 mm strip a 48 mm head
+    // misses on a 50 mm side.
+    const spilling = (printRotation: number) =>
+      template([{ ...text({ content: { text: "UP" } }), x: 2, y: 1.2, width: 26, height: 2, font: { family: "HarmonyOS Sans", size: 6 }, fit: "none", verticalAlign: "bottom" }], {
+        size: { width: 30, height: 50 },
+        printRotation,
+      });
+    const codesFor = (printRotation: number) =>
+      render(spilling(printRotation), {}, { ...options(), printableWidth: 48 }).warnings.map((w) => w.code);
+    expect(codesFor(270)).toContain("outside-printable-area");
+    // Unturned, the head crosses the 30 mm width: nothing is cut.
+    expect(codesFor(0)).not.toContain("outside-printable-area");
+  });
+});
+
 describe("render", () => {
   it("returns a label-sized image of pure black and white pixels", () => {
     const { image, warnings } = render(template([text(), qr(), { type: "line", x: 2, y: 10, width: 46, height: 0.4 }]), { row }, options());

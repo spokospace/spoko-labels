@@ -8,6 +8,7 @@ import {
   type NormalizedElement,
   type NormalizedFontSpec,
   type NormalizedTemplate,
+  type PrintRotation,
   type Shape,
 } from "./types.js";
 
@@ -38,9 +39,11 @@ interface Range {
   integer?: boolean;
 }
 
+const PRINT_ROTATIONS: readonly PrintRotation[] = [0, 90, 180, 270];
+const isPrintRotation = (value: number): value is PrintRotation => (PRINT_ROTATIONS as readonly number[]).includes(value);
 const BOX_KEYS = ["type", "id", "x", "y", "width", "height"];
 const KEYS = {
-  template: ["version", "name", "size", "shape", "safeMargin", "elements"],
+  template: ["version", "name", "size", "shape", "safeMargin", "printRotation", "elements"],
   size: ["width", "height"],
   line: BOX_KEYS,
   qr: [...BOX_KEYS, "content", "level"],
@@ -193,14 +196,25 @@ export function validateWithSources(input: unknown, options: ValidateOptions = {
   const size = readSize(r);
   const shape = readShape(r, size);
   const safeMargin = r.number("safeMargin", { min: 0, max: LIMITS.maxSafeMargin }, DEFAULTS.safeMargin);
+  const printRotation = r.number("printRotation", { integer: true }, DEFAULTS.printRotation);
+  if (Number.isInteger(printRotation) && !isPrintRotation(printRotation)) r.error("out-of-range", "/printRotation");
   const elements = r.get("elements");
   if (elements === undefined) r.error("required", "/elements");
   else if (!Array.isArray(elements)) r.error("invalid-type", "/elements");
   else if (elements.length > LIMITS.maxElements) r.error("out-of-range", "/elements");
 
-  if (!r.ok || !size || !shape || !Array.isArray(elements)) return { template: null, issues, sources };
+  if (!r.ok || !size || !shape || !Array.isArray(elements) || !isPrintRotation(printRotation)) {
+    return { template: null, issues, sources };
+  }
 
-  const template: NormalizedTemplate = { version: TEMPLATE_VERSION, size, shape, safeMargin, elements: [] };
+  const template: NormalizedTemplate = {
+    version: TEMPLATE_VERSION,
+    size,
+    shape,
+    safeMargin,
+    printRotation,
+    elements: [],
+  };
   if (name !== undefined) template.name = name;
   elements.forEach((raw: unknown, i) => {
     const path = `/elements/${i}`;

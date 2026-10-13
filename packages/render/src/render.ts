@@ -6,8 +6,9 @@ import { layoutQr } from "./layout/qr.js";
 import { checkPlacement } from "./layout/safe-area.js";
 import { layoutText } from "./layout/text.js";
 import { boxToDots, DOTS_PER_MM, dotsToMm, toDots, type DotRect } from "./layout/units.js";
+import { turn, type RgbaImage } from "./rotate.js";
 import type { IssueCode, RenderWarning } from "./schema/issues.js";
-import type { NormalizedQrElement, NormalizedTextElement } from "./schema/types.js";
+import type { NormalizedQrElement, NormalizedTextElement, PrintRotation } from "./schema/types.js";
 import { validateWithSources } from "./schema/validate.js";
 import { threshold } from "./threshold.js";
 
@@ -23,8 +24,13 @@ export interface RenderOptions {
 export type { RenderWarning };
 
 export interface RenderResult {
-  /** RGBA, every pixel black (0, 0, 0, 255) or white (255, 255, 255, 255); feeds `imageToRows()` directly. */
-  image: { width: number; height: number; data: Uint8ClampedArray };
+  /**
+   * RGBA, every pixel black (0, 0, 0, 255) or white (255, 255, 255, 255); feeds `imageToRows()` directly.
+   * Already turned by the template's `printRotation`: exactly what is printed.
+   */
+  image: RgbaImage;
+  /** The template's `printRotation`, so a preview can turn the image back to the design. */
+  printRotation: PrintRotation;
   warnings: RenderWarning[];
 }
 
@@ -90,7 +96,8 @@ export function render(template: unknown, data: RenderData, options: RenderOptio
 
   // getImageData returns a fresh copy, so it can be thresholded in place.
   const pixels = ctx.getImageData(0, 0, width, height).data;
-  return { image: { width, height, data: threshold(pixels) }, warnings };
+  const image = turn({ width, height, data: threshold(pixels) }, t.printRotation);
+  return { image, printRotation: t.printRotation, warnings };
 }
 
 function drawQr(

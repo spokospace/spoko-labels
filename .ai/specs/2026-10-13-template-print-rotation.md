@@ -1,6 +1,6 @@
 # Template v1: print rotation (labels designed upright)
 
-> Status: approved design (#35). The maintainer chose A1 (degrees, `printRotation`) and A2 (the turn happens in `render()`) on 2026-10-13; A3 to A6 stand as defaulted. Not implemented yet.
+> Status: approved design (#35). The maintainer chose A1 (degrees, `printRotation`) and A2 (the turn happens in `render()`) on 2026-10-13; A3 to A6 stand as defaulted. Implemented (#36); the maintainer's B1 check printed the render demo's upright template correctly at 270 and 90.
 
 ## 📝 TLDR
 A label can be designed upright, for example 30 × 50 mm, for a roll whose labels pass the head 50 mm across and 30 mm along the feed. The image then has to be turned a quarter before printing. Today template v1 cannot say so. `@spokospace/labels-niimbot` reports the turn outside the template (`ImportedTemplate.printRotation`, #32), and each host turns the image itself.
@@ -28,7 +28,7 @@ Proposed (future behavior):
 **Template format (additive, still version 1).**
 - **Field:** `printRotation?: 0 | 90 | 180 | 270`, in degrees clockwise.
 - **Meaning:** the design (`size`, element boxes, the preview) stays as drawn, and the printed image is the design turned by `printRotation`.
-- **Validation:** any other value is an error (`out-of-range`, or `invalid-type` for a non-number) at `/printRotation`, a template-level error, like an invalid `size`.
+- **Validation:** any other value is an error (`out-of-range`, or `invalid-type` for a non-number or a number that is not whole, as for the other whole-number fields) at `/printRotation`, a template-level error, like an invalid `size`.
 - **Normalized template:** it always carries `printRotation`, default 0.
 
 **`render()`.**

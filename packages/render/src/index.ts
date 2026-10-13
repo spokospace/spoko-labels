@@ -12,6 +12,7 @@ export {
   type NormalizedQrElement,
   type NormalizedTemplate,
   type NormalizedTextElement,
+  type PrintRotation,
   type QrElement,
   type QrLevel,
   type Shape,

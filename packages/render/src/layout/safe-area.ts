@@ -1,5 +1,5 @@
 import type { IssueCode } from "../schema/issues.js";
-import type { Shape } from "../schema/types.js";
+import type { PrintRotation, Shape } from "../schema/types.js";
 
 /** An axis-aligned rectangle in mm. */
 export interface Rect {
@@ -13,6 +13,8 @@ export interface LabelGeometry {
   size: { width: number; height: number };
   shape: Shape;
   safeMargin: number;
+  /** A quarter turn (90, 270) puts the label's height across the print head. Default 0. */
+  printRotation?: PrintRotation;
 }
 
 /** Rounding slack, so a box placed exactly on an edge (after float arithmetic) is not reported. */
@@ -22,8 +24,9 @@ const EPSILON = 1e-6;
  * Where a rectangle sits relative to the label. Returns at most one of `outside-label` (reaches past the
  * label size) and `outside-safe-area` (inside the label but leaves the shape inset by `safeMargin`), plus
  * `outside-printable-area` when `printableWidth` is given and the rectangle leaves the centered strip the
- * print head covers. With `drawn` (what the renderer actually painted rather than an element box) leaving
- * the label is reported as `outside-safe-area`: `outside-label` describes element boxes only.
+ * print head covers (across the label's width, or its height when the label is printed turned a quarter).
+ * With `drawn` (what the renderer actually painted rather than an element box) leaving the label is
+ * reported as `outside-safe-area`: `outside-label` describes element boxes only.
  */
 export function checkPlacement(rect: Rect, label: LabelGeometry, printableWidth?: number, drawn = false): IssueCode[] {
   const codes: IssueCode[] = [];
@@ -38,9 +41,12 @@ export function checkPlacement(rect: Rect, label: LabelGeometry, printableWidth?
     codes.push("outside-safe-area");
   }
 
-  if (printableWidth !== undefined && printableWidth < width) {
-    const left = (width - printableWidth) / 2;
-    if (rect.x < left - EPSILON || right > left + printableWidth + EPSILON) codes.push("outside-printable-area");
+  if (printableWidth !== undefined) {
+    const acrossWidth = (label.printRotation ?? 0) % 180 === 0;
+    const side = acrossWidth ? width : height;
+    const [start, end] = acrossWidth ? [rect.x, right] : [rect.y, bottom];
+    const left = (side - printableWidth) / 2;
+    if (left > 0 && (start < left - EPSILON || end > left + printableWidth + EPSILON)) codes.push("outside-printable-area");
   }
   return codes;
 }

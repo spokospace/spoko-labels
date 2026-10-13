@@ -1,4 +1,5 @@
-// Made-up 50x30 mm templates and sample rows for the demo page. No real product, place or person data.
+// Made-up templates for 50x30 mm labels (one designed upright and printed turned) and sample rows for the demo
+// page. No real product, place or person data.
 
 const LABEL = { width: 50, height: 30 };
 // 50x30 gap labels have rounded corners of about 2 mm.
@@ -233,6 +234,45 @@ export const TEMPLATES = [
           height: 12,
           content: { text: "Frame: 1 mm from the edge\nTicks: every 5 mm" },
           font: { family: "HarmonyOS Sans", size: 3.2 },
+          align: "center",
+          verticalAlign: "middle",
+        },
+      ],
+    },
+  },
+  {
+    id: "upright",
+    name: "Upright 30x50 (printed turned)",
+    row: { Code: "UP-0007" },
+    template: {
+      version: 1,
+      name: "Upright 30x50",
+      // Designed upright, printed across a 50x30 mm roll: the image is turned 270 degrees clockwise, so the
+      // top of the design (the arrow) comes out on the left of the printed label.
+      size: { width: 30, height: 50 },
+      printRotation: 270,
+      elements: [
+        {
+          type: "text",
+          x: 1,
+          y: 2,
+          width: 28,
+          height: 8,
+          content: { text: "TOP ↑" },
+          font: { family: "HarmonyOS Sans", size: 5, bold: true },
+          align: "center",
+        },
+        { type: "line", x: 2, y: 11, width: 26, height: 0.4 },
+        // A 21-module code at 6 dots per module (15.75 mm), centered.
+        { type: "qr", x: 7, y: 14, width: 16, height: 16, content: { bind: "Code" }, level: "M" },
+        {
+          type: "text",
+          x: 1,
+          y: 33,
+          width: 28,
+          height: 12,
+          content: { bind: "Code" },
+          font: { family: "Viga", size: 5 },
           align: "center",
           verticalAlign: "middle",
         },
