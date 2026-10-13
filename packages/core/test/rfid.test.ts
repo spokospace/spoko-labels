@@ -20,6 +20,29 @@ function tagReply(info: RfidInfo, uidBytes: number[]): Uint8Array {
 }
 
 describe("parseRfid", () => {
+  it("reads a reply laid out as a B1 sent it for a 50x30 roll, ignoring the trailing bytes", () => {
+    // Layout and counts from the hardware check (October 2026); the tag's UID, barcode, serial and the 8
+    // trailing bytes were masked in the log, so made-up values of the same lengths stand in for them.
+    // The reply had 10 bytes after the type: 00 e6 (230, the count in the roll name "T50*30-230") and 8 more.
+    const enc = new TextEncoder();
+    const body = Uint8Array.from([
+      0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+      8, ...enc.encode("12345678"),
+      16, ...enc.encode("MADEUP0000000001"),
+      0x01, 0x14, 0x00, 0xf6, 0x01,
+      0x00, 0xe6, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
+    expect(body.length).toBe(0x31);
+    expect(parseRfid(body)).toEqual({
+      uid: "0411223344556677",
+      barcode: "12345678",
+      serial: "MADEUP0000000001",
+      total: 276,
+      used: 246,
+      type: 1,
+    });
+  });
+
   it("reads the UID, barcode, serial, counts and type", () => {
     const uid = [0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
     const expected: RfidInfo = {
