@@ -24,7 +24,8 @@ export const TEMPLATES = [
           width: 30,
           height: 10,
           content: { bind: "Name" },
-          font: { family: "HarmonyOS Sans", size: 3.2 },
+          // Bold: 3-4 dot strokes come out smoother at 203 dpi than Medium's 2-3 dots.
+          font: { family: "HarmonyOS Sans", size: 3.2, bold: true },
           wrap: true,
         },
         { type: "qr", x: 34, y: 11, width: 14, height: 14, content: { bind: "Code" }, level: "M" },
@@ -146,7 +147,7 @@ export const TEMPLATES = [
           width: 31,
           height: 17,
           content: { bind: "Name" },
-          font: { family: "HarmonyOS Sans", size: 4.5 },
+          font: { family: "HarmonyOS Sans", size: 4.5, bold: true },
           wrap: true,
           minSize: 1.5,
         },
