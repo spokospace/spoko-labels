@@ -76,7 +76,9 @@ function insideSafeArea(px: number, py: number, label: LabelGeometry): boolean {
       return Math.hypot(px - cx, py - cy) <= r + EPSILON;
     }
     case "circle": {
-      // The ellipse inscribed in the label, with both semi-axes reduced by the margin.
+      // The ellipse inscribed in the label, with both semi-axes reduced by the margin. For a circle this is
+      // exactly the inset shape; for an elongated ellipse it is an approximation that is slightly generous
+      // near the ends of the long axis (a true offset curve is not an ellipse).
       const a = width / 2 - m;
       const b = height / 2 - m;
       const dx = (px - width / 2) / a;

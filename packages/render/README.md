@@ -45,11 +45,11 @@ All geometry is in millimetres. The origin is the top-left corner of the label a
 | `version` | Always `1` for this format. |
 | `name` | Optional display name. |
 | `size` | The label: `width`, `height`, each above 0 and at most 300 mm. |
-| `shape` | Optional. `{ "kind": "rectangle" }` (default), `{ "kind": "rounded", "radius": mm }` or `{ "kind": "circle" }` (an ellipse inscribed in `size`). Used for the preview and the safe-area warning only; the printed image is always the full rectangle. |
+| `shape` | Optional. `{ "kind": "rectangle" }` (default), `{ "kind": "rounded", "radius": mm }` or `{ "kind": "circle" }` (an ellipse inscribed in `size`). Used for the preview and the safe-area warning only; the printed image is always the full rectangle. For a circle with `safeMargin`, the safe area is the ellipse with both semi-axes reduced by the margin: exact for round labels, slightly generous near the ends of an elongated one. |
 | `safeMargin` | Optional extra inset from the shape's edge to keep clear, 0 to 10 mm. Default 0. |
 | `elements` | At most 200 elements. |
 
-Every element has `type`, `x`, `y`, `width`, `height` (above 0, at most 300) and an optional free-form `id`.
+Every element has `type`, `x`, `y` (−300 to 300), `width`, `height` (above 0, at most 300) and an optional free-form `id`.
 
 **`content`** (text and QR) says where the value comes from:
 
@@ -58,11 +58,13 @@ Every element has `type`, `x`, `y`, `width`, `height` (above 0, at most 300) and
 - `{ "bindIndex": 2 }`: the third column (0-based) of the data source's column list.
 - `{ "bind": "Name", "bindIndex": 2 }`: by name, and by position only when no column has that name.
 
+`bind` must not be empty and `bindIndex` must be a whole number from 0. When `text` is present it wins: a `bind` next to it is reported as an unknown property.
+
 **`text`** elements also take:
 
 | Field | Default | Meaning |
 |---|---|---|
-| `font` | required | `{ family, size, bold?, fallback? }`. `size` is the em size in mm (above 0, at most 50). `fallback` lists up to 8 families to try when `family` has no glyphs for the text. |
+| `font` | required | `{ family, size, bold?, fallback? }`. `family` is a non-empty name; `size` is the em size in mm (above 0, at most 50). `fallback` lists up to 8 families to try when `family` has no glyphs for the text. |
 | `letterSpacing` | `0` | mm added between characters, −5 to 5. |
 | `lineSpacing` | `0` | mm added between lines, −5 to 10. |
 | `align` | `"left"` | `"left"`, `"center"`, `"right"`. |
@@ -89,7 +91,9 @@ const { template, issues } = validateTemplate(JSON.parse(json), { printableWidth
 
 `printableWidth` is the width the print head covers, in mm. It belongs to the printer, not to the template: a NIIMBOT B1 prints 48 mm across (`headDots / dotsPerMm` of the `B1` model in `@spokospace/labels-core`), so on a 50 mm label about 1 mm on each side never prints.
 
-`resolveContent(content, { row, columns }, "text" | "qr")` returns the string an element shows for a row of data. Names are looked up only as the row's own properties, so a column called `constructor` or `__proto__` never reads anything else. Text over 2000 code points is cut and reported; QR content is never cut.
+Only an object's own properties are read, so objects built in code behave exactly like parsed JSON.
+
+The package also exports `TEMPLATE_VERSION` (`1`), `DEFAULTS` (the values filled in for omitted fields), `LIMITS` (the ranges above), the template types (`Template`, `Element`, `TextElement`, `QrElement`, `LineElement`, `Content`, `Shape`, `FontSpec` and the option unions) and the `Normalized*` types that describe what `validateTemplate` returns, with every default present.
 
 ## Issue codes
 
@@ -97,9 +101,9 @@ Callers translate the codes; the package has no user-facing text.
 
 | `code` | Severity | When |
 |---|---|---|
-| `invalid-type` | error | A value has the wrong JSON type (numbers given as strings included). |
+| `invalid-type` | error | A value has the wrong JSON type: numbers given as strings (`"version": "1"` included), a fractional `bindIndex`. |
 | `required` | error | A required field is missing. |
-| `out-of-range` | error | A number outside its range, or a value outside its allowed set. |
+| `out-of-range` | error | A number outside its range, a value outside its allowed set, or an empty `bind`, `family` or fallback name. |
 | `unsupported-version` | error | `version` is not `1`. |
 | `unknown-element` | warning | An element `type` other than `text`, `qr`, `line`; the element is removed. |
 | `unknown-property` | warning | A property the format does not know; it is removed. |

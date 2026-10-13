@@ -128,7 +128,7 @@ describe("validateTemplate: template-level errors give template null", () => {
     ["undefined", undefined, ["error required "]],
     ["missing version", { size: { width: 50, height: 30 }, elements: [] }, ["error required /version"]],
     ["version 2", template({ version: 2 }), ["error unsupported-version /version"]],
-    ["version as a string", template({ version: "1" }), ["error unsupported-version /version"]],
+    ["version as a string", template({ version: "1" }), ["error invalid-type /version"]],
     ["missing size", template({ size: undefined }), ["error required /size"]],
     ["size not an object", template({ size: [50, 30] }), ["error invalid-type /size"]],
     ["size as strings", template({ size: { width: "50", height: 30 } }), ["error invalid-type /size/width"]],
@@ -158,6 +158,20 @@ describe("validateTemplate: template-level errors give template null", () => {
     expect(codes(issues)).toEqual(["error out-of-range /elements"]);
   });
 
+  it("checks the shape even when the size is invalid", () => {
+    const { issues } = validateTemplate(template({ size: { width: 0, height: 30 }, shape: { kind: "star" } }));
+    expect(codes(issues)).toEqual(["error out-of-range /size/width", "error out-of-range /shape/kind"]);
+  });
+
+  it("ignores inherited properties of host-built objects", () => {
+    const inherited = Object.assign(Object.create({ version: 1, elements: [] }) as object, { size: { width: 50, height: 30 } });
+    expect(codes(validateTemplate(inherited).issues)).toEqual(["error required /version", "error required /elements"]);
+    const content = Object.create({ text: "x" }) as object;
+    expect(codes(validateTemplate(template({ elements: [qr({ content })] })).issues)).toEqual([
+      "error required /elements/0/content/text",
+    ]);
+  });
+
   it("reports every template-level problem in one pass", () => {
     const { issues } = validateTemplate({ version: 3, size: { width: -1, height: "x" }, elements: 1 });
     expect(codes(issues)).toEqual([
@@ -182,6 +196,8 @@ describe("validateTemplate: element-level errors remove only that element", () =
     ["type not a string", { type: 1 }, ["error invalid-type /elements/0/type"]],
     ["missing x", line({ x: undefined }), ["error required /elements/0/x"]],
     ["x as a string", line({ x: "2" }), ["error invalid-type /elements/0/x"]],
+    ["x far off the label", line({ x: 1e308 }), ["error out-of-range /elements/0/x"]],
+    ["y far off the label", line({ y: -301 }), ["error out-of-range /elements/0/y"]],
     ["zero width", line({ width: 0 }), ["error out-of-range /elements/0/width"]],
     ["width over the limit", line({ width: 301 }), ["error out-of-range /elements/0/width"]],
     ["id not a string", line({ id: 7 }), ["error invalid-type /elements/0/id"]],

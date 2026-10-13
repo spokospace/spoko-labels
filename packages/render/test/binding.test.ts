@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LIMITS, resolveContent } from "../src/index.js";
+import { resolveContent } from "../src/binding.js";
+import { LIMITS } from "../src/index.js";
 
 // Made-up row.
 const row = { Name: "Blue crate", Code: "BX-0012", Qty: 3, Empty: null, Missing: undefined, Zero: 0, Flag: false };

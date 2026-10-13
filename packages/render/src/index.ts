@@ -22,4 +22,3 @@ export {
 } from "./schema/types.js";
 export type { IssueCode, TemplateIssue } from "./schema/issues.js";
 export { validateTemplate, type ValidateOptions, type ValidationResult } from "./schema/validate.js";
-export { resolveContent, type RenderData, type ResolvedContent } from "./binding.js";

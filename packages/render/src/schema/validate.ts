@@ -48,6 +48,8 @@ const KEYS = {
   font: ["family", "size", "bold", "fallback"],
 };
 const SIZE_RANGE: Range = { above: 0, max: LIMITS.maxLabelSize };
+/** Elements may start off the label (they are then warned about), but not arbitrarily far. */
+const POSITION_RANGE: Range = { min: -LIMITS.maxLabelSize, max: LIMITS.maxLabelSize };
 
 /** Escape one JSON pointer segment (RFC 6901). */
 const segment = (key: string | number): string => String(key).replaceAll("~", "~0").replaceAll("/", "~1");
@@ -87,12 +89,17 @@ class Reader {
 
   /** A reader for the object at `key`, or `undefined` (with an error) when it is missing or not an object. */
   child(key: string): Reader | undefined {
-    const value = this.obj[key];
+    const value = this.get(key);
     if (!isObject(value)) {
       this.error(value === undefined ? "required" : "invalid-type", this.at(key));
       return undefined;
     }
     return new Reader(this.issues, this.at(key), value, this);
+  }
+
+  /** The object's own property `key`; inherited properties never count, so host-built objects behave like JSON. */
+  get(key: string): unknown {
+    return Object.hasOwn(this.obj, key) ? this.obj[key] : undefined;
   }
 
   /** Warn about every key not in `known`; the normalized output never copies unknown keys. */
@@ -101,7 +108,7 @@ class Reader {
   }
 
   number(key: string, range: Range, fallback?: number): number {
-    const value = this.obj[key];
+    const value = this.get(key);
     if (value === undefined && fallback !== undefined) return fallback;
     if (typeof value !== "number" || !Number.isFinite(value) || (range.integer && !Number.isInteger(value))) {
       this.error(value === undefined ? "required" : "invalid-type", this.at(key));
@@ -113,7 +120,7 @@ class Reader {
   }
 
   string(key: string, opts: { optional?: boolean; nonEmpty?: boolean } = {}): string | undefined {
-    const value = this.obj[key];
+    const value = this.get(key);
     if (value === undefined) {
       if (!opts.optional) this.error("required", this.at(key));
       return undefined;
@@ -124,14 +131,14 @@ class Reader {
   }
 
   boolean(key: string, fallback: boolean): boolean {
-    const value = this.obj[key];
+    const value = this.get(key);
     if (value === undefined) return fallback;
     if (typeof value !== "boolean") this.error("invalid-type", this.at(key));
     return value === true;
   }
 
   oneOf<T extends string>(key: string, allowed: readonly T[], fallback?: T): T {
-    const value = this.obj[key];
+    const value = this.get(key);
     if (value === undefined && fallback !== undefined) return fallback;
     if (typeof value !== "string") this.error(value === undefined ? "required" : "invalid-type", this.at(key));
     else if (!(allowed as readonly string[]).includes(value)) this.error("out-of-range", this.at(key));
@@ -168,13 +175,15 @@ export function validateTemplate(input: unknown, options: ValidateOptions = {}):
   const r = new Reader(issues, "", input);
   r.onlyKeys(KEYS.template);
 
-  if (input.version === undefined) r.error("required", "/version");
-  else if (input.version !== TEMPLATE_VERSION) r.error("unsupported-version", "/version");
+  const version = r.get("version");
+  if (version === undefined) r.error("required", "/version");
+  else if (typeof version !== "number") r.error("invalid-type", "/version");
+  else if (version !== TEMPLATE_VERSION) r.error("unsupported-version", "/version");
   const name = r.string("name", { optional: true });
   const size = readSize(r);
-  const shape = size ? readShape(r, size) : undefined;
+  const shape = readShape(r, size);
   const safeMargin = r.number("safeMargin", { min: 0, max: LIMITS.maxSafeMargin }, DEFAULTS.safeMargin);
-  const elements = input.elements;
+  const elements = r.get("elements");
   if (elements === undefined) r.error("required", "/elements");
   else if (!Array.isArray(elements)) r.error("invalid-type", "/elements");
   else if (elements.length > LIMITS.maxElements) r.error("out-of-range", "/elements");
@@ -205,8 +214,9 @@ function readSize(parent: Reader): NormalizedTemplate["size"] | undefined {
   return r.ok ? size : undefined;
 }
 
-function readShape(parent: Reader, size: NormalizedTemplate["size"]): Shape | undefined {
-  if (parent.obj.shape === undefined) return { kind: "rectangle" };
+/** Read even when `size` is invalid, so all template-level issues come in one pass; the radius bound needs `size`. */
+function readShape(parent: Reader, size: NormalizedTemplate["size"] | undefined): Shape | undefined {
+  if (parent.get("shape") === undefined) return { kind: "rectangle" };
   const r = parent.child("shape");
   if (!r) return undefined;
   const kind = r.oneOf("kind", ["rectangle", "rounded", "circle"] as const);
@@ -215,12 +225,12 @@ function readShape(parent: Reader, size: NormalizedTemplate["size"]): Shape | un
     return r.ok ? { kind } : undefined;
   }
   r.onlyKeys(["kind", "radius"]);
-  const radius = r.number("radius", { above: 0, max: Math.min(size.width, size.height) / 2 });
+  const radius = r.number("radius", { above: 0, max: size ? Math.min(size.width, size.height) / 2 : Infinity });
   return r.ok ? { kind, radius } : undefined;
 }
 
 function readElement(r: Reader): NormalizedElement | undefined {
-  const type = r.obj.type;
+  const type = r.get("type");
   if (typeof type !== "string") {
     r.error(type === undefined ? "required" : "invalid-type", r.at("type"));
     return undefined;
@@ -234,8 +244,8 @@ function readElement(r: Reader): NormalizedElement | undefined {
   const id = r.string("id", { optional: true });
   const box = {
     ...(id === undefined ? {} : { id }),
-    x: r.number("x", {}),
-    y: r.number("y", {}),
+    x: r.number("x", POSITION_RANGE),
+    y: r.number("y", POSITION_RANGE),
     width: r.number("width", SIZE_RANGE),
     height: r.number("height", SIZE_RANGE),
   };
@@ -272,7 +282,7 @@ function readFont(parent: Reader): NormalizedFontSpec | undefined {
   const bold = r.boolean("bold", DEFAULTS.bold);
 
   const fallback: string[] = [];
-  const list = r.obj.fallback;
+  const list = r.get("fallback");
   if (list !== undefined && !Array.isArray(list)) r.error("invalid-type", r.at("fallback"));
   else if (list && list.length > LIMITS.maxFallbackFonts) r.error("out-of-range", r.at("fallback"));
   else if (list) {
@@ -288,18 +298,19 @@ function readFont(parent: Reader): NormalizedFontSpec | undefined {
 function readContent(parent: Reader): Content | undefined {
   const r = parent.child("content");
   if (!r) return undefined;
-  if ("text" in r.obj) {
+  // Static text wins: a `bind` next to `text` is only an unknown property.
+  if (Object.hasOwn(r.obj, "text")) {
     r.onlyKeys(["text"]);
     const text = r.string("text");
     return r.ok && text !== undefined ? { text } : undefined;
   }
-  if (!("bind" in r.obj) && !("bindIndex" in r.obj)) {
+  if (!Object.hasOwn(r.obj, "bind") && !Object.hasOwn(r.obj, "bindIndex")) {
     r.error("required", r.at("text"));
     return undefined;
   }
   r.onlyKeys(["bind", "bindIndex"]);
   const bind = r.string("bind", { optional: true, nonEmpty: true });
-  const bindIndex = r.obj.bindIndex === undefined ? undefined : r.number("bindIndex", { min: 0, integer: true });
+  const bindIndex = r.get("bindIndex") === undefined ? undefined : r.number("bindIndex", { min: 0, integer: true });
   if (!r.ok) return undefined;
   if (bind === undefined) return bindIndex === undefined ? undefined : { bindIndex };
   return bindIndex === undefined ? { bind } : { bind, bindIndex };
