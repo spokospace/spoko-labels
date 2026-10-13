@@ -81,6 +81,32 @@ export const LABELS = {
     ctx.fillText("top row = first row sent", WIDTH / 2, 120);
     return canvas;
   },
+  "Top offset probe (1-dot bars)": () => {
+    // Bar k is one dot high and sits in image row k (row 0 is the first row that is sent). If the first
+    // `n` rows fall outside the label, bars 0 to n-1 are missing: the number under the first visible
+    // bar is the number of rows (8 rows = 1 mm) lost at the top.
+    const { canvas, ctx } = base();
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    for (let k = 0; k <= 15; k++) {
+      const x = 12 + k * 23;
+      ctx.fillRect(x, k, 16, 1);
+      ctx.fillText(String(k), x + 8, 20 + (k % 2) * 13);
+    }
+    // the same at the bottom, counted from the last row (239 is the last row that is sent)
+    for (let k = 0; k <= 15; k++) {
+      const x = 12 + k * 23;
+      ctx.fillRect(x, HEIGHT - 1 - k, 16, 1);
+      ctx.fillText(String(k), x + 8, HEIGHT - 36 - (k % 2) * 13);
+    }
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText("rows lost at top = first visible bar", WIDTH / 2, 90);
+    ctx.font = "13px sans-serif";
+    ctx.fillText("bars at the bottom are counted from the last row", WIDTH / 2, 115);
+    ctx.fillText("(8 dots = 1 mm)", WIDTH / 2, 135);
+    return canvas;
+  },
   "Density test (black blocks and stripes)": (caption) => {
     const { canvas, ctx } = base();
     ctx.fillRect(16, 16, 160, 90);
