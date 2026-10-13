@@ -1,6 +1,6 @@
 // labels-render demo. Needs the package builds (the "example" script builds them; see ../serve.mjs).
 import { B1, imageToRows, Printer, WebBluetoothTransport } from "@spokospace/labels-core";
-import { browserEnvironment, bundledFonts, loadFonts, render, TemplateError } from "@spokospace/labels-render";
+import { browserEnvironment, bundledFonts, loadFonts, render, TemplateError, validateTemplate } from "@spokospace/labels-render";
 import { TEMPLATES } from "./templates.js";
 
 const $ = (id) => document.getElementById(id);
@@ -35,6 +35,7 @@ let current = TEMPLATES[0];
 let template = null; // parsed JSON being shown
 let row = {};
 let image = null; // last rendered image, or null when the template cannot render
+let label = null; // the validated template of that image (defaults filled in), for the overlay
 
 // Printer state.
 let printer = null;
@@ -46,7 +47,8 @@ function setStatus(text) {
 
 function updateButtons() {
   const connected = Boolean(printer?.connected);
-  $("connect").disabled = printing;
+  // A second connect would replace the printer without closing the first link.
+  $("connect").disabled = printing || connected;
   $("disconnect").disabled = !connected || printing;
   $("print").disabled = !connected || printing || !image;
 }
@@ -75,7 +77,7 @@ function buildFields() {
       input.value = row[name] ?? "";
       input.addEventListener("input", () => {
         row[name] = input.value;
-        draw();
+        scheduleDraw();
       });
       label.append(caption, input);
       return label;
@@ -112,54 +114,78 @@ function onJsonInput() {
 
 // ---- preview ----
 
+// Typing re-renders at most once per frame.
+let drawPending = false;
+function scheduleDraw() {
+  if (drawPending) return;
+  drawPending = true;
+  requestAnimationFrame(() => {
+    drawPending = false;
+    draw();
+  });
+}
+
+function item(...parts) {
+  const li = document.createElement("li");
+  li.append(...parts);
+  return li;
+}
+
+function code(text) {
+  const c = document.createElement("code");
+  c.textContent = text;
+  return c;
+}
+
 function draw() {
   if (!fonts) return;
   const list = $("warnings");
   list.replaceChildren();
-  const addWarning = (code, path) => {
-    const li = document.createElement("li");
-    const c = document.createElement("code");
-    c.textContent = code;
-    li.append(c, ` ${MESSAGES[code] ?? ""} `);
-    const p = document.createElement("code");
-    p.textContent = path || "(template)";
-    li.append(p);
-    list.append(li);
-  };
+  const addWarning = (c, path) => list.append(item(code(c), ` ${MESSAGES[c] ?? ""} `, code(path || "(template)")));
   try {
     const result = render(template, { row }, { environment, fonts, printableWidth: HEAD_MM });
     image = result.image;
+    label = validateTemplate(template).template;
     for (const w of result.warnings) addWarning(w.code, w.path);
-    if (result.warnings.length === 0) list.append(Object.assign(document.createElement("li"), { textContent: "None." }));
+    if (result.warnings.length === 0) list.append(item("None."));
   } catch (error) {
     image = null;
+    label = null;
     if (error instanceof TemplateError) {
       for (const i of error.issues.filter((x) => x.severity === "error")) addWarning(i.code, i.path);
     } else {
-      list.append(Object.assign(document.createElement("li"), { textContent: String(error) }));
+      list.append(item(String(error)));
     }
   }
-  paint();
+  paintImage();
   updateButtons();
 }
 
-function paint() {
+function paintImage() {
+  const canvas = $("image");
+  if (!image) {
+    canvas.width = canvas.height = 1;
+    $("size").textContent = "The template cannot be rendered; see the warnings.";
+  } else {
+    canvas.width = image.width;
+    canvas.height = image.height;
+    canvas.getContext("2d").putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+    $("size").textContent = `${image.width} x ${image.height} dots = ${image.width / DOTS_PER_MM} x ${image.height / DOTS_PER_MM} mm.`;
+  }
+  paintOverlay();
+}
+
+/** Zoom and the overlay: no re-render, no re-upload of the image. */
+function paintOverlay() {
   const canvas = $("image");
   const overlay = $("overlay");
   const zoom = Number($("zoom").value);
-  if (!image) {
-    canvas.width = overlay.width = 1;
-    canvas.height = overlay.height = 1;
-    $("size").textContent = "The template cannot be rendered; see the warnings.";
+  if (!image || !label) {
+    overlay.width = overlay.height = 1;
     return;
   }
-  canvas.width = image.width;
-  canvas.height = image.height;
-  canvas.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(image.data), image.width, image.height), 0, 0);
   canvas.style.width = `${image.width * zoom}px`;
   canvas.style.height = `${image.height * zoom}px`;
-  $("size").textContent = `${image.width} x ${image.height} dots = ${image.width / DOTS_PER_MM} x ${image.height / DOTS_PER_MM} mm.`;
-
   overlay.width = image.width * zoom;
   overlay.height = image.height * zoom;
   const ctx = overlay.getContext("2d");
@@ -169,18 +195,17 @@ function paint() {
   const w = image.width / DOTS_PER_MM;
   const h = image.height / DOTS_PER_MM;
 
-  // Outside the label shape.
-  const shape = template?.shape ?? { kind: "rectangle" };
+  // Outside the label shape (even-odd: the canvas minus the shape).
+  const { shape, safeMargin: margin } = label;
   ctx.save();
   ctx.fillStyle = "#7777";
   ctx.beginPath();
   ctx.rect(0, 0, overlay.width, overlay.height);
-  shapePath(ctx, shape, 0, 0, w, h, s, true);
+  shapePath(ctx, shape, 0, 0, w, h, s);
   ctx.fill("evenodd");
   ctx.restore();
 
-  // Safe area.
-  const margin = typeof template?.safeMargin === "number" ? template.safeMargin : 0;
+  // Safe area, inset the way labels-render checks it.
   if (margin > 0) {
     ctx.save();
     ctx.strokeStyle = "#1e88e5";
@@ -188,7 +213,7 @@ function paint() {
     ctx.lineWidth = 2;
     ctx.beginPath();
     const inset = shape.kind === "rounded" ? { ...shape, radius: Math.max(shape.radius - margin, 0) } : shape;
-    shapePath(ctx, inset, margin, margin, w - 2 * margin, h - 2 * margin, s, false);
+    shapePath(ctx, inset, margin, margin, w - 2 * margin, h - 2 * margin, s);
     ctx.stroke();
     ctx.restore();
   }
@@ -202,22 +227,13 @@ function paint() {
   }
 }
 
-function shapePath(ctx, shape, x, y, w, h, s, reverse) {
+function shapePath(ctx, shape, x, y, w, h, s) {
   const [px, py, pw, ph] = [x * s, y * s, w * s, h * s];
   if (shape.kind === "circle") {
-    ctx.ellipse(px + pw / 2, py + ph / 2, pw / 2, ph / 2, 0, 0, Math.PI * 2, reverse);
+    ctx.moveTo(px + pw, py + ph / 2);
+    ctx.ellipse(px + pw / 2, py + ph / 2, pw / 2, ph / 2, 0, 0, Math.PI * 2);
   } else if (shape.kind === "rounded") {
-    const r = Math.min(shape.radius * s, pw / 2, ph / 2);
-    if (reverse) {
-      ctx.moveTo(px + r, py);
-      ctx.arcTo(px, py, px, py + r, r);
-      ctx.arcTo(px, py + ph, px + r, py + ph, r);
-      ctx.arcTo(px + pw, py + ph, px + pw, py + ph - r, r);
-      ctx.arcTo(px + pw, py, px + pw - r, py, r);
-      ctx.closePath();
-    } else {
-      ctx.roundRect(px, py, pw, ph, r);
-    }
+    ctx.roundRect(px, py, pw, ph, Math.min(shape.radius * s, pw / 2, ph / 2));
   } else {
     ctx.rect(px, py, pw, ph);
   }
@@ -232,7 +248,7 @@ function errorText(error) {
     case "device-unreachable":
       return "The printer could not be reached. It may be connected to another device (close the NIIMBOT app).";
     case "bluetooth-unsupported":
-      return "Bluetooth is not available: check that it is switched on.";
+      return `Bluetooth is not available: check that it is switched on and the page may use it (${error.cause?.message ?? error.message}).`;
     case "disconnected":
       return "The printer disconnected.";
     case "busy":
@@ -255,14 +271,22 @@ $("connect").addEventListener("click", async () => {
 });
 
 $("disconnect").addEventListener("click", async () => {
-  await printer?.disconnect();
-  printer = null;
-  setStatus("Not connected");
-  updateButtons();
+  try {
+    await printer?.disconnect();
+  } finally {
+    printer = null;
+    setStatus("Not connected");
+    updateButtons();
+  }
 });
 
 $("print").addEventListener("click", async () => {
   if (!printer || !image) return;
+  const copies = Number($("copies").value);
+  if (!Number.isInteger(copies) || copies < 1 || copies > 255) {
+    setStatus("Copies must be a whole number from 1 to 255.");
+    return;
+  }
   printing = true;
   updateButtons();
   const progress = $("progress");
@@ -270,7 +294,6 @@ $("print").addEventListener("click", async () => {
   progress.value = 0;
   try {
     const rows = imageToRows(image, B1);
-    const copies = Number($("copies").value);
     setStatus(`Printing ${copies} label${copies === 1 ? "" : "s"}…`);
     await printer.print(rows, {
       density: Number($("density").value),
@@ -301,8 +324,8 @@ for (const t of TEMPLATES) $("template").append(new Option(t.name, t.id));
 $("template").addEventListener("change", () => selectTemplate($("template").value));
 $("reset").addEventListener("click", () => selectTemplate(current.id));
 $("json").addEventListener("input", onJsonInput);
-$("zoom").addEventListener("change", paint);
-$("showoverlay").addEventListener("change", paint);
+$("zoom").addEventListener("change", paintOverlay);
+$("showoverlay").addEventListener("change", paintOverlay);
 $("unsupported").hidden = WebBluetoothTransport.isSupported();
 
 setStatus("Loading fonts…");

@@ -6,9 +6,11 @@
 //
 // The root is this package, so the page can import ../../dist, the bundled fonts, and (through
 // node_modules) the labels-core build and qrcode-generator; see the import map in demo/index.html.
+// node_modules/@spokospace/labels-core is a workspace link, so the whole core package is readable too;
+// acceptable because the server only listens on 127.0.0.1.
 import { createReadStream, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -24,9 +26,15 @@ const types = {
 };
 
 createServer((req, res) => {
-  const url = new URL(req.url ?? "/", "http://localhost");
-  let path = normalize(join(root, decodeURIComponent(url.pathname)));
-  if (!path.startsWith(root)) {
+  let path;
+  try {
+    path = normalize(join(root, decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname)));
+  } catch {
+    // A malformed escape such as "%E0%A4%A" would otherwise throw and stop the server.
+    res.writeHead(400).end("Bad request");
+    return;
+  }
+  if (path !== root && !path.startsWith(root + sep)) {
     res.writeHead(403).end();
     return;
   }
@@ -38,7 +46,9 @@ createServer((req, res) => {
     return;
   }
   res.writeHead(200, { "Content-Type": types[extname(path)] ?? "application/octet-stream", "Cache-Control": "no-store" });
-  createReadStream(path).pipe(res);
+  createReadStream(path)
+    .on("error", () => res.destroy())
+    .pipe(res);
 }).listen(port, "127.0.0.1", () => {
   console.log(`Demo page: http://localhost:${port}/examples/demo/`);
 });

@@ -14,6 +14,8 @@ export const TEMPLATES = [
       name: "Storage box",
       size: LABEL,
       shape: ROUNDED,
+      // Keep 1 mm clear of the edge: the dashed line in the preview.
+      safeMargin: 1,
       elements: [
         { type: "text", x: 2, y: 2, width: 46, height: 7, content: { bind: "Code" }, font: { family: "Viga", size: 6 } },
         { type: "line", x: 2, y: 9.5, width: 46, height: 0.4 },
