@@ -159,8 +159,9 @@ interface NiimbotTemplate {
 - Checked in this order, and the first that applies decides:
   1. A non-object gets `invalid-element` (issue `invalid-type`).
   2. A `type` other than `text`, `qrcode` or `line` gets `unsupported-element` and is skipped, whatever else is wrong with it.
-  3. A `rotate` that is not a multiple of 360 gets `rotated-element`, and the element is skipped.
+  3. A `rotate` that is present and not a finite multiple of 360 gets `rotated-element`, and the element is skipped. An unreadable rotation is skipped rather than printed in a possibly wrong orientation.
   4. A missing `x`, `y`, `width` or `height` gets `invalid-element` (issue `required`), and a non-finite one gets `invalid-element` (issue `invalid-type`).
+- `null` counts as absent for every key.
 - Optional numbers (`letterSpacing`, `wordSpacing`, `lineSpacing`, `lineWidth`) that are not finite count as absent, with no warning. `fontSize` is required: a value that is not a finite number is passed on, so the validator rejects the element (`invalid-element`).
 
 **Numbers.** Every emitted number (geometry, font size, spacing) is rounded to 0.001 after any arithmetic. This removes float noise such as `12.299999` or `0.2 × 1.65 = 0.33000000000000002` and makes the output deterministic.
@@ -168,13 +169,13 @@ interface NiimbotTemplate {
 **Content of `text` and `qrcode`:**
 - `dataBind` is a non-empty array and `value` matches `^([A-Z]{1,2})\d+$`: `{ bindIndex }`, where A = 0, Z = 25, AA = 26 (the prototype's `column_index`).
 - `dataBind` is non-empty but `value` does not match: `{ text: value }` with `unrecognized-binding`.
-- Otherwise: `{ text }`. A string is used as is, a number or boolean goes through `String()`, and `null` or a missing `value` gives `""`. Anything else (an object or an array) gives `""` with `unsupported-style` `value`.
+- Otherwise: `{ text }`. A string is used as is, a number or boolean goes through `String()`, and `null` or a missing `value` gives `""`. Anything else (an object, an array, a function) gives `""` with `unsupported-style` `value`.
 
 **`text`:**
 
 | v1 field | From | Notes |
 |---|---|---|
-| `font.family` | `fontCode` | `options.fonts` → the table in Fonts → `fontCatalog[code]` with `unknown-font` → `"HarmonyOS Sans"` with `unknown-font`. A missing `fontCode` is `ZT001` (the app's default), with no warning |
+| `font.family` | `fontCode` | `options.fonts` → the table in Fonts → `fontCatalog[code]` with `unknown-font` → `"HarmonyOS Sans"` with `unknown-font`. A missing or empty `fontCode` is `ZT001` (the app's default), with no warning; a non-string code is unknown (`unknown-font`, HarmonyOS Sans) |
 | `font.fallback` | | `["HarmonyOS Sans"]` for every family except HarmonyOS Sans itself, fixed from Phase 1. Without it, render's family choice would try registered families in registration order, and Viga (first in `bundledFonts`) covers ł and ń but not ą, ę or ś |
 | `font.size` | `fontSize` | above 50 → 50 with `value-clamped` |
 | `font.bold` | `fontStyle` includes `"bold"` | `underline` and `italic` → `unsupported-style` (feature named) |
@@ -224,7 +225,7 @@ interface ImportFailure { source: ImportSource; code: ImportFailureCode; issues?
 | Code | Kind | When |
 |---|---|---|
 | `unsupported-element` | warning | barcode, image, live or form QR, vertical text, unknown `type`; skipped |
-| `rotated-element` | warning | `rotate` ≠ 0; skipped |
+| `rotated-element` | warning | `rotate` present and not a finite multiple of 360 (a string or `NaN` included); skipped |
 | `unsupported-style` | warning | a feature approximated (`feature` names it) |
 | `unknown-font` | warning | the font code is in neither the table nor `options.fonts` |
 | `unrecognized-binding` | warning | bound, but `value` is not a column reference; imported as static text |

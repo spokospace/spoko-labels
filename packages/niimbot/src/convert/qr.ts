@@ -1,6 +1,6 @@
 import type { QrElement, QrLevel } from "@spokospace/labels-render";
 import { convertContent } from "./binding.js";
-import { get, type ElementContext } from "./context.js";
+import { get, present, type ElementContext } from "./context.js";
 import type { Box } from "./element.js";
 
 /** Niimbot's `codeType` for a QR code. */
@@ -15,7 +15,7 @@ export function convertQr(ctx: ElementContext, box: Box): QrElement | null {
     return null;
   }
   const codeType = get(ctx.raw, "codeType");
-  if (codeType !== undefined && codeType !== QR_CODE_TYPE) {
+  if (present(codeType) && codeType !== QR_CODE_TYPE) {
     ctx.warn("unsupported-element", "codeType");
     return null;
   }
@@ -24,7 +24,7 @@ export function convertQr(ctx: ElementContext, box: Box): QrElement | null {
   let level: QrLevel = "L";
   const correctLevel = get(ctx.raw, "correctLevel");
   if (typeof correctLevel === "number" && Object.hasOwn(LEVELS, correctLevel)) level = LEVELS[correctLevel] as QrLevel;
-  else if (correctLevel !== undefined && correctLevel !== null) ctx.approximated("correctLevel", "level");
+  else if (present(correctLevel)) ctx.approximated("correctLevel", "level");
   if (get(ctx.raw, "colorReverse") === 1) ctx.approximated("colorReverse", "reverse");
 
   const element: QrElement = { type: "qr", ...box, content };

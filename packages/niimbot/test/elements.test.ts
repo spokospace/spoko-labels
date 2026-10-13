@@ -17,11 +17,28 @@ describe("every element", () => {
     expect(one({ ...niimbotText(), type: "image" }).warnings[0]?.code).toBe("unsupported-element");
     expect(one(niimbotText({ rotate: 270 }))).toEqual({ element: undefined, warnings: [{ code: "rotated-element", path: "/elements/0/rotate" }] });
     expect(one(niimbotText({ rotate: 360 })).element).toBeDefined();
+    expect(one(niimbotText({ rotate: -90 })).element).toBeUndefined();
+  });
+
+  it("skips an element whose rotation cannot be read, rather than print it maybe turned", () => {
+    for (const rotate of ["90", Number.NaN, Number.POSITIVE_INFINITY, {}]) {
+      expect(one(niimbotText({ rotate })).warnings).toEqual([{ code: "rotated-element", path: "/elements/0/rotate" }]);
+    }
+    expect(one(niimbotText({ rotate: null })).element).toBeDefined();
+    expect(one(niimbotText({ rotate: undefined })).element).toBeDefined();
+  });
+
+  it("treats null like a missing value everywhere", () => {
+    const nulls = { typesettingMode: null, textAlignHorizonral: null, textAlignVertical: null, fontCode: null, letterSpacing: null, wordSpacing: null };
+    expect(one(niimbotText(nulls))).toMatchObject({ element: { type: "text", font: { family: "HarmonyOS Sans" } }, warnings: [] });
+    expect(one(niimbotQr({ codeType: null, correctLevel: null }))).toMatchObject({ element: { type: "qr" }, warnings: [] });
+    expect(one(niimbotLine({ lineType: null, lineWidth: null }))).toMatchObject({ element: { height: 1 }, warnings: [] });
   });
 
   it("rejects malformed geometry and non-objects", () => {
     expect(one("made-up").warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "invalid-type" }]);
     expect(one(niimbotText({ x: undefined })).warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "required" }]);
+    expect(one(niimbotText({ x: null })).warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "required" }]);
     expect(one(niimbotText({ width: "30" })).warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "invalid-type" }]);
     expect(one(niimbotText({ height: Number.NaN })).warnings[0]?.issue).toBe("invalid-type");
   });
@@ -30,6 +47,7 @@ describe("every element", () => {
     expect(one(niimbotText({ width: 0 }))).toEqual({ element: undefined, warnings: [{ code: "invalid-element", path: "/elements/0", issue: "out-of-range" }] });
     expect(one(niimbotText({ fontSize: -1 })).warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "out-of-range" }]);
     expect(one(niimbotText({ fontSize: "4" })).warnings[0]?.issue).toBe("invalid-type");
+    expect(one(niimbotText({ fontSize: Number.NaN })).warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "invalid-type" }]);
   });
 
   it("rounds geometry to 0.001 mm", () => {
@@ -84,6 +102,8 @@ describe("text", () => {
     const correct = niimbotText({ textAlignHorizontal: 2 });
     delete correct.textAlignHorizonral;
     expect(one(correct).element).toMatchObject({ align: "right" });
+    expect(aligned({ textAlignHorizonral: null, textAlignHorizontal: 2 })).toMatchObject({ align: "right" });
+    expect(aligned({ textAlignHorizonral: 1, textAlignHorizontal: 2 })).toMatchObject({ align: "center" });
     expect(aligned({ textAlignVertical: 1 })).toMatchObject({ verticalAlign: "middle" });
     expect(aligned({ textAlignVertical: 2 })).toMatchObject({ verticalAlign: "bottom" });
     expect(aligned({ textAlignVertical: 3 })).toMatchObject({ verticalAlign: "bottom" });
@@ -136,6 +156,14 @@ describe("fonts", () => {
 
   it("treats a missing font code as the app's default", () => {
     expect(fontOf({ fontCode: undefined })).toEqual({ font: { family: "HarmonyOS Sans", size: 4 }, warnings: [] });
+    expect(fontOf({ fontCode: "" })).toEqual({ font: { family: "HarmonyOS Sans", size: 4 }, warnings: [] });
+  });
+
+  it("treats a font code of the wrong type as unknown", () => {
+    expect(fontOf({ fontCode: 347 })).toEqual({
+      font: { family: "HarmonyOS Sans", size: 4 },
+      warnings: [{ code: "unknown-font", path: "/elements/0/fontCode" }],
+    });
   });
 
   it("lets the host override and extend the table", () => {

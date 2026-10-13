@@ -7,7 +7,7 @@ import type {
   ImportWarning,
   ImportedTemplate,
 } from "../types.js";
-import { ElementContext, get, isObject } from "./context.js";
+import { ElementContext, get, isObject, present } from "./context.js";
 import { convertElement } from "./element.js";
 import { convertSize, isValidSize } from "./size.js";
 
@@ -35,23 +35,25 @@ function importOne(raw: unknown, options: ImportOptions): Outcome {
   if (!size) return { code: "unknown-size" };
 
   // Warnings are kept per Niimbot element so the validator's findings land in element order too.
-  const warnings: ImportWarning[][] = rawElements.map(() => []);
+  const warnings: ImportWarning[][] = Array.from(rawElements, () => []);
   const elements: Element[] = [];
   /** For each converted element, the index of the Niimbot element it came from. */
   const origin: number[] = [];
-  rawElements.forEach((rawElement: unknown, i) => {
+  // An index loop, not forEach: a hole in a host-built sparse array is reported like any non-object.
+  for (let i = 0; i < rawElements.length; i++) {
+    const rawElement: unknown = rawElements[i];
     const path = `/elements/${i}`;
     const sink = warnings[i] as ImportWarning[];
     if (!isObject(rawElement)) {
       sink.push({ code: "invalid-element", path, issue: "invalid-type" });
-      return;
+      continue;
     }
     const element = convertElement(new ElementContext(rawElement, path, options, sink));
     if (element) {
       elements.push(element);
       origin.push(i);
     }
-  });
+  }
 
   const name = nameOf(raw);
   const template: Template = name === undefined
@@ -85,9 +87,13 @@ function importOne(raw: unknown, options: ImportOptions): Outcome {
  *
  * Throws `TypeError` only for a host bug: `input` that is not an array, or an invalid `defaultSize`.
  */
-export function importTemplates(input: readonly unknown[], options: ImportOptions = {}): ImportResult {
+export function importTemplates(input: readonly unknown[], optionsArg?: ImportOptions | null): ImportResult {
   if (!Array.isArray(input)) throw new TypeError("importTemplates: input must be an array of Niimbot templates");
-  if (options.defaultSize !== undefined && !isValidSize(options.defaultSize)) {
+  if (present(optionsArg) && !isObject(optionsArg)) {
+    throw new TypeError("importTemplates: options must be an object");
+  }
+  const options: ImportOptions = optionsArg ?? {};
+  if (present(options.defaultSize) && !isValidSize(options.defaultSize)) {
     throw new TypeError("importTemplates: defaultSize must be { width, height } in mm, each in (0, 300]");
   }
 

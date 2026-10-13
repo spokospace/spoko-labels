@@ -77,8 +77,27 @@ describe("importTemplates", () => {
     expect(templates.map((t) => [t.source, t.template.name])).toEqual([[{ index: 0 }, undefined], [{ index: 1 }, undefined]]);
   });
 
+  it("reports holes in a host-built sparse elements array", () => {
+    const elements: unknown[] = [];
+    elements[1] = niimbotText();
+    const { templates } = importTemplates([niimbotTemplate({ elements })]);
+    expect(templates[0]?.warnings).toEqual([{ code: "invalid-element", path: "/elements/0", issue: "invalid-type" }]);
+    expect(templates[0]?.template.elements).toHaveLength(1);
+  });
+
+  it("checks sizes after rounding", () => {
+    expect(importTemplates([niimbotTemplate({ width: 0.0004, height: 30 })]).templates[0]?.template.size).toEqual({ width: 50, height: 30 });
+    expect(() => importTemplates([], { defaultSize: { width: 0.0004, height: 30 } })).toThrow(TypeError);
+  });
+
+  it("accepts null options", () => {
+    expect(importTemplates([niimbotTemplate()], null).templates).toHaveLength(1);
+    expect(importTemplates([niimbotTemplate()], { defaultSize: null } as unknown as object).templates).toHaveLength(1);
+  });
+
   it("throws only for host bugs", () => {
     expect(() => importTemplates("x" as unknown as unknown[])).toThrow(TypeError);
+    expect(() => importTemplates([], "x" as unknown as object)).toThrow(TypeError);
     expect(() => importTemplates([], { defaultSize: { width: 0, height: 30 } })).toThrow(TypeError);
     expect(() => importTemplates([], { defaultSize: { width: 50, height: 301 } })).toThrow(TypeError);
   });

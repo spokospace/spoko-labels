@@ -1,5 +1,5 @@
 import type { Element } from "@spokospace/labels-render";
-import { finite, get, round, type ElementContext } from "./context.js";
+import { finite, get, present, round, type ElementContext } from "./context.js";
 import { convertLine } from "./line.js";
 import { convertQr } from "./qr.js";
 import { convertText } from "./text.js";
@@ -19,7 +19,7 @@ function readBox(ctx: ElementContext): Box | null {
   for (const key of GEOMETRY) {
     const value = get(ctx.raw, key);
     if (!finite(value)) {
-      ctx.warn("invalid-element", undefined, { issue: value === undefined ? "required" : "invalid-type" });
+      ctx.warn("invalid-element", undefined, { issue: present(value) ? "invalid-type" : "required" });
       return null;
     }
     box[key] = round(value);
@@ -27,8 +27,11 @@ function readBox(ctx: ElementContext): Box | null {
   return box as Box;
 }
 
-/** Whether `rotate` turns the element: 90, 180, 270 (any multiple of 360 counts as unrotated). */
-const rotated = (value: unknown): boolean => finite(value) && value % 360 !== 0;
+/**
+ * Whether `rotate` may turn the element. Only a finite multiple of 360 (or no value) is unrotated; anything
+ * else, a string or `NaN` included, is skipped rather than printed in a possibly wrong orientation.
+ */
+const rotated = (value: unknown): boolean => present(value) && !(finite(value) && value % 360 === 0);
 
 /** One Niimbot element as a template v1 element, or `null` (with a warning) when it is skipped. */
 export function convertElement(ctx: ElementContext): Element | null {

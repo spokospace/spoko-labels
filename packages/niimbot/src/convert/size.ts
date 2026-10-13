@@ -6,11 +6,14 @@ const ROLL_NAME = /^T(\d+(?:\.\d+)?)\*(\d+(?:\.\d+)?)/;
 
 type Size = { width: number; height: number };
 
-const inRange = (value: unknown): value is number => finite(value) && value > 0 && value <= LIMITS.maxLabelSize;
+const inRange = (value: number): boolean => value > 0 && value <= LIMITS.maxLabelSize;
 
-/** A rounded size, or `undefined` when either side is not a number in (0, 300]. */
-const sized = (width: unknown, height: unknown): Size | undefined =>
-  inRange(width) && inRange(height) ? { width: round(width), height: round(height) } : undefined;
+/** A size rounded to 0.001 mm, or `undefined` unless both sides, once rounded, are in (0, 300]. */
+function sized(width: unknown, height: unknown): Size | undefined {
+  if (!finite(width) || !finite(height)) return undefined;
+  const size = { width: round(width), height: round(height) };
+  return inRange(size.width) && inRange(size.height) ? size : undefined;
+}
 
 /** Whether a host-supplied size is usable; the importer throws on an invalid `defaultSize`. */
 export const isValidSize = (size: unknown): size is Size => isObject(size) && sized(size.width, size.height) !== undefined;

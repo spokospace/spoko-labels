@@ -8,6 +8,9 @@ export const isObject = (value: unknown): value is Json =>
 /** An own property only, so `__proto__` or `constructor` in the input never reach the prototype. */
 export const get = (obj: Json, key: string): unknown => (Object.hasOwn(obj, key) ? obj[key] : undefined);
 
+/** `null` counts as absent everywhere: the app writes both for "not set". */
+export const present = (value: unknown): boolean => value !== undefined && value !== null;
+
 export const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
 /** Rounds to 0.001 so float noise (12.299999, 0.2 × 1.65) never reaches the output; -0 becomes 0. */

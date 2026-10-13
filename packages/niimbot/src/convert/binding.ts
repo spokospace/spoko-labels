@@ -1,5 +1,5 @@
 import type { Content } from "@spokospace/labels-render";
-import { get, type ElementContext } from "./context.js";
+import { get, present, type ElementContext } from "./context.js";
 
 /** "C0": the letters are a spreadsheet column of the data source, the digits are ignored. */
 const COLUMN_REFERENCE = /^([A-Z]{1,2})\d+$/;
@@ -20,11 +20,13 @@ export function convertContent(ctx: ElementContext): Content {
   const dataBind = get(ctx.raw, "dataBind");
   const bound = Array.isArray(dataBind) && dataBind.length > 0;
 
-  if (typeof value === "object" && value !== null) {
+  // Text, numbers and booleans become text; anything else (objects, arrays, functions) is emptied, warned.
+  const scalar = typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+  if (!scalar && present(value)) {
     ctx.approximated("value", "value");
     return { text: "" };
   }
-  const text = value === null || value === undefined ? "" : String(value);
+  const text = scalar ? String(value) : "";
 
   if (!bound) return { text };
   const match = COLUMN_REFERENCE.exec(text);

@@ -34,7 +34,9 @@ interface NiimbotTemplate {
 }
 ```
 
-`importTemplates(input, options?)` takes an array of these. Every field is read defensively, so any source works.
+`importTemplates(input, options?)` takes an array of these. Every field is read defensively, so any source works. `null` counts as a missing value everywhere.
+
+`ImportOptions`:
 
 | Option | Meaning |
 |---|---|
@@ -47,12 +49,14 @@ interface NiimbotTemplate {
 ## Output
 
 ```ts
-interface ImportResult {
-  templates: { source: { index: number; name?: string }; template: Template; warnings: ImportWarning[] }[];
-  failures: { source: { index: number; name?: string }; code: ImportFailureCode; issues?: TemplateIssue[] }[];
-}
+interface ImportResult { templates: ImportedTemplate[]; failures: ImportFailure[] }
+interface ImportedTemplate { source: ImportSource; template: Template; warnings: ImportWarning[] }
+interface ImportFailure { source: ImportSource; code: ImportFailureCode; issues?: TemplateIssue[] }
+interface ImportSource { index: number; name?: string }
 interface ImportWarning { code: ImportWarningCode; path: string; feature?: string; issue?: IssueCode }
 ```
+
+All of these types are exported, together with `NiimbotTemplate`, `ImportWarningCode` and `ImportFailureCode`.
 
 - `template` is a `labels-render` v1 template that passes `validateTemplate()` without errors. Defaults are left out, except `fit`, which is always written.
 - `source.index` is the position in the input array. `path` is a JSON pointer into the input template, for example `/elements/4/fontStyle`.
@@ -83,7 +87,7 @@ Text attributes:
 
 | Niimbot | Template v1 |
 |---|---|
-| `fontCode` | `font.family` (see Fonts); a missing code is `ZT001` |
+| `fontCode` | `font.family` (see Fonts); a missing or empty code is `ZT001`, a code that is not a string is unknown |
 | `fontSize` (em size, mm) | `font.size`, at most 50 |
 | `fontStyle` contains `"bold"` | `font.bold` |
 | `letterSpacing` | `letterSpacing` × 1.65 (`LETTER_SPACING_SCALE`): the app draws letter spacing about 1.65 times wider than it stores it |
@@ -101,8 +105,8 @@ Optional numbers of the wrong type (`letterSpacing: "0.3"`) count as absent.
 | Code | Kind | When |
 |---|---|---|
 | `unsupported-element` | warning | barcodes, images, NIIMBOT live or form QR codes, vertical text, unknown element types; skipped |
-| `rotated-element` | warning | a rotated element; skipped |
-| `unsupported-style` | warning | approximated; `feature` says what: `underline` and `italic` (dropped), `adaptive` (shrinks like `minimized`), `auto-height` (the stored box is kept), `word-spacing` (differs from letter spacing; ignored), `dashed` and `reverse` lines (drawn solid), `reverse` QR (drawn normally), `align`, `vertical-align`, `level` (an unknown value; the default is used), `value` (not text or a number; imported as empty) |
+| `rotated-element` | warning | a rotated element, or a `rotate` that is not a number (only multiples of 360 count as unrotated); skipped |
+| `unsupported-style` | warning | approximated; `feature` says what: `underline` and `italic` (dropped), `adaptive` (shrinks like `minimized`), `auto-height` (the stored box is kept), `word-spacing` (differs from letter spacing; ignored), `dashed` and `reverse` lines (drawn solid), `reverse` QR (drawn normally), `align`, `vertical-align`, `level` (an unknown value; the default is used), `value` (not text, a number or a boolean; imported as empty) |
 | `unknown-font` | warning | the font code is in neither table; the family comes from `fontCatalog` or is HarmonyOS Sans |
 | `unrecognized-binding` | warning | the element is bound, but `value` is not a column reference; imported as static text |
 | `value-clamped` | warning | a number outside the v1 range (font size, letter or line spacing) was clamped |

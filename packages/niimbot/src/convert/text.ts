@@ -1,7 +1,7 @@
 import { LIMITS, type HorizontalAlign, type TextElement, type VerticalAlign } from "@spokospace/labels-render";
 import { DEFAULT_FAMILY, DEFAULT_FONT_CODE, familyFor } from "../fonts/codes.js";
 import { convertContent } from "./binding.js";
-import { finite, get, type ElementContext } from "./context.js";
+import { finite, get, present, type ElementContext } from "./context.js";
 import type { Box } from "./element.js";
 
 /**
@@ -23,7 +23,7 @@ const optionalNumber = (ctx: ElementContext, key: string): number | undefined =>
 
 function alignment<T>(ctx: ElementContext, key: string, table: Record<number, T>, fallback: T, feature: string): T {
   const value = get(ctx.raw, key);
-  if (value === undefined || value === null) return fallback;
+  if (!present(value)) return fallback;
   if (typeof value === "number" && Object.hasOwn(table, value)) return table[value] as T;
   ctx.approximated(key, feature);
   return fallback;
@@ -32,7 +32,7 @@ function alignment<T>(ctx: ElementContext, key: string, table: Record<number, T>
 /** A Niimbot `text` element, or `null` when it is skipped. */
 export function convertText(ctx: ElementContext, box: Box): TextElement | null {
   const typesetting = get(ctx.raw, "typesettingMode");
-  if (typesetting !== undefined && typesetting !== 1) {
+  if (present(typesetting) && typesetting !== 1) {
     ctx.warn("unsupported-element", "typesettingMode");
     return null;
   }
@@ -40,8 +40,12 @@ export function convertText(ctx: ElementContext, box: Box): TextElement | null {
 
   // Font
   const rawCode = get(ctx.raw, "fontCode");
-  const code = typeof rawCode === "string" && rawCode.length > 0 ? rawCode : DEFAULT_FONT_CODE;
-  const { family, known } = familyFor(code, ctx.options.fonts, ctx.options.fontCatalog);
+  // A missing code is the app's default; a code of the wrong type is unknown (HarmonyOS Sans, warned).
+  const wrongType = present(rawCode) && typeof rawCode !== "string";
+  const code = typeof rawCode === "string" && rawCode !== "" ? rawCode : DEFAULT_FONT_CODE;
+  const { family, known } = wrongType
+    ? { family: DEFAULT_FAMILY, known: false }
+    : familyFor(code, ctx.options.fonts, ctx.options.fontCatalog);
   if (!known) ctx.warn("unknown-font", "fontCode");
   const rawSize = get(ctx.raw, "fontSize");
   // A size that is not a finite number is passed on as is: the validator rejects the element.
@@ -60,7 +64,9 @@ export function convertText(ctx: ElementContext, box: Box): TextElement | null {
   const letterSpacing = ctx.clamped("letterSpacing", letter * LETTER_SPACING_SCALE, LIMITS.letterSpacing.min, LIMITS.letterSpacing.max);
   const lineSpacing = ctx.clamped("lineSpacing", optionalNumber(ctx, "lineSpacing") ?? 0, LIMITS.lineSpacing.min, LIMITS.lineSpacing.max);
 
-  const align = alignment(ctx, Object.hasOwn(ctx.raw, "textAlignHorizonral") ? "textAlignHorizonral" : "textAlignHorizontal", HORIZONTAL, "left", "align");
+  // The app writes the misspelled key; the correct spelling is read when the misspelled one has no value.
+  const alignKey = present(get(ctx.raw, "textAlignHorizonral")) ? "textAlignHorizonral" : "textAlignHorizontal";
+  const align = alignment(ctx, alignKey, HORIZONTAL, "left", "align");
   const verticalAlign = alignment(ctx, "textAlignVertical", VERTICAL, "top", "vertical-align");
 
   const textStyle = strings(get(ctx.raw, "textStyle"));
