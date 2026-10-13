@@ -2,17 +2,19 @@
 
 Import label templates designed in the NIIMBOT desktop app into the [`@spokospace/labels-render`](../render/README.md) template format, so existing designs print with spoko-labels. Everything Niimbot-specific lives here: font codes, `C0` column bindings, the app's misspelled keys and its letter-spacing scale. The render format knows nothing about Niimbot.
 
-> **Status: pre-release (`0.0.0`).** `importTemplates()`, its output and `niimbotFonts` are protected contracts (see `BACKWARD_COMPATIBILITY.md`). Reading templates out of the app's database (`extractTemplates()`) is coming in a next release. Not published to npm yet.
+> **Status: pre-release (`0.0.0`).** `extractTemplates()`, `importTemplates()`, their output and `niimbotFonts` are protected contracts (see `BACKWARD_COMPATIBILITY.md`). Not published to npm yet.
 
-The NIIMBOT data format is unofficial and undocumented. The importer reads it defensively: one template that cannot be converted is reported and skipped, and never stops the rest.
+The NIIMBOT data format is unofficial and undocumented. The package reads it defensively: one template that cannot be read or converted is reported and skipped, and never stops the rest.
 
 ## Quick start
 
 ```ts
-import { importTemplates, niimbotFonts } from "@spokospace/labels-niimbot";
+import { extractTemplates, importTemplates, niimbotFonts } from "@spokospace/labels-niimbot";
 import { browserEnvironment, bundledFonts, loadFonts, render } from "@spokospace/labels-render";
 
-const { templates, failures } = importTemplates(niimbotTemplates);
+// `file` is niimbot_db.isar, picked by the user (see Reading the app's database)
+const extracted = extractTemplates(new Uint8Array(await file.arrayBuffer()));
+const { templates, failures } = importTemplates(extracted.templates, { fontCatalog: extracted.fontCatalog });
 // show `failures` and each template's `warnings` to the user; store `template` (plain JSON) as you like
 
 const environment = browserEnvironment();
@@ -21,6 +23,40 @@ const { image } = render(templates[0].template, { row, columns }, { environment,
 ```
 
 Niimbot binds content to columns **by position** ("column C of the data source"), so an imported element reads `columns[2]` of the row you render with: pass `columns` (the header row of your data, in the order the template was designed against) together with `row`.
+
+## Reading the app's database
+
+The NIIMBOT desktop app has no export. It keeps the templates in its local database:
+
+| System | File |
+|---|---|
+| Windows | `%APPDATA%
+iimbot.comNIIMBOTNiimbot
+iimbot_db.isar` |
+| macOS | not known yet; reports welcome |
+
+Close the app before reading the file: while it runs, Windows may refuse to open it. In a browser, let the user pick the file (`<input type="file">`) and pass its bytes; in Node, `readFileSync`. Nothing is uploaded: `extractTemplates` works on the bytes in memory.
+
+```ts
+interface ExtractResult {
+  templates: NiimbotTemplate[];                    // in file order, ready for importTemplates()
+  fontCatalog: Readonly<Record<string, string>>;   // the app's font catalogue: "ZT021" → "Inconsolata"
+  warnings: ExtractWarning[];                      // { code, count? }
+}
+```
+
+| Warning | When |
+|---|---|
+| `no-templates-found` | no template records: not a NIIMBOT database, an empty file, or the app changed its format |
+| `duplicate-template` | the file holds older copies of a template with different content; the newest was kept (`count`: copies dropped) |
+
+How it reads the file:
+- It scans the bytes for the app's records (an elements JSON array followed by the record marker `[0,0,0,0]` and the name) instead of parsing the Isar format, so it keeps working across small app updates and fails soft on big ones: fewer templates or none, never an exception.
+- Isar keeps old copies of edited records. Identical copies collapse silently; for copies with different content, the newest timestamp wins.
+- Only what `importTemplates` needs leaves the scanner: the name, the roll names, the timestamp and, for each element, the keys in What is imported. Element ids, image data and URLs, thumbnails, cloud ids and the data source of bound elements (its id and sheet name) are dropped.
+- `TypeError` for anything other than a `Uint8Array`; `RangeError` above 64 MB (the real file is about 5 MB). No JSON value larger than 256 kB is read.
+
+Checked against the layout of NIIMBOT for Windows as of October 2026 (the database written by the app in use then).
 
 ## Input
 
@@ -34,14 +70,14 @@ interface NiimbotTemplate {
 }
 ```
 
-`importTemplates(input, options?)` takes an array of these. Every field is read defensively, so any source works. `null` counts as a missing value everywhere.
+`importTemplates(input, options?)` takes an array of these, usually `extractTemplates(bytes).templates`. Every field is read defensively, so any source works. `null` counts as a missing value everywhere.
 
 `ImportOptions`:
 
 | Option | Meaning |
 |---|---|
 | `fonts` | font code → family name; overrides and extends the built-in table |
-| `fontCatalog` | the app's own font catalogue (code → family name), used for codes that neither table knows |
+| `fontCatalog` | the app's own font catalogue (code → family name), usually `extractTemplates(bytes).fontCatalog`; used for codes that neither table knows |
 | `defaultSize` | `{ width, height }` in mm, each in (0, 300], used when a template has no size of its own |
 
 `importTemplates` throws `TypeError` only for host bugs: `input` that is not an array, or an invalid `defaultSize`. Data never makes it throw.
@@ -132,7 +168,7 @@ All four are under the SIL Open Font License 1.1, with the license next to each 
 
 ## Privacy
 
-The importer is a pure function: it reads only what it is given, runs locally and sends nothing anywhere. Do not commit templates exported from your own app; the tests use made-up data only.
+Both functions are pure: they read only what they are given, run locally and send nothing anywhere. Do not commit templates exported from your own app; the tests use made-up data only.
 
 ## License
 

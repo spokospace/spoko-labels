@@ -1,6 +1,6 @@
 # @spokospace/labels-niimbot: import templates from the NIIMBOT desktop app
 
-> Status: approved design (#27). The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Phase 1 (conversion) and Phase 2 (fonts) are implemented; Phases 3 and 4 are not yet. Phase 2 note: the `BalooPaaji-Gurmukhi` folder of `EkType/Baloo` holds only design sources, so the compiled v1 font comes from the project's GitHub release `1.443` (see `packages/niimbot/fonts/README.md`).
+> Status: approved design (#27). The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Phases 1 (conversion), 2 (fonts) and 3 (extraction) are implemented; Phase 4 is not yet. Phase 2 note: the `BalooPaaji-Gurmukhi` folder of `EkType/Baloo` holds only design sources, so the compiled v1 font comes from the project's GitHub release `1.443` (see `packages/niimbot/fonts/README.md`).
 
 ## 📝 TLDR
 People who designed labels in the NIIMBOT desktop app cannot use them with spoko-labels. Today the only importer is the prototype: a Python script scrapes the app's local database into ad-hoc JSON, and a browser renderer interprets Niimbot's quirks directly.
@@ -72,16 +72,18 @@ A small package with no runtime dependency other than `@spokospace/labels-render
 
   A missing `labelNames` array does not reject a recognized record. Such a record comes out without `rollNames` and reaches the `unknown-size` path.
 - Candidates are found in one linear pass. A JSON-aware bracket matcher (it tracks strings and escapes) finds each candidate's end, giving up past 256 kB. Only then is the slice parsed. After an accepted array, scanning resumes past its end, so the whole file is scanned in O(n) plus the parse of accepted arrays.
+  - Phase 3 detail: scanning resumes past the end of any value that closes, accepted or not (its nested arrays are never records). The matcher also gives up at a byte that cannot be JSON (a raw control byte, non-ASCII outside a string) or past 32 levels of nesting, which keeps scans of binary noise short, and the matching work over the whole file is capped at about 8 times its size, so crafted text full of unclosed `[{"` cannot stall the scan.
 - The template's metadata is read from a bounded window around the array:
   - before it: the last timestamp within 2 kB;
   - after it, up to the next element array or 4 kB: the first `labelNames` array, and the name after the first `[0,0,0,0]`.
   - The name is read like the prototype does, without assuming a prefix format: skip at most 8 bytes outside printable UTF-8, then take the next run of 2 to 200 bytes of valid, printable UTF-8. The width and encoding of Isar's length prefix are not documented, and the scanner does not depend on them.
+  - Phase 3 refinement: in the observed file the skipped prefix reads `00 00 00 <length> 00 00`, and the byte after the name belongs to the next field and is often printable (the prototype stripped a trailing `H`). So when the last non-zero byte of the skipped prefix is reached inside the run, the name is cut there. Without such a byte the whole run is taken, so the scan still does not require the prefix format.
 - Font catalogue objects are recognized by `"code":"ZT` followed by a parseable object with string `code` and `fileName`.
 - Duplicates (records with the same name, elements and roll) collapse silently. Same name with different content: the newest timestamp wins, with a `duplicate-template` warning, because Isar can leave stale copies. On equal or missing timestamps, the first in file order wins. Unnamed records collapse only when their content is identical.
 - **Order.** Templates come out in the file order of the kept copy. For the font catalogue, the first occurrence of a code wins.
 - **Element whitelist.** Elements are returned with only the keys the converter reads (the Data Model tables). Image keys (`imageUrl`, `localUrl`, `imageData`, …) and every other app key are dropped. A non-empty `dataBind` keeps its length, but its strings are blanked (`["", ""]`), so data-source ids and sheet names never leave the scanner. Retained values are scalars only:
   - A `value` that is an object or an array is replaced by `{}`. The converter still reports `unsupported-style` `value` for it, but none of its content leaves the scanner.
-  - Any other retained key whose value has the wrong JSON type (an object where a number or string is read) is dropped.
+  - Any other retained key holding an object or an array where a scalar is read is also replaced by `{}`, so the converter reports exactly what it would for the original (for example, an unreadable `rotate` still skips the element). `fontStyle` and `textStyle` keep their string items only; a non-array `dataBind` is dropped (unbound either way).
 - Only the fields in `NiimbotTemplate` are returned: no URLs, thumbnails or cloud ids.
 
 **`convert/`: `NiimbotTemplate[]` → v1 templates.** Each template is converted inside its own `try`, so a malformed record becomes one failure and never aborts the batch. After conversion the result goes through `validateTemplate()`:
@@ -240,7 +242,7 @@ Extraction warnings (`ExtractWarning { code, count? }`):
 | Code | When |
 |---|---|
 | `no-templates-found` | no element arrays found: not a NIIMBOT database, or the app changed its format |
-| `duplicate-template` | same name, different content; the newest copy was kept (`count` = copies dropped) |
+| `duplicate-template` | same name, different content; the newest copy was kept (`count` = copies dropped whose content differs from the kept one; one warning for the whole file) |
 
 ## 📝 API Contracts
 ```ts
