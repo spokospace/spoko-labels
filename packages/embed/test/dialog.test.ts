@@ -158,6 +158,19 @@ describe("printLabels: the dialog", () => {
     expect(await outcome).toEqual({ printed: 2, cancelled: false });
   });
 
+  it("lets a new dialog open once the old one was removed by a page change mid-batch", async () => {
+    const { session } = await connected();
+    const first = printLabels({ template, rows }, session);
+    await ready();
+    button("Print")?.click();
+    document.querySelector("spoko-print-dialog")?.remove();
+    const second = printLabels({ template, rows: [rows[0]!] }, session);
+    expect(await first).toEqual({ printed: 2, cancelled: false });
+    await until(() => button("Close") !== undefined);
+    button("Close")?.click();
+    expect(await second).toEqual({ printed: 0, cancelled: true });
+  });
+
   it("does not close on Escape while printing", async () => {
     const { session } = await connected();
     const outcome = printLabels({ template, rows }, session);

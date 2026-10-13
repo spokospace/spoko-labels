@@ -176,7 +176,8 @@ export class SpokoPrintDialog extends HTMLElement {
 
   disconnectedCallback(): void {
     // Removed from the page (a Livewire body swap, or closed): a running batch keeps going in the session,
-    // and the promise resolves when it ends.
+    // and the promise resolves when it ends. A new dialog may open meanwhile, on the new page.
+    if (openDialog === this) openDialog = null;
     if (this.batch) void this.batch.then(() => this.finish());
     else this.finish();
   }
@@ -243,8 +244,9 @@ export class SpokoPrintDialog extends HTMLElement {
     // Browsers may still close it (a second Escape cannot always be refused): reopen it while printing, so
     // Cancel and the progress stay reachable; otherwise finish.
     this.dialog.addEventListener("close", () => {
-      if (this.batch && this.isConnected) this.dialog.showModal();
-      else this.finish();
+      if (!this.batch) this.finish();
+      else if (this.isConnected) this.dialog.showModal();
+      // Removed mid-batch: disconnectedCallback resolves when the batch ends.
     });
   }
 

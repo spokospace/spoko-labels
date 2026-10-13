@@ -154,6 +154,30 @@ describe("PrinterSession: tryReconnect", () => {
     expect(session.state).toMatchObject({ kind: "connected", name: "B1-TEST" });
   });
 
+  it("does not close the winner when the losing link is the same printer", async () => {
+    let comeBack!: (link: FakeLink) => void;
+    const same = new FakeLink("B1-TEST");
+    const h = harness(undefined, { reconnect: () => new Promise((resolve) => (comeBack = resolve)) });
+    const session = new PrinterSession(h.deps);
+    const trying = session.tryReconnect();
+    await session.connect();
+    comeBack(same);
+    expect(await trying).toBe(false);
+    expect(same.closed).toBe(false);
+    expect(session.state).toMatchObject({ kind: "connected", name: "B1-TEST" });
+  });
+
+  it("keeps the connection when both links wait for the lock at once", async () => {
+    let comeBack!: (link: FakeLink) => void;
+    const h = harness(new FakeLocks(), { reconnect: () => new Promise((resolve) => (comeBack = resolve)) });
+    const session = new PrinterSession(h.deps);
+    const trying = session.tryReconnect();
+    const clicking = session.connect();
+    comeBack(new FakeLink("B1-OTHER"));
+    await Promise.all([trying, clicking]);
+    expect(session.state.kind).toBe("connected");
+  });
+
   it("connects to a printer picked earlier without the chooser", async () => {
     const link = new FakeLink("B1-EARLIER");
     const session = new PrinterSession(harness(undefined, { reconnect: () => Promise.resolve(link) }).deps);

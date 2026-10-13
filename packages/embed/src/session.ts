@@ -217,11 +217,10 @@ export class PrinterSession extends EventTarget {
 
   private async attach(link: Link): Promise<boolean> {
     // A silent reconnect and a click can both bring a link; the first one attached wins.
-    if (this.printer) {
-      await link.close().catch(() => undefined);
-      return false;
-    }
+    if (this.printer) return this.discard(link);
     if (!(await this.acquireLock())) {
+      // Refused by this tab's own lock: the other link won while this one waited.
+      if (this.printer) return this.discard(link);
       await link.close().catch(() => undefined);
       this.setState({ kind: "disconnected" });
       this.watchLock();
@@ -234,6 +233,15 @@ export class PrinterSession extends EventTarget {
     this.setState(this.connectedState());
     void this.refreshBattery();
     return true;
+  }
+
+  /**
+   * Drops a link that lost the race. Two links to the same printer share one GATT connection, so closing the
+   * loser would drop the winner too: it is left alone then.
+   */
+  private async discard(link: Link): Promise<false> {
+    if (link.deviceName !== this.name) await link.close().catch(() => undefined);
+    return false;
   }
 
   private detach(): void {

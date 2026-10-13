@@ -28,5 +28,6 @@ describe("the browser bundle", () => {
     for (const ofl of ["Viga", "Inconsolata", "BalooPaaji", "MarkaziText", "Cookie"]) {
       expect(existsSync(join(out, "fonts", `OFL-${ofl}.txt`)), ofl).toBe(true);
     }
-  });
+    // esbuild runs for real here; on a busy machine (the whole suite in parallel) it can take a few seconds.
+  }, 30_000);
 });
