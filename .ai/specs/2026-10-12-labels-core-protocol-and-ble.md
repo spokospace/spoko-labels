@@ -171,8 +171,10 @@ Found while building it or on the B1 hardware check (#4):
 - **Bluetooth switched off.** Chrome reports it with the same `NotFoundError` as a cancelled chooser; only a "cancel" message maps to `chooser-cancelled`, anything else is `bluetooth-unsupported` with the browser's message as `cause` (#4, #21).
 - **Density range 1..5 confirmed** (default 3), matching the official app's device catalogue; the effect is subtle.
 
-## 🧪 Hardware checks (open items for the maintainer)
-Both items below were answered by the hardware check in #4 (see above). Paths covered only by unit tests are tracked in #16.
+## 🧪 Hardware checks (resolved)
+The two open items of the approved design, answered by the hardware check on a B1 in #4:
 
-- The valid `density` range of the B1. The prototype only uses 3; the descriptor ships `densityRange` as 1..5, marked provisional in its JSDoc. The Phase 3 PR must narrow or confirm it from the hardware check before merge.
-- The printer's behavior after an aborted print (does it need `PrintEnd`, a reset, or nothing?).
+- **The valid `density` range of the B1.** The prototype only used 3, and the descriptor shipped 1..5 as provisional. Confirmed: 1..5 with default 3; all three tested values printed, with a subtle effect.
+- **The printer's behavior after an aborted print.** Aborting while rows were sent, and aborting during status polling, both printed nothing, and the next print worked without a reset (the best-effort `PrintEnd` is enough).
+
+Paths still covered only by unit tests (phone-app connection, closing the chooser, `reconnect()` with the Chrome flag) are tracked in #16.
