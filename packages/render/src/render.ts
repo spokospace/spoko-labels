@@ -6,7 +6,7 @@ import { layoutQr } from "./layout/qr.js";
 import { checkPlacement } from "./layout/safe-area.js";
 import { layoutText } from "./layout/text.js";
 import { boxToDots, DOTS_PER_MM, dotsToMm, toDots, type DotRect } from "./layout/units.js";
-import type { IssueCode } from "./schema/issues.js";
+import type { IssueCode, RenderWarning } from "./schema/issues.js";
 import type { NormalizedQrElement, NormalizedTextElement } from "./schema/types.js";
 import { validateWithSources } from "./schema/validate.js";
 import { threshold } from "./threshold.js";
@@ -19,11 +19,7 @@ export interface RenderOptions {
   printableWidth?: number;
 }
 
-export interface RenderWarning {
-  code: IssueCode;
-  /** JSON pointer into the input template. */
-  path: string;
-}
+export type { RenderWarning };
 
 export interface RenderResult {
   /** RGBA, every pixel black (0, 0, 0, 255) or white (255, 255, 255, 255); feeds `imageToRows()` directly. */
@@ -33,6 +29,13 @@ export interface RenderResult {
 
 const BLACK = "#000";
 const WHITE = "#fff";
+
+type Warn = (code: IssueCode, path: string) => void;
+
+function fillBlack(ctx: Context2DLike, r: DotRect): void {
+  ctx.fillStyle = BLACK;
+  ctx.fillRect(r.x, r.y, r.width, r.height);
+}
 
 /**
  * Render one label: validate the template, bind the row, lay out and draw every element, threshold to pure
@@ -51,7 +54,7 @@ export function render(template: unknown, data: RenderData, options: RenderOptio
   if (!t) throw new TemplateError(validated.issues);
 
   const warnings: RenderWarning[] = validated.issues.map(({ code, path }) => ({ code, path }));
-  const warn = (code: IssueCode, path: string) => {
+  const warn: Warn = (code, path) => {
     if (!warnings.some((w) => w.code === code && w.path === path)) warnings.push({ code, path });
   };
 
@@ -69,8 +72,7 @@ export function render(template: unknown, data: RenderData, options: RenderOptio
     const box = boxToDots(element);
     let drawn: DotRect[];
     if (element.type === "line") {
-      ctx.fillStyle = BLACK;
-      ctx.fillRect(box.x, box.y, box.width, box.height);
+      fillBlack(ctx, box);
       drawn = [box];
     } else if (element.type === "qr") {
       drawn = drawQr(ctx, element, box, data, path, warn);
@@ -79,17 +81,14 @@ export function render(template: unknown, data: RenderData, options: RenderOptio
     }
     // What was actually drawn can leave the box (overflowing text, a QR code too big for it).
     for (const rect of drawn) {
-      for (const code of checkPlacement(dotsToMm(rect), t, printableWidth)) {
-        warn(code === "outside-label" ? "outside-safe-area" : code, path);
-      }
+      for (const code of checkPlacement(dotsToMm(rect), t, printableWidth, true)) warn(code, path);
     }
   });
 
+  // getImageData returns a fresh copy, so it can be thresholded in place.
   const pixels = ctx.getImageData(0, 0, width, height).data;
-  return { image: { width, height, data: threshold(new Uint8ClampedArray(pixels)) }, warnings };
+  return { image: { width, height, data: threshold(pixels) }, warnings };
 }
-
-type Warn = (code: IssueCode, path: string) => void;
 
 function drawQr(
   ctx: Context2DLike,
@@ -113,9 +112,16 @@ function drawQr(
   if (qr.tooSmall) warn("qr-too-small", path);
   ctx.fillStyle = BLACK;
   const { rect, moduleSize, modules } = qr;
+  // One rectangle per run of dark modules in a row: the same dots as one per module, far fewer canvas calls.
   for (let row = 0; row < modules; row++) {
-    for (let col = 0; col < modules; col++) {
-      if (qr.isDark(row, col)) ctx.fillRect(rect.x + col * moduleSize, rect.y + row * moduleSize, moduleSize, moduleSize);
+    let start = -1;
+    for (let col = 0; col <= modules; col++) {
+      const dark = col < modules && qr.isDark(row, col);
+      if (dark && start < 0) start = col;
+      if (!dark && start >= 0) {
+        ctx.fillRect(rect.x + start * moduleSize, rect.y + row * moduleSize, (col - start) * moduleSize, moduleSize);
+        start = -1;
+      }
     }
   }
   return [rect];
@@ -135,12 +141,12 @@ function drawText(
   if (content.truncated) warn("value-truncated", `${path}/content`);
   const drawn: DotRect[] = [];
   if (element.reverse) {
-    ctx.fillStyle = BLACK;
-    ctx.fillRect(box.x, box.y, box.width, box.height);
+    fillBlack(ctx, box);
     drawn.push(box);
   }
   if (content.value.length === 0) return drawn;
 
+  const spacing = element.letterSpacing * DOTS_PER_MM;
   const { face, warnings } = chooseFace(fonts, element.font, content.value, path);
   for (const w of warnings) warn(w.code, w.path);
   const setFont = (px: number) => {
@@ -154,7 +160,7 @@ function drawText(
     minPx: Math.max(toDots(element.minSize), 1),
     fit: element.fit,
     wrap: element.wrap,
-    letterSpacing: element.letterSpacing * DOTS_PER_MM,
+    letterSpacing: spacing,
     lineSpacing: element.lineSpacing * DOTS_PER_MM,
     align: element.align,
     verticalAlign: element.verticalAlign,
@@ -169,7 +175,6 @@ function drawText(
 
   setFont(layout.px);
   ctx.fillStyle = element.reverse ? WHITE : BLACK;
-  const spacing = element.letterSpacing * DOTS_PER_MM;
   for (const line of layout.lines) {
     if (spacing === 0) {
       ctx.fillText(line.text, line.x, line.baseline);

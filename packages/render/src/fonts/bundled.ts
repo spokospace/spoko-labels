@@ -37,6 +37,9 @@ const HARMONY_RANGES: [number, number][] = [
   [0x301d, 0x301e], [0x30fb, 0x30fb],
 ];
 
+// Medium is registered as the regular face, as in the prototype (and the NIIMBOT app's default weight).
+const HARMONY = { family: "HarmonyOS Sans", ascent: 0.928, descent: 0.244, unicodeRanges: HARMONY_RANGES };
+
 const file = (name: string): URL => new URL(`../../fonts/${name}`, import.meta.url);
 
 /**
@@ -46,19 +49,6 @@ const file = (name: string): URL => new URL(`../../fonts/${name}`, import.meta.u
  */
 export const bundledFonts: readonly FontSource[] = Object.freeze([
   { family: "Viga", data: file("Viga-Regular.ttf"), ascent: 1.015, descent: 0.329, unicodeRanges: VIGA_RANGES },
-  {
-    family: "HarmonyOS Sans",
-    data: file("HarmonyOS_Sans_Medium.ttf"),
-    ascent: 0.928,
-    descent: 0.244,
-    unicodeRanges: HARMONY_RANGES,
-  },
-  {
-    family: "HarmonyOS Sans",
-    bold: true,
-    data: file("HarmonyOS_Sans_Bold.ttf"),
-    ascent: 0.928,
-    descent: 0.244,
-    unicodeRanges: HARMONY_RANGES,
-  },
+  { ...HARMONY, data: file("HarmonyOS_Sans_Medium.ttf") },
+  { ...HARMONY, bold: true, data: file("HarmonyOS_Sans_Bold.ttf") },
 ]);

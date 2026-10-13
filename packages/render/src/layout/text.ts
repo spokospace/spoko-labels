@@ -122,17 +122,24 @@ const fits = (b: Block, box: DotRect): boolean => b.height <= box.height + 1 && 
  */
 export function layoutText(input: TextLayoutInput): TextLayout {
   const { box } = input;
+  const floor = Math.min(input.minPx, input.sizePx);
+  const tried = new Map<number, Block>();
+  const blockAt = (size: number): Block => {
+    let b = tried.get(size);
+    if (!b) tried.set(size, (b = block(input, size)));
+    return b;
+  };
   let px = input.sizePx;
-  let b = block(input, px);
+  let b = blockAt(px);
   let overflow = !fits(b, box);
 
   if (overflow && input.fit === "shrink") {
-    let lo = Math.min(input.minPx, input.sizePx);
+    let lo = floor;
     let hi = input.sizePx - 1;
     let best: { px: number; b: Block } | null = null;
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
-      const candidate = block(input, mid);
+      const candidate = blockAt(mid);
       if (fits(candidate, box)) {
         best = { px: mid, b: candidate };
         lo = mid + 1;
@@ -145,8 +152,8 @@ export function layoutText(input: TextLayoutInput): TextLayout {
       b = best.b;
       overflow = false;
     } else {
-      px = Math.min(input.minPx, input.sizePx);
-      b = block(input, px);
+      px = floor;
+      b = blockAt(px);
     }
   }
 

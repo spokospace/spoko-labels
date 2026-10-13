@@ -1,5 +1,5 @@
 import type { FontSource, RenderEnvironment } from "../environment/types.js";
-import type { IssueCode } from "../schema/issues.js";
+import type { RenderWarning } from "../schema/issues.js";
 
 /** Fonts loaded into one environment, ready for `render()`. Create it with `loadFonts()`. */
 export interface FontRegistry {
@@ -83,7 +83,7 @@ function coversText(face: Face, text: string): boolean {
 
 export interface FaceChoice {
   face: Face;
-  warnings: { code: IssueCode; path: string }[];
+  warnings: RenderWarning[];
 }
 
 /**

@@ -22,6 +22,12 @@ export type IssueCode =
   | "qr-too-long"
   | "qr-too-small";
 
+/** A non-fatal finding of `render()`: what and where (a JSON pointer into the input template). */
+export interface RenderWarning {
+  code: IssueCode;
+  path: string;
+}
+
 export interface TemplateIssue {
   /** "error" removes the element it belongs to, or makes the whole template unusable. */
   severity: "error" | "warning";
