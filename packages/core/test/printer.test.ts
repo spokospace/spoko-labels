@@ -133,7 +133,7 @@ describe("Printer.print: sequence", () => {
     const density = fake.written.find((p) => p.cmd === CMD.SET_DENSITY);
     const pageSize = fake.written.find((p) => p.cmd === CMD.SET_PAGE_SIZE);
     expect([...(density?.data ?? [])]).toEqual([B1.defaultDensity]);
-    expect([...(pageSize?.data ?? [])]).toEqual([0, ROWS.length + B1.topOffsetRows, 0x01, 0x80, 0, 1]);
+    expect([...(pageSize?.data ?? [])]).toEqual([0, ROWS.length + B1.offsetMm.y * B1.dotsPerMm, 0x01, 0x80, 0, 1]);
   });
 
   it("sends blank rows before the image, by default the model's top offset (the B1 loses its first rows otherwise)", async () => {
@@ -142,14 +142,26 @@ describe("Printer.print: sequence", () => {
     const rowPackets = fake.written.filter((p) => p.cmd === CMD.PRINT_EMPTY_ROW || p.cmd === CMD.PRINT_BITMAP_ROW);
     // one empty packet covering the offset rows (index 0, repeat 4), then the image row at index 4
     expect(rowPackets.map((p) => p.cmd)).toEqual([CMD.PRINT_EMPTY_ROW, CMD.PRINT_BITMAP_ROW]);
-    expect([...(rowPackets[0]?.data ?? [])]).toEqual([0, 0, B1.topOffsetRows]);
-    expect([...(rowPackets[1]?.data.slice(0, 2) ?? [])]).toEqual([0, B1.topOffsetRows]);
+    expect([...(rowPackets[0]?.data ?? [])]).toEqual([0, 0, B1.offsetMm.y * B1.dotsPerMm]);
+    expect([...(rowPackets[1]?.data.slice(0, 2) ?? [])]).toEqual([0, B1.offsetMm.y * B1.dotsPerMm]);
   });
 
-  it("topOffsetRows: 0 sends the image exactly as given, another value changes the page size", async () => {
+  it("offsetMm.x moves the image sideways, 8 dots per mm", async () => {
     const { fake, printer } = setup();
-    await settled(printer.print(ROWS, { topOffsetRows: 0 }));
-    await settled(printer.print(ROWS, { topOffsetRows: 10 }));
+    const image = new Uint8Array(48);
+    image[1] = 0x80; // dot 8
+    await settled(printer.print([image], { offsetMm: { x: 1, y: 0 } }));
+    await settled(printer.print([image], { offsetMm: { x: -1, y: 0 } }));
+    const rows = fake.written.filter((p) => p.cmd === CMD.PRINT_BITMAP_ROW).map((p) => [...p.data.slice(6)]);
+    const setDots = (bytes: number[]) => bytes.flatMap((b, i) => [...Array(8).keys()].filter((bit) => b & (0x80 >> bit)).map((bit) => i * 8 + bit));
+    expect(setDots(rows[0] ?? [])).toEqual([16]);
+    expect(setDots(rows[1] ?? [])).toEqual([0]);
+  });
+
+  it("offsetMm.y 0 sends the image exactly as given, another value changes the page size (8 rows per mm)", async () => {
+    const { fake, printer } = setup();
+    await settled(printer.print(ROWS, { offsetMm: { y: 0 } }));
+    await settled(printer.print(ROWS, { offsetMm: { y: 1.25 } }));
     const sizes = fake.written.filter((p) => p.cmd === CMD.SET_PAGE_SIZE).map((p) => (p.data[0] as number) * 256 + (p.data[1] as number));
     expect(sizes).toEqual([ROWS.length, ROWS.length + 10]);
   });
@@ -319,9 +331,11 @@ describe("Printer.print: argument validation", () => {
     ["fractional density", [ROWS, { density: 2.5 }]],
     ["zero copies", [ROWS, { copies: 0 }]],
     ["too many copies", [ROWS, { copies: 256 }]],
-    ["negative top offset", [ROWS, { topOffsetRows: -1 }]],
-    ["top offset above the limit", [ROWS, { topOffsetRows: 81 }]],
-    ["fractional top offset", [ROWS, { topOffsetRows: 1.5 }]],
+    ["negative vertical offset", [ROWS, { offsetMm: { y: -0.5 } }]],
+    ["vertical offset above the limit", [ROWS, { offsetMm: { y: 10.5 } }]],
+    ["vertical offset that is not a number", [ROWS, { offsetMm: { y: Number.NaN } }]],
+    ["horizontal offset beyond the limit", [ROWS, { offsetMm: { x: 8.5 } }]],
+    ["horizontal offset beyond the limit to the left", [ROWS, { offsetMm: { x: -8.5 } }]],
     ["fractional copies", [ROWS, { copies: 1.5 }]],
     ["no rows", [[]]],
     ["a row of the wrong length", [[row(0), new Uint8Array(47)]]],

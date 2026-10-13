@@ -1,6 +1,6 @@
 export { CMD, INFO_KEY } from "./protocol/commands.js";
 export { encodePacket, PacketParser, type Packet, type ParsedFrame } from "./protocol/packet.js";
-export { encodeRows, MAX_ROWS } from "./protocol/rows.js";
+export { encodeRows, MAX_ROWS, shiftRows } from "./protocol/rows.js";
 export { imageToRows, type ImageLike } from "./image.js";
 export { B1, type PrinterModel } from "./model.js";
 export type { Transport } from "./transport.js";

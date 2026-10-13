@@ -62,7 +62,8 @@
       <label>Test label <select id="label"></select></label>
       <label>Density <input id="density" type="number" step="1" size="3"></label>
       <label>Copies <input id="copies" type="number" min="1" max="255" value="1" step="1" size="3"></label>
-      <label>Top offset (rows) <input id="topoffset" type="number" min="0" max="80" step="1" size="3" title="Blank rows sent before the image; 8 rows = 1 mm"></label>
+      <label>Offset right (mm) <input id="offsetx" type="number" min="-8" max="8" step="0.125" size="4" title="Calibration: move the image right (negative: left), 8 dots = 1 mm"></label>
+      <label>Offset down (mm) <input id="offsety" type="number" min="0" max="10" step="0.125" size="4" title="Calibration: move the image down, 8 rows = 1 mm"></label>
     </div>
     <canvas id="preview" width="384" height="240"></canvas>
     <p class="hint">The preview shows exactly the black and white dots that will be sent (384 x 240 dots, 48 x 30 mm).</p>

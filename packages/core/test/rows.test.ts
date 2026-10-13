@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CMD, encodeRows, InvalidArgumentError, PacketParser } from "../src/index.js";
+import { CMD, encodeRows, InvalidArgumentError, PacketParser, shiftRows } from "../src/index.js";
 import { fromHex, toHex } from "./helpers.js";
 import { rowVectors } from "./fixtures/prototype-vectors.js";
 
@@ -66,5 +66,33 @@ describe("encodeRows", () => {
     expect(() => encodeRows([new Uint8Array(47)], 48)).toThrow(InvalidArgumentError);
     expect(() => encodeRows([row(0), new Uint8Array(49)], 48)).toThrow(/Row 1/);
     expect(() => encodeRows(new Array(65536).fill(row(0)), 48)).toThrow(InvalidArgumentError);
+  });
+});
+
+describe("shiftRows", () => {
+  const dots = (row: Uint8Array) => [...row].flatMap((b, i) => [...Array(8).keys()].filter((bit) => b & (0x80 >> bit)).map((bit) => i * 8 + bit));
+  const one = (...set: number[]) => {
+    const r = new Uint8Array(4);
+    for (const d of set) r[d >> 3] = (r[d >> 3] as number) | (0x80 >> (d & 7));
+    return r;
+  };
+
+  it("moves dots right and left, crossing byte boundaries", () => {
+    expect(dots(shiftRows([one(3, 8, 20)], 5)[0] as Uint8Array)).toEqual([8, 13, 25]);
+    expect(dots(shiftRows([one(3, 8, 20)], -3)[0] as Uint8Array)).toEqual([0, 5, 17]);
+  });
+
+  it("drops dots that leave the row and leaves the vacated side white", () => {
+    expect(dots(shiftRows([one(0, 1, 31)], 1)[0] as Uint8Array)).toEqual([1, 2]);
+    expect(dots(shiftRows([one(0, 30, 31)], -1)[0] as Uint8Array)).toEqual([29, 30]);
+    expect(shiftRows([one(5)], 40)[0]).toEqual(new Uint8Array(4));
+  });
+
+  it("returns equal rows for a shift of 0 and never changes its input", () => {
+    const input = [one(2, 9)];
+    const before = Uint8Array.from(input[0] as Uint8Array);
+    expect(shiftRows(input, 0)).toEqual(input);
+    shiftRows(input, 7);
+    expect(input[0]).toEqual(before);
   });
 });

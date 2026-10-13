@@ -238,11 +238,11 @@ let controller = null;
 function options(extra = {}) {
   const density = Number($("density").value);
   const copies = Number($("copies").value);
-  const topOffsetRows = Number($("topoffset").value);
+  const offsetMm = { x: Number($("offsetx").value), y: Number($("offsety").value) };
   return {
     density,
     copies,
-    topOffsetRows,
+    offsetMm,
     signal: controller?.signal,
     onProgress: ({ stage, percent }) => {
       $("progress").value = percent;
@@ -257,7 +257,7 @@ async function runPrint(name, rows, extra) {
   controller = new AbortController();
   $("progress").value = 0;
   const opts = options(extra);
-  log(`${name}: print(density=${opts.density}, copies=${opts.copies}, topOffsetRows=${opts.topOffsetRows}) ...`);
+  log(`${name}: print(density=${opts.density}, copies=${opts.copies}, offsetMm=${JSON.stringify(opts.offsetMm)}) ...`);
   const start = performance.now();
   try {
     await printer.print(rows, opts);
@@ -336,7 +336,8 @@ $("label").addEventListener("change", updatePreview);
 $("density").min = String(B1.densityRange.min);
 $("density").max = String(B1.densityRange.max);
 $("density").value = String(B1.defaultDensity);
-$("topoffset").value = String(B1.topOffsetRows);
+$("offsetx").value = String(B1.offsetMm.x);
+$("offsety").value = String(B1.offsetMm.y);
 updatePreview();
 refresh();
 log(`Page loaded. B1 density range in the library: ${B1.densityRange.min}..${B1.densityRange.max}.`);
