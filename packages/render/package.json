@@ -17,13 +17,15 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "example": "pnpm --filter @spokospace/labels-core --filter @spokospace/labels-render build && node examples/serve.mjs"
   },
   "dependencies": {
     "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@napi-rs/canvas": "1.0.11",
+    "@spokospace/labels-core": "workspace:*",
     "@types/node": "22.20.5"
   }
 }
