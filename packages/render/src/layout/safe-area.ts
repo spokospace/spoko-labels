@@ -22,16 +22,17 @@ const EPSILON = 1e-6;
  * Where a rectangle sits relative to the label. Returns at most one of `outside-label` (reaches past the
  * label size) and `outside-safe-area` (inside the label but leaves the shape inset by `safeMargin`), plus
  * `outside-printable-area` when `printableWidth` is given and the rectangle leaves the centered strip the
- * print head covers. Works for element boxes and for what the renderer actually drew.
+ * print head covers. With `drawn` (what the renderer actually painted rather than an element box) leaving
+ * the label is reported as `outside-safe-area`: `outside-label` describes element boxes only.
  */
-export function checkPlacement(rect: Rect, label: LabelGeometry, printableWidth?: number): IssueCode[] {
+export function checkPlacement(rect: Rect, label: LabelGeometry, printableWidth?: number, drawn = false): IssueCode[] {
   const codes: IssueCode[] = [];
   const { width, height } = label.size;
   const right = rect.x + rect.width;
   const bottom = rect.y + rect.height;
 
   if (rect.x < -EPSILON || rect.y < -EPSILON || right > width + EPSILON || bottom > height + EPSILON) {
-    codes.push("outside-label");
+    codes.push(drawn ? "outside-safe-area" : "outside-label");
   } else if (!corners(rect).every(([px, py]) => insideSafeArea(px, py, label))) {
     // Both the rectangle and every supported safe area are convex, so checking the corners is enough.
     codes.push("outside-safe-area");
