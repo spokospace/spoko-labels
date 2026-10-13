@@ -74,6 +74,7 @@ const REPLY: Readonly<Record<number, number>> = {
   [CMD.GET_INFO]: 0x4a,
 };
 
+/** Status of a finished job: page 1 (16-bit), both progress counters at 100. */
 const DONE: number[] = [0, 1, 100, 100];
 
 export interface AutoReplyOptions {

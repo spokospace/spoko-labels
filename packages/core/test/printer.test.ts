@@ -74,7 +74,22 @@ describe("Printer.info", () => {
         [INFO_KEY.FIRMWARE]: [0x05, 0x1a],
       },
     });
-    expect(await settled(printer.info())).toEqual({ battery: 3, serial: "TEST-0001", firmware: "1306" });
+    expect(await settled(printer.info())).toEqual({
+      battery: 3,
+      serial: "TEST-0001",
+      firmware: "5.26",
+      firmwareRaw: 1306,
+    });
+  });
+
+  it.each([
+    [[0x05, 0x1a], "5.26", 1306], // B1 firmware shown as 5.26 by the official app
+    [[0x05, 0x0a], "5.10", 1290],
+    [[0x00, 0x05], "0.05", 5],
+    [[0x0d, 0xff], "13.255", 3583],
+  ])("formats the firmware value %j as %s", async (bytes, formatted, raw) => {
+    const { printer } = setup({ info: { [INFO_KEY.FIRMWARE]: bytes } });
+    expect(await settled(printer.info())).toEqual({ firmware: formatted, firmwareRaw: raw });
   });
 
   it("leaves out values the printer does not answer", async () => {
@@ -104,7 +119,7 @@ describe("Printer.info", () => {
 });
 
 describe("Printer.print: sequence", () => {
-  it.each(sequenceVectors)("writes the prototype packet sequence: $name", async ({ density, copies, rows, packets }) => {
+  it.each(sequenceVectors)("writes the prototype packet sequence (plus the B1 top offset): $name", async ({ density, copies, rows, packets }) => {
     const { fake, printer } = setup();
     await settled(printer.print(rows.map(fromHex), { density, copies }));
     const written = fake.written.map((p) => toHex(encodePacket(p.cmd, p.data)));
@@ -118,7 +133,37 @@ describe("Printer.print: sequence", () => {
     const density = fake.written.find((p) => p.cmd === CMD.SET_DENSITY);
     const pageSize = fake.written.find((p) => p.cmd === CMD.SET_PAGE_SIZE);
     expect([...(density?.data ?? [])]).toEqual([B1.defaultDensity]);
-    expect([...(pageSize?.data ?? [])]).toEqual([0, ROWS.length, 0x01, 0x80, 0, 1]);
+    expect([...(pageSize?.data ?? [])]).toEqual([0, ROWS.length + B1.offsetMm.y * B1.dotsPerMm, 0x01, 0x80, 0, 1]);
+  });
+
+  it("sends blank rows before the image, by default the model's top offset (the B1 loses its first rows otherwise)", async () => {
+    const { fake, printer } = setup();
+    await settled(printer.print([row(0xff)]));
+    const rowPackets = fake.written.filter((p) => p.cmd === CMD.PRINT_EMPTY_ROW || p.cmd === CMD.PRINT_BITMAP_ROW);
+    // one empty packet covering the offset rows (index 0, repeat 4), then the image row at index 4
+    expect(rowPackets.map((p) => p.cmd)).toEqual([CMD.PRINT_EMPTY_ROW, CMD.PRINT_BITMAP_ROW]);
+    expect([...(rowPackets[0]?.data ?? [])]).toEqual([0, 0, B1.offsetMm.y * B1.dotsPerMm]);
+    expect([...(rowPackets[1]?.data.slice(0, 2) ?? [])]).toEqual([0, B1.offsetMm.y * B1.dotsPerMm]);
+  });
+
+  it("offsetMm.x moves the image sideways, 8 dots per mm", async () => {
+    const { fake, printer } = setup();
+    const image = new Uint8Array(48);
+    image[1] = 0x80; // dot 8
+    await settled(printer.print([image], { offsetMm: { x: 1, y: 0 } }));
+    await settled(printer.print([image], { offsetMm: { x: -1, y: 0 } }));
+    const rows = fake.written.filter((p) => p.cmd === CMD.PRINT_BITMAP_ROW).map((p) => [...p.data.slice(6)]);
+    const setDots = (bytes: number[]) => bytes.flatMap((b, i) => [...Array(8).keys()].filter((bit) => b & (0x80 >> bit)).map((bit) => i * 8 + bit));
+    expect(setDots(rows[0] ?? [])).toEqual([16]);
+    expect(setDots(rows[1] ?? [])).toEqual([0]);
+  });
+
+  it("offsetMm.y 0 sends the image exactly as given, another value changes the page size (8 rows per mm)", async () => {
+    const { fake, printer } = setup();
+    await settled(printer.print(ROWS, { offsetMm: { y: 0 } }));
+    await settled(printer.print(ROWS, { offsetMm: { y: 1.25 } }));
+    const sizes = fake.written.filter((p) => p.cmd === CMD.SET_PAGE_SIZE).map((p) => (p.data[0] as number) * 256 + (p.data[1] as number));
+    expect(sizes).toEqual([ROWS.length, ROWS.length + 10]);
   });
 
   it("is not confused by unsolicited 0xD3 packets, including right before the PageEnd reply", async () => {
@@ -214,6 +259,50 @@ describe("Printer.print: status polling", () => {
     expect(calls).toBe(3);
   });
 
+  it("prints each copy as its own job (a copy count inside the page size packet printed one label on a B1)", async () => {
+    const { fake, printer } = setup();
+    await settled(printer.print(ROWS, { copies: 3 }));
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(3);
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_END)).toHaveLength(3);
+    const pageSizes = fake.written.filter((p) => p.cmd === CMD.SET_PAGE_SIZE).map((p) => p.data[5]);
+    expect(pageSizes).toEqual([1, 1, 1]);
+    expect(fake.cmds.filter((c) => c === CMD.CONNECT)).toHaveLength(1);
+  });
+
+  it("reports progress across all copies, ending at 100", async () => {
+    const { printer } = setup();
+    const events: PrintProgress[] = [];
+    await settled(printer.print(ROWS, { copies: 2, onProgress: (p) => events.push(p) }));
+    const sending = events.filter((e) => e.stage === "sending").map((e) => e.percent);
+    expect(sending).toEqual([...sending].sort((a, b) => a - b));
+    expect(Math.max(...sending)).toBe(100);
+    expect(sending.some((p) => p > 0 && p < 50)).toBe(true);
+  });
+
+  it("stops the remaining copies when a job fails", async () => {
+    const { fake, printer } = setup({ refuse: [CMD.PRINT_START] });
+    expect(await rejection(printer.print(ROWS, { copies: 3 }))).toBeInstanceOf(RefusedError);
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(1);
+  });
+
+  it("aborting between copies stops the next job", async () => {
+    const { fake, printer } = setup();
+    const controller = new AbortController();
+    const print = printer.print(ROWS, {
+      copies: 3,
+      signal: controller.signal,
+      onProgress: (p) => p.stage === "printing" && controller.abort(),
+    });
+    expect(await rejection(print)).toBeInstanceOf(AbortedError);
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(1);
+  });
+
+  it("does not finish a one-copy job on a status for another page", async () => {
+    const { fake, printer } = setup({ status: [[0, 0, 100, 100], [0, 1, 100, 100]] });
+    await settled(printer.print(ROWS));
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_STATUS)).toHaveLength(2);
+  });
+
   it("times out after 30 s for one copy", async () => {
     const { printer } = setup({ status: [[0, 1, 10, 10]] });
     const start = Date.now();
@@ -223,13 +312,10 @@ describe("Printer.print: status polling", () => {
     expect(elapsed).toBeLessThan(33_000);
   });
 
-  it("allows 5 s more per extra copy", async () => {
-    const { printer } = setup({ status: [[0, 1, 10, 10]] });
-    const start = Date.now();
+  it("applies the 30 s poll budget to each copy separately", async () => {
+    const { fake, printer } = setup({ status: [[0, 1, 10, 10]] });
     expect(await rejection(printer.print(ROWS, { copies: 3 }))).toBeInstanceOf(PrintTimeoutError);
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeGreaterThanOrEqual(40_000);
-    expect(elapsed).toBeLessThan(43_000);
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(1);
   });
 
   it("times out when the printer never answers the status poll", async () => {
@@ -244,7 +330,12 @@ describe("Printer.print: argument validation", () => {
     ["density above the range", [ROWS, { density: B1.densityRange.max + 1 }]],
     ["fractional density", [ROWS, { density: 2.5 }]],
     ["zero copies", [ROWS, { copies: 0 }]],
-    ["too many copies", [ROWS, { copies: 65536 }]],
+    ["too many copies", [ROWS, { copies: 256 }]],
+    ["negative vertical offset", [ROWS, { offsetMm: { y: -0.5 } }]],
+    ["vertical offset above the limit", [ROWS, { offsetMm: { y: 10.5 } }]],
+    ["vertical offset that is not a number", [ROWS, { offsetMm: { y: Number.NaN } }]],
+    ["horizontal offset beyond the limit", [ROWS, { offsetMm: { x: 8.5 } }]],
+    ["horizontal offset beyond the limit to the left", [ROWS, { offsetMm: { x: -8.5 } }]],
     ["fractional copies", [ROWS, { copies: 1.5 }]],
     ["no rows", [[]]],
     ["a row of the wrong length", [[row(0), new Uint8Array(47)]]],
@@ -256,11 +347,11 @@ describe("Printer.print: argument validation", () => {
     expect(fake.written).toHaveLength(0);
   });
 
-  it("accepts the range limits and the maximum copies", async () => {
+  it("accepts the density limits and the maximum copies", async () => {
     const { fake, printer } = setup();
     await settled(printer.print(ROWS, { density: B1.densityRange.min }));
-    await settled(printer.print(ROWS, { density: B1.densityRange.max, copies: 65535 }));
-    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(2);
+    await settled(printer.print(ROWS, { density: B1.densityRange.max, copies: 255 }));
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(1 + 255);
   });
 
   it("rejects when the link is down, without writing", async () => {

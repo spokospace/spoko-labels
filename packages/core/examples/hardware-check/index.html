@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>labels-core hardware check</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 56rem; margin: 0 auto; padding: 1rem; line-height: 1.4; }
+    h1 { font-size: 1.3rem; }
+    section { border: 1px solid #8884; border-radius: 8px; padding: .75rem 1rem; margin: 1rem 0; }
+    h2 { font-size: 1rem; margin: 0 0 .5rem; }
+    button, select, input { font: inherit; padding: .35rem .6rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .4rem 0; }
+    #preview { border: 1px solid #8886; background: #fff; image-rendering: pixelated; max-width: 100%; }
+    #log { width: 100%; height: 18rem; font: .8rem ui-monospace, monospace; box-sizing: border-box; }
+    #status { font-weight: 600; }
+    progress { width: 12rem; }
+    .hint { opacity: .75; font-size: .9rem; }
+    details { border: 1px solid #8884; border-radius: 8px; padding: .5rem 1rem; margin: 1rem 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    .help p { margin: .5rem 0; font-size: .92rem; }
+    code { font: .85em ui-monospace, monospace; background: #8882; padding: 0 .25rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>labels-core hardware check</h1>
+  <p class="hint">Close the NIIMBOT phone app first. Use Chrome or Edge. Every button logs what happened; use "Copy log" and paste it into the pull request.</p>
+  <p id="status">Checking browser…</p>
+
+  <details>
+    <summary>Bluetooth does not work? Browser and system setup</summary>
+    <div class="help">
+      <p><strong>Chrome and Edge</strong> (Windows, macOS, Linux, Android): nothing to enable. The page must be opened from <code>http://localhost</code> or <code>https://</code>, and Bluetooth must be on in the operating system.</p>
+      <p><strong>Brave</strong>: Web Bluetooth is off by default. Open <code>brave://flags/#brave-web-bluetooth-api</code>, set it to <em>Enabled</em>, then use <em>Relaunch</em>. Without it the chooser fails with "Web Bluetooth API globally disabled".</p>
+      <p><strong>Firefox, Safari and every browser on iOS</strong>: no Web Bluetooth, use Chrome, Edge or Brave on a computer or Android.</p>
+      <p><strong>Windows</strong>: turn Bluetooth on in Settings, Bluetooth &amp; devices. The B1 may already show as paired; that is fine.</p>
+      <p><strong>Printer</strong>: switched on, label roll inserted, lid closed. Close the NIIMBOT app on your phone, because a printer connected to a phone stops advertising and is not listed. The official Windows app talks to the B1 over a USB cable, so it does not block Bluetooth.</p>
+      <p><strong>Chooser closes by itself</strong>: click <em>Pair</em> soon after the printer appears in the list.</p>
+      <p><strong>Reconnect without the chooser</strong> (experimental): enable <code>chrome://flags/#enable-web-bluetooth-new-permissions-backend</code> (or the same address with <code>brave://</code> or <code>edge://</code>), relaunch, connect once, then use "Reconnect". Without the flag it always answers "resolved null".</p>
+    </div>
+  </details>
+
+  <section>
+    <h2>1. Connection</h2>
+    <div class="row">
+      <button id="connect">Connect (chooser)</button>
+      <button id="reconnect">Reconnect (experimental)</button>
+      <button id="disconnect">Disconnect</button>
+      <label><input type="checkbox" id="rawlog"> log raw packets</label>
+    </div>
+    <div class="row">
+      <button id="info">info()</button>
+      <button id="probe" title="Needs 'log raw packets'">Probe label / status (read-only)</button>
+    </div>
+    <p class="hint">Probe sends read-only queries (heartbeat, RFID, printer settings) and shows the raw replies. Tick "log raw packets" before connecting. Run it once per label roll, with the lid closed. The serial number is never written to the log.</p>
+  </section>
+
+  <section>
+    <h2>2. Print</h2>
+    <div class="row">
+      <label>Test label <select id="label"></select></label>
+      <label>Density <input id="density" type="number" step="1" size="3"></label>
+      <label>Copies <input id="copies" type="number" min="1" max="255" value="1" step="1" size="3"></label>
+      <label>Offset right (mm) <input id="offsetx" type="number" min="-8" max="8" step="0.125" size="4" title="Calibration: move the image right (negative: left), 8 dots = 1 mm"></label>
+      <label>Offset down (mm) <input id="offsety" type="number" min="0" max="10" step="0.125" size="4" title="Calibration: move the image down, 8 rows = 1 mm"></label>
+    </div>
+    <canvas id="preview" width="384" height="240"></canvas>
+    <p class="hint">The preview shows exactly the black and white dots that will be sent (384 x 240 dots, 48 x 30 mm).</p>
+    <div class="row">
+      <button id="print">Print</button>
+      <button id="abort" disabled>Abort</button>
+      <button id="sweep">Density sweep (min, default, max)</button>
+      <progress id="progress" max="100" value="0"></progress>
+      <span id="stage"></span>
+    </div>
+    <div class="row">
+      <button id="abortAfterRows">Print, abort after first row packet</button>
+      <button id="abortWhilePolling">Print, abort during status polling</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Log</h2>
+    <div class="row"><button id="copy">Copy log</button><button id="clear">Clear</button></div>
+    <textarea id="log" readonly></textarea>
+  </section>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

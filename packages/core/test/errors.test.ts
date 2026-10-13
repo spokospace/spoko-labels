@@ -59,5 +59,7 @@ describe("B1 model", () => {
     expect(B1.densityRange.min).toBeLessThanOrEqual(B1.defaultDensity);
     expect(B1.densityRange.max).toBeGreaterThanOrEqual(B1.defaultDensity);
     expect(B1.rowGapMs).toBe(10);
+    expect(B1.dotsPerMm).toBe(8);
+    expect(B1.offsetMm.y).toBeGreaterThanOrEqual(0);
   });
 });

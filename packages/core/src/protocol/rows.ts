@@ -57,3 +57,20 @@ export function encodeRows(rows: readonly Uint8Array[], rowBytes: number): Uint8
   }
   return packets;
 }
+
+/**
+ * Move every row sideways by `dots` (positive is right, negative is left). Dots that leave the row are
+ * dropped and the vacated side is white.
+ */
+export function shiftRows(rows: readonly Uint8Array[], dots: number): Uint8Array[] {
+  if (dots === 0) return [...rows];
+  return rows.map((row) => {
+    const out = new Uint8Array(row.length);
+    const width = row.length * 8;
+    for (let i = Math.max(0, dots); i < Math.min(width, width + dots); i++) {
+      const from = i - dots;
+      if ((row[from >> 3] as number) & (0x80 >> (from & 7))) out[i >> 3] = (out[i >> 3] as number) | (0x80 >> (i & 7));
+    }
+    return out;
+  });
+}
