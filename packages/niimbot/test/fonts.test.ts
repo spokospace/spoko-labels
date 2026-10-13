@@ -52,6 +52,14 @@ describe("niimbotFonts", () => {
     expect([...render, ...ours].sort()).toEqual([...new Set(Object.values(NIIMBOT_FONT_FAMILIES))].sort());
   });
 
+  it("cover every Polish letter", () => {
+    const polish = [..."ąćęłńóśźżĄĆĘŁŃÓŚŹŻ"].map((c) => c.codePointAt(0) ?? 0);
+    for (const font of niimbotFonts) {
+      const missing = polish.filter((cp) => !font.unicodeRanges.some(([from, to]) => cp >= from && cp <= to));
+      expect(missing.map((cp) => String.fromCodePoint(cp)), font.family).toEqual([]);
+    }
+  });
+
   it("have a bold face only for Inconsolata", () => {
     expect(niimbotFonts.filter((f) => f.bold).map((f) => f.family)).toEqual(["Inconsolata"]);
   });

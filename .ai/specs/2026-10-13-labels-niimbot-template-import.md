@@ -287,7 +287,7 @@ The family names below become part of imported templates, so this spec fixes the
 - Each file has its `OFL-<Family>.txt` next to it in `packages/niimbot/fonts/`. `fonts/README.md` lists the source URL, commit, license and SHA-256 for each file, and a test asserts the hashes, as in `labels-render`.
 - Metrics (`hhea` ascent and descent per em) and `unicodeRanges` are measured with `fontTools` when the files are added. Fonts that lack Polish letters are fine: every imported family other than HarmonyOS Sans carries `fallback: ["HarmonyOS Sans"]`, so render's family choice switches to it with no warning.
 - Bold faces ship only where upstream has a static bold (Inconsolata). Elsewhere `bold: true` renders the regular face with render's `missing-font` at `/font/bold`, the same rule as Viga.
-- Total is about 0.9 MB, loaded only when a host passes `niimbotFonts` to `loadFonts()`.
+- Total is about 0.8 MB, loaded only when a host passes `niimbotFonts` to `loadFonts()`.
 - **Not bundled (maintainer's decision):** `ZT636`, `ZT681` and `ZT453`, three Chinese display fonts found in real templates. Their licenses cannot be verified, and they are several MB each. They import with the catalogue's family name, `fallback: ["HarmonyOS Sans"]` and `unknown-font`. The catalogue's `fileName` is used as is, trimmed, at most 100 characters. It is not always a clean family name: for `ZT063` it reads "Markazi Text Bold". A host that holds a license can register a font under that family name.
 - Any other code from the roughly 680 in the catalogue behaves the same. Adding one to the table later changes the import output for templates that use it, so it gets a changelog entry under the import-output rules.
 
@@ -329,7 +329,7 @@ States:
 - **Unstable source.** The Isar layout and the element keys are NIIMBOT's private format. The scanner is heuristic. Mitigation: it fails soft, warns per template, and is tested against a synthetic byte layout recorded from the observed shape. A layout change in the app is a bug fix in this package, not a breaking change for hosts.
 - **Protected output.** From the first release, the same Niimbot input must give the same v1 JSON (`BACKWARD_COMPATIBILITY.md`, "Niimbot import output"). This covers mapping changes too: the font table, the 1.65× factor, alignment readings and clamping. Snapshot tests on made-up fixtures pin it; any snapshot change needs a changelog entry.
 - **Fidelity.** The 1.65× factor, the line placement and the vertical align 3 → bottom reading were measured against app thumbnails, not specified by NIIMBOT. The hardware check compares printed labels with the app's own prints on 50×30 only.
-- **Fonts.** Four OFL families, about 0.9 MB, ship only with this package. The HarmonyOS Sans license (revocable) is handled by `labels-render`.
+- **Fonts.** Four OFL families, about 0.8 MB, ship only with this package. The HarmonyOS Sans license (revocable) is handled by `labels-render`.
 - **Privacy.** No real template, roll id, data-source id or URL appears in fixtures, tests or docs. Fixtures are built by a script from made-up values.
 - **Dependencies.** No new third-party runtime dependency. The font files are assets, not packages.
 
