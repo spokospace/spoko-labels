@@ -17,6 +17,8 @@
     #status { font-weight: 600; }
     progress { width: 12rem; }
     .hint { opacity: .75; font-size: .9rem; }
+    .notice { border: 1px solid #d9822b; background: #d9822b22; border-radius: 8px; padding: .6rem 1rem; margin: 1rem 0; }
+    .notice a { margin-left: .5rem; font-weight: 600; }
     details { border: 1px solid #8884; border-radius: 8px; padding: .5rem 1rem; margin: 1rem 0; }
     summary { cursor: pointer; font-weight: 600; }
     .help p { margin: .5rem 0; font-size: .92rem; }
@@ -27,6 +29,11 @@
   <h1>labels-core hardware check</h1>
   <p class="hint">Close the NIIMBOT phone app first. Use Chrome or Edge. Every button logs what happened; use "Copy log" and paste it into the pull request.</p>
   <p id="status">Checking browser…</p>
+  <div id="btnotice" class="notice" hidden>
+    <strong>Bluetooth is switched off or there is no Bluetooth adapter.</strong>
+    Turn it on in the system settings; this notice disappears by itself.
+    <a id="btsettings" href="ms-settings:bluetooth" hidden>Open the Windows Bluetooth settings</a>
+  </div>
 
   <details>
     <summary>Bluetooth does not work? Browser and system setup</summary>
