@@ -16,28 +16,30 @@ export const TEMPLATES = [
       shape: ROUNDED,
       // Keep 1 mm clear of the edge: the dashed line in the preview.
       safeMargin: 1,
+      // Geometry of a layout proven in the NIIMBOT app: code, rule at 9.5 mm, name beside a 16.8 mm QR box
+      // that leaves about 1.9 mm under the rule, reversed shelf code at the bottom left.
       elements: [
-        { type: "text", x: 2, y: 2, width: 46, height: 7, content: { bind: "Code" }, font: { family: "Viga", size: 6 } },
-        { type: "line", x: 2, y: 9.5, width: 46, height: 0.4 },
+        { type: "text", x: 2, y: 2.5, width: 46, height: 7, content: { bind: "Code" }, font: { family: "Viga", size: 6 } },
+        { type: "line", x: 2.5, y: 9.5, width: 45.5, height: 0.4 },
         {
           type: "text",
-          x: 2,
-          y: 11,
-          width: 30,
-          height: 10,
+          x: 2.5,
+          y: 11.4,
+          width: 28.2,
+          height: 9.4,
           content: { bind: "Name" },
           // Bold: 3-4 dot strokes come out smoother at 203 dpi than Medium's 2-3 dots.
           font: { family: "HarmonyOS Sans", size: 3.2, bold: true },
           wrap: true,
         },
-        // 16 mm box: a 21-module code at 6 dots per module (15.75 mm), as large as the prototype's.
-        { type: "qr", x: 32.5, y: 10, width: 16, height: 16, content: { bind: "Code" }, level: "M" },
+        // A 21-module code at 6 dots per module (15.75 mm), centered in the box.
+        { type: "qr", x: 31.3, y: 11.3, width: 16.8, height: 16.8, content: { bind: "Code" }, level: "M" },
         {
           type: "text",
           x: 2,
-          y: 22,
-          width: 22,
-          height: 6,
+          y: 22.2,
+          width: 18.2,
+          height: 5.8,
           content: { bind: "Shelf" },
           font: { family: "HarmonyOS Sans", size: 4.5, bold: true },
           reverse: true,
