@@ -50,6 +50,7 @@ let image = null; // last rendered image, or null when the template cannot rende
 
 let printer = null;
 let printing = false;
+let readCount = 0; // the latest file pick wins over a slower earlier one
 
 // ---- helpers ----
 
@@ -79,15 +80,17 @@ function fill(list, entries, empty = "None.") {
 // ---- reading the file ----
 
 async function readFile(file) {
+  const read = ++readCount;
   $("filestatus").className = "";
   $("filestatus").textContent = "Reading…";
   let bytes;
   try {
     bytes = new Uint8Array(await file.arrayBuffer());
   } catch {
-    showFileError("Could not read the file; close the NIIMBOT app and try again.");
+    if (read === readCount) showFileError("Could not read the file; close the NIIMBOT app and try again.");
     return;
   }
+  if (read !== readCount) return;
   let extracted;
   try {
     extracted = extractTemplates(bytes);
@@ -109,7 +112,8 @@ async function readFile(file) {
     ...imported.map((t, i) => {
       const tr = document.createElement("tr");
       const { width, height } = t.template.size;
-      for (const text of [t.template.name ?? "(no name)", `${width} x ${height}`, String(t.template.elements.length), String(t.warnings.length)]) {
+      const families = [...new Set(t.template.elements.map((e) => e.font?.family).filter(Boolean))].join(", ");
+      for (const text of [t.template.name ?? "(no name)", `${width} x ${height}`, families, String(t.template.elements.length), String(t.warnings.length)]) {
         const td = document.createElement("td");
         td.textContent = text;
         tr.append(td);
@@ -201,8 +205,12 @@ function scheduleDraw() {
 }
 
 function draw() {
-  if (!fonts || !selected) return;
+  if (!selected) return;
   const list = $("renderwarnings");
+  if (!fonts) {
+    fill(list, [item(fontError ?? "Fonts are still loading…")]);
+    return;
+  }
   try {
     const result = render(selected.template, { row, columns }, { environment, fonts, printableWidth: HEAD_MM });
     image = result.image;
@@ -220,6 +228,7 @@ function paint() {
   const overlay = $("overlay");
   if (!image) {
     canvas.width = canvas.height = overlay.width = overlay.height = 1;
+    canvas.style.width = canvas.style.height = "";
     $("size").textContent = "The template cannot be rendered; see the warnings.";
     return;
   }
@@ -356,9 +365,12 @@ $("showoverlay").addEventListener("change", paintOverlay);
 $("unsupported").hidden = WebBluetoothTransport.isSupported();
 $("file").addEventListener("change", () => {
   const file = $("file").files?.[0];
+  // Cleared, so picking the same file again (after closing the app, or after editing in it) reads it again.
+  $("file").value = "";
   if (file) void readFile(file);
 });
 
+let fontError = null;
 const LOADING = "Loading fonts…";
 $("filestatus").textContent = LOADING;
 try {
@@ -367,6 +379,8 @@ try {
   if ($("filestatus").textContent === LOADING) $("filestatus").textContent = "";
   draw(); // a file picked while the fonts were loading
 } catch (error) {
+  fontError = `Fonts did not load: ${error.message}`;
   $("filestatus").className = "error";
-  $("filestatus").textContent = `Fonts did not load: ${error.message}`;
+  $("filestatus").textContent = fontError;
+  draw();
 }
