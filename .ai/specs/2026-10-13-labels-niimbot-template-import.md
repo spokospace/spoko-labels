@@ -72,12 +72,12 @@ A small package with no runtime dependency other than `@spokospace/labels-render
 
   A missing `labelNames` array does not reject a recognized record. Such a record comes out without `rollNames` and reaches the `unknown-size` path.
 - Candidates are found in one linear pass. A JSON-aware bracket matcher (it tracks strings and escapes) finds each candidate's end, giving up past 256 kB. Only then is the slice parsed. After an accepted array, scanning resumes past its end, so the whole file is scanned in O(n) plus the parse of accepted arrays.
-  - Phase 3 detail: scanning resumes past the end of any value that closes, accepted or not (its nested arrays are never records). The matcher also gives up at a byte that cannot be JSON (a raw control byte, non-ASCII outside a string) or past 32 levels of nesting, which keeps scans of binary noise short, and the matching work over the whole file is capped at about 8 times its size, so crafted text full of unclosed `[{"` cannot stall the scan.
+  - Phase 3 detail: scanning resumes past the end of any value that closes, accepted or not (its nested arrays are never records). The matcher also gives up at a byte that cannot be JSON (a raw control byte, non-ASCII outside a string) or past 32 levels of nesting, which keeps scans of binary noise short, and the matching work over the whole file is capped at about 8 times its size, so crafted text full of unclosed `[{"` cannot stall the scan. Running out of that budget is reported as `scan-incomplete`. The font catalogue's backward search for an object's `{` stops at the previous `"code":"ZT` and is charged to the same budget.
 - The template's metadata is read from a bounded window around the array:
   - before it: the last timestamp within 2 kB;
   - after it, up to the next element array or 4 kB: the first `labelNames` array, and the name after the first `[0,0,0,0]`.
   - The name is read like the prototype does, without assuming a prefix format: skip at most 8 bytes outside printable UTF-8, then take the next run of 2 to 200 bytes of valid, printable UTF-8. The width and encoding of Isar's length prefix are not documented, and the scanner does not depend on them.
-  - Phase 3 refinement: in the observed file the skipped prefix reads `00 00 00 <length> 00 00`, and the byte after the name belongs to the next field and is often printable (the prototype stripped a trailing `H`). So when the last non-zero byte of the skipped prefix is reached inside the run, the name is cut there. Without such a byte the whole run is taken, so the scan still does not require the prefix format.
+  - Phase 3 refinement: in the observed file the skipped prefix reads `00 00 00 <length> 00 00` (a length from 32 to 126 is itself a printable byte, so a lone printable byte between non-printable ones counts as prefix), and the byte after the name belongs to the next field and is often printable (the prototype stripped a trailing `H`). So when the last non-zero byte of the skipped prefix is reached inside the run, the name is cut there. Without such a byte the whole run is taken, so the scan still does not require the prefix format.
 - Font catalogue objects are recognized by `"code":"ZT` followed by a parseable object with string `code` and `fileName`.
 - Duplicates (records with the same name, elements and roll) collapse silently. Same name with different content: the newest timestamp wins, with a `duplicate-template` warning, because Isar can leave stale copies. On equal or missing timestamps, the first in file order wins. Unnamed records collapse only when their content is identical.
 - **Order.** Templates come out in the file order of the kept copy. For the font catalogue, the first occurrence of a code wins.
@@ -243,6 +243,7 @@ Extraction warnings (`ExtractWarning { code, count? }`):
 |---|---|
 | `no-templates-found` | no element arrays found: not a NIIMBOT database, or the app changed its format |
 | `duplicate-template` | same name, different content; the newest copy was kept (`count` = copies dropped whose content differs from the kept one; one warning for the whole file) |
+| `scan-incomplete` | Phase 3 addition: the matching budget ran out (crafted text full of unclosed JSON), so templates or font-catalogue entries after that point may be missing; never seen on a real file |
 
 ## 📝 API Contracts
 ```ts

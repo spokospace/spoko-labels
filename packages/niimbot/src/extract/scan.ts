@@ -158,12 +158,16 @@ function printableAt(bytes: Uint8Array, i: number): number {
  * The template name after the record marker: skip at most 8 bytes that are not printable UTF-8, then take the
  * run of printable UTF-8 that follows (2 to 200 bytes). The app stores the name's byte length in that prefix and
  * the next field can start with a printable byte, so when the prefix's last non-zero byte fits the run, the run
- * is cut to it. Without such a byte the whole run is the name; the scan never requires the prefix format.
+ * is cut to it. Without such a byte the whole run is the name; the scan never requires the prefix format. A lone
+ * printable byte between non-printable ones belongs to the prefix too: it is the length of a 32- to 126-byte name.
  */
 function readName(bytes: Uint8Array, from: number): string | undefined {
   let start = from;
   let lengthHint = 0;
-  while (start < from + NAME_SKIP && printableAt(bytes, start) === 0) {
+  while (start < from + NAME_SKIP) {
+    const n = printableAt(bytes, start);
+    const loneByte = n === 1 && printableAt(bytes, start + 1) === 0;
+    if (n > 0 && !loneByte) break;
     if (bytes[start]) lengthHint = bytes[start] as number;
     start++;
   }
@@ -201,9 +205,15 @@ function rollNames(bytes: Uint8Array, from: number, to: number, budget: Budget):
 /** Font code → family name from the app's catalogue objects (`{ …, "code": "ZT…", …, "fileName": … }`). */
 function fontCatalog(bytes: Uint8Array, budget: Budget): Record<string, string> {
   const catalog: Record<string, string> = {};
-  for (let p = find(bytes, FONT_CODE, 0); p !== -1 && budget.left > 0; p = find(bytes, FONT_CODE, p + 1)) {
-    const start = bytes.lastIndexOf(OPEN_BRACE, p);
-    if (start === -1 || start < p - BEFORE_WINDOW) continue;
+  let previous = -1;
+  for (let p = find(bytes, FONT_CODE, 0); p !== -1 && budget.left > 0; previous = p, p = find(bytes, FONT_CODE, p + 1)) {
+    // The nearest `{` before the code, searched back to the previous code at most, so the search stays linear:
+    // when there is none in between, the nearest one is the object already tried.
+    const from = Math.max(previous + 1, p - BEFORE_WINDOW);
+    budget.left -= p - from;
+    const open = bytes.subarray(from, p).lastIndexOf(OPEN_BRACE);
+    if (open === -1) continue;
+    const start = from + open;
     const end = jsonEnd(bytes, start, budget);
     if (end <= p) continue;
     const value = parse(bytes, start, end);
@@ -316,11 +326,9 @@ export function extractTemplates(bytes: Uint8Array): ExtractResult {
   const budget: Budget = { left: BUDGET_PER_BYTE * bytes.length + 4 * MAX_JSON_BYTES };
   const { kept, dropped } = deduplicate(records(bytes, budget));
   const warnings: ExtractWarning[] = [];
+  const catalog = Object.freeze(fontCatalog(bytes, budget));
   if (kept.length === 0) warnings.push({ code: "no-templates-found" });
   if (dropped > 0) warnings.push({ code: "duplicate-template", count: dropped });
-  return {
-    templates: kept.map((r) => r.template),
-    fontCatalog: Object.freeze(fontCatalog(bytes, budget)),
-    warnings,
-  };
+  if (budget.left <= 0) warnings.push({ code: "scan-incomplete" });
+  return { templates: kept.map((r) => r.template), fontCatalog: catalog, warnings };
 }

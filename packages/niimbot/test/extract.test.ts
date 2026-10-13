@@ -77,10 +77,12 @@ describe("extractTemplates", () => {
     });
 
     it("keeps the first in file order when timestamps are equal or missing", () => {
-      const a = record(spec({ elements: [niimbotText({ value: "first" })], updatedAt: undefined }));
-      const b = record(spec({ elements: [niimbotText({ value: "second" })], updatedAt: undefined }), 40);
-      const [kept] = extractTemplates(isarFile(a, b)).templates;
-      expect((kept?.elements[0] as { value: string }).value).toBe("first");
+      for (const updatedAt of [undefined, "2026-03-03 03:03:03"]) {
+        const a = record(spec({ elements: [niimbotText({ value: "first" })], updatedAt }));
+        const b = record(spec({ elements: [niimbotText({ value: "second" })], updatedAt }), 40);
+        const [kept] = extractTemplates(isarFile(a, b)).templates;
+        expect((kept?.elements[0] as { value: string }).value).toBe("first");
+      }
     });
 
     it("collapses unnamed records only when identical", () => {
@@ -94,6 +96,11 @@ describe("extractTemplates", () => {
   describe("names", () => {
     it("cuts the name to the byte length in its prefix, so the next field's byte stays out", () => {
       expect(names(isarFile(record(spec({ name: "Zażółć" }))))).toEqual(["Zażółć"]);
+      // From 32 to 126 bytes the length byte is printable itself ("(" for 40, "A" for 65).
+      for (const length of [31, 32, 40, 65, 126, 127, 200]) {
+        expect(names(isarFile(record(spec({ name: "n".repeat(length) }))))).toEqual(["n".repeat(length)]);
+      }
+      expect(names(isarFile(record(spec({ name: "Półka – regał z narzędziami 3" }))))).toEqual(["Półka – regał z narzędziami 3"]);
     });
 
     it("takes the whole printable run when the prefix has no usable length", () => {
@@ -153,7 +160,15 @@ describe("extractTemplates", () => {
       const start = performance.now();
       expect(extractTemplates(bytes('[{"'.repeat(400_000))).templates).toEqual([]);
       expect(extractTemplates(bytes('[{"a":1},'.repeat(150_000))).templates).toEqual([]);
+      expect(extractTemplates(bytes('"code":"ZT'.repeat(500_000))).fontCatalog).toEqual({});
       expect(performance.now() - start).toBeLessThan(2000);
+    });
+
+    it("reports scan-incomplete when the matching budget runs out", () => {
+      const filler = `[{"a":"${"x".repeat(1000)}"`.repeat(300);
+      const { templates, warnings } = extractTemplates(bytes(filler, record(spec())));
+      expect(templates).toEqual([]);
+      expect(warnings).toEqual([{ code: "no-templates-found" }, { code: "scan-incomplete" }]);
     });
   });
 

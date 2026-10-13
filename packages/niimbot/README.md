@@ -30,9 +30,7 @@ The NIIMBOT desktop app has no export. It keeps the templates in its local datab
 
 | System | File |
 |---|---|
-| Windows | `%APPDATA%
-iimbot.comNIIMBOTNiimbot
-iimbot_db.isar` |
+| Windows | `%APPDATA%\niimbot.com\NIIMBOT\Niimbot\niimbot_db.isar` |
 | macOS | not known yet; reports welcome |
 
 Close the app before reading the file: while it runs, Windows may refuse to open it. In a browser, let the user pick the file (`<input type="file">`) and pass its bytes; in Node, `readFileSync`. Nothing is uploaded: `extractTemplates` works on the bytes in memory.
@@ -48,7 +46,8 @@ interface ExtractResult {
 | Warning | When |
 |---|---|
 | `no-templates-found` | no template records: not a NIIMBOT database, an empty file, or the app changed its format |
-| `duplicate-template` | the file holds older copies of a template with different content; the newest was kept (`count`: copies dropped) |
+| `duplicate-template` | the file holds older copies of a template with different content; the newest was kept (`count`: the copies dropped whose content differs from the kept one) |
+| `scan-incomplete` | the scan stopped early because the file is full of text that looks like unfinished JSON; templates or font-catalogue entries after that point may be missing. Real NIIMBOT files never get here |
 
 How it reads the file:
 - It scans the bytes for the app's records (an elements JSON array followed by the record marker `[0,0,0,0]` and the name) instead of parsing the Isar format, so it keeps working across small app updates and fails soft on big ones: fewer templates or none, never an exception.

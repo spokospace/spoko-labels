@@ -72,7 +72,7 @@ export interface ImportResult {
   failures: ImportFailure[];
 }
 
-export type ExtractWarningCode = "no-templates-found" | "duplicate-template";
+export type ExtractWarningCode = "no-templates-found" | "duplicate-template" | "scan-incomplete";
 
 export interface ExtractWarning {
   code: ExtractWarningCode;
