@@ -118,6 +118,40 @@ describe("Printer.info", () => {
   });
 });
 
+describe("Printer.readRfid", () => {
+  // UID 01..08, barcode "ABC", serial "S1", total 160, used 2, type 1 — all made up.
+  const TAG = [1, 2, 3, 4, 5, 6, 7, 8, 3, 0x41, 0x42, 0x43, 2, 0x53, 0x31, 0, 160, 0, 2, 1];
+
+  it("returns the tag the printer reports", async () => {
+    const { printer } = setup({ rfid: TAG });
+    expect(await settled(printer.readRfid())).toEqual({
+      uid: "0102030405060708",
+      barcode: "ABC",
+      serial: "S1",
+      total: 160,
+      used: 2,
+      type: 1,
+    });
+  });
+
+  it("returns null when no tag is loaded", async () => {
+    const { printer } = setup();
+    expect(await settled(printer.readRfid())).toBeNull();
+  });
+
+  it("returns null when the printer does not answer", async () => {
+    const { printer } = setup({ silent: [CMD.GET_RFID] });
+    expect(await settled(printer.readRfid())).toBeNull();
+  });
+
+  it("handshakes once, then asks for the tag", async () => {
+    const { fake, printer } = setup({ rfid: TAG });
+    await settled(printer.readRfid());
+    expect(fake.cmds[0]).toBe(CMD.CONNECT);
+    expect(fake.cmds).toContain(CMD.GET_RFID);
+  });
+});
+
 describe("Printer.print: sequence", () => {
   it.each(sequenceVectors)("writes the prototype packet sequence (plus the B1 top offset): $name", async ({ density, copies, rows, packets }) => {
     const { fake, printer } = setup();

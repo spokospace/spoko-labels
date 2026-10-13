@@ -72,6 +72,7 @@ const REPLY: Readonly<Record<number, number>> = {
   [CMD.PRINT_STATUS]: 0xb3,
   [CMD.PRINT_END]: 0xf4,
   [CMD.GET_INFO]: 0x4a,
+  [CMD.GET_RFID]: 0x1b,
 };
 
 /** Status of a finished job: page 1 (16-bit), both progress counters at 100. */
@@ -86,6 +87,8 @@ export interface AutoReplyOptions {
   status?: readonly number[][];
   /** Reply data per `GET_INFO` selector; selectors not listed get no reply. */
   info?: Readonly<Record<number, number[]>>;
+  /** Reply data for `GET_RFID`. Default: a single `0` (no tag loaded). */
+  rfid?: number[];
   /** Emit an unsolicited 0xD3 packet after every row packet and right before the `PageEnd` reply. */
   lineChecks?: boolean;
   /** Called for every written packet before the reply logic runs. */
@@ -116,6 +119,9 @@ export function autoReply(options: AutoReplyOptions = {}): Responder {
       const data = options.info?.[packet.data[0] as number];
       if (data) fake.emitPacket(reply, data);
       return;
+    }
+    if (cmd === CMD.GET_RFID) {
+      return fake.emitPacket(reply, options.rfid ?? [0]);
     }
     fake.emitPacket(reply, [1]);
   };

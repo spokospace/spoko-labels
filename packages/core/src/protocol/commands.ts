@@ -3,6 +3,8 @@ export const CMD = {
   CONNECT: 0xc1,
   HEARTBEAT: 0xdc,
   GET_INFO: 0x40,
+  /** Read the loaded roll's RFID tag: label type, dimensions, serial and the used/total label count. */
+  GET_RFID: 0x1a,
   SET_DENSITY: 0x21,
   SET_LABEL_TYPE: 0x23,
   PRINT_START: 0x01,
