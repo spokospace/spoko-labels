@@ -165,6 +165,17 @@ Optional numbers of the wrong type (`letterSpacing: "0.3"`) count as absent.
 
 All four are under the SIL Open Font License 1.1, with the license next to each file. `fonts/README.md` lists the source, the pinned commit and the SHA-256 of every file; they come from the upstream repositories (`google/fonts`, `EkType/Baloo`), never from NIIMBOT's servers. Every family covers the Polish letters. Only Inconsolata has a bold face: `bold: true` in any other of these families draws the regular face with render's `missing-font` warning at `/font/bold`. Markazi Text is a variable font drawn at its default weight, 400. Any other code imports with the app catalogue's family name (when `fontCatalog` has it) and an `unknown-font` warning; a host that has such a font can register it under that name. Every family other than HarmonyOS Sans gets `fallback: ["HarmonyOS Sans"]`, so text with letters a font lacks (Polish ones in Viga, for example) is drawn in HarmonyOS Sans.
 
+## Example page
+
+`packages/niimbot/examples/import/` is a developer and hardware-check page. It reads a picked database file, lists the imported templates with their warnings and failures, previews one at exact dots with made-up values in its bound columns, shows its v1 JSON, and prints it on a NIIMBOT B1 over Web Bluetooth.
+
+```bash
+pnpm --filter @spokospace/labels-niimbot example
+# open http://localhost:8082/examples/import/ in Chrome or Edge
+```
+
+The file stays in the browser; the local server only serves the page and the package builds.
+
 ## Privacy
 
 Both functions are pure: they read only what they are given, run locally and send nothing anywhere. Do not commit templates exported from your own app; the tests use made-up data only.

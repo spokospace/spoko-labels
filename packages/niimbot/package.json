@@ -17,12 +17,14 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "example": "pnpm --filter @spokospace/labels-core --filter @spokospace/labels-render --filter @spokospace/labels-niimbot build && node examples/serve.mjs"
   },
   "dependencies": {
     "@spokospace/labels-render": "workspace:*"
   },
   "devDependencies": {
+    "@spokospace/labels-core": "workspace:*",
     "@types/node": "22.20.5"
   }
 }

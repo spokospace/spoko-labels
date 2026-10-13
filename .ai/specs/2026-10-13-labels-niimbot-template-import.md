@@ -1,6 +1,6 @@
 # @spokospace/labels-niimbot: import templates from the NIIMBOT desktop app
 
-> Status: approved design (#27). The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Phases 1 (conversion), 2 (fonts) and 3 (extraction) are implemented; Phase 4 is not yet. Phase 2 note: the `BalooPaaji-Gurmukhi` folder of `EkType/Baloo` holds only design sources, so the compiled v1 font comes from the project's GitHub release `1.443` (see `packages/niimbot/fonts/README.md`).
+> Status: approved design (#27). The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Phases 1 (conversion), 2 (fonts) and 3 (extraction) are implemented; Phase 4 (example page) is implemented and waits for the maintainer's hardware check. Phase 2 note: the `BalooPaaji-Gurmukhi` folder of `EkType/Baloo` holds only design sources, so the compiled v1 font comes from the project's GitHub release `1.443` (see `packages/niimbot/fonts/README.md`).
 
 ## 📝 TLDR
 People who designed labels in the NIIMBOT desktop app cannot use them with spoko-labels. Today the only importer is the prototype: a Python script scrapes the app's local database into ad-hoc JSON, and a browser renderer interprets Niimbot's quirks directly.
