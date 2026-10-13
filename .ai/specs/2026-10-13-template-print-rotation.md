@@ -28,7 +28,7 @@ Proposed (future behavior):
 **Template format (additive, still version 1).**
 - **Field:** `printRotation?: 0 | 90 | 180 | 270`, in degrees clockwise.
 - **Meaning:** the design (`size`, element boxes, the preview) stays as drawn, and the printed image is the design turned by `printRotation`.
-- **Validation:** any other value is an error (`out-of-range`, or `invalid-type` for a non-number) at `/printRotation`, a template-level error, like an invalid `size`.
+- **Validation:** any other value is an error (`out-of-range`, or `invalid-type` for a non-number or a number that is not whole, as for the other whole-number fields) at `/printRotation`, a template-level error, like an invalid `size`.
 - **Normalized template:** it always carries `printRotation`, default 0.
 
 **`render()`.**

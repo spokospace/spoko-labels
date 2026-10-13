@@ -74,6 +74,21 @@ describe("render: printRotation", () => {
       expect(blackCount(image.data)).toBe(64);
     }
   });
+
+  it("checks what was drawn against the side the head crosses", () => {
+    // Text too big for its box, aligned to the bottom, spills above it: into the 1 mm strip a 48 mm head
+    // misses on a 50 mm side.
+    const spilling = (printRotation: number) =>
+      template([{ ...text({ content: { text: "UP" } }), x: 2, y: 1.2, width: 26, height: 2, font: { family: "HarmonyOS Sans", size: 6 }, fit: "none", verticalAlign: "bottom" }], {
+        size: { width: 30, height: 50 },
+        printRotation,
+      });
+    const codesFor = (printRotation: number) =>
+      render(spilling(printRotation), {}, { ...options(), printableWidth: 48 }).warnings.map((w) => w.code);
+    expect(codesFor(270)).toContain("outside-printable-area");
+    // Unturned, the head crosses the 30 mm width: nothing is cut.
+    expect(codesFor(0)).not.toContain("outside-printable-area");
+  });
 });
 
 describe("render", () => {
