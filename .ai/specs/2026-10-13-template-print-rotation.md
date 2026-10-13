@@ -1,6 +1,6 @@
 # Template v1: print rotation (labels designed upright)
 
-> Status: draft, written autonomously from #33. The Open Questions were resolved with defaults (see Resolved assumptions); the maintainer confirms or overrides them on the spec PR. Not implemented yet.
+> Status: approved design (#35). The maintainer chose A1 (degrees, `printRotation`) and A2 (the turn happens in `render()`) on 2026-10-13; A3 to A6 stand as defaulted. Not implemented yet.
 
 ## 📝 TLDR
 A label can be designed upright, for example 30 × 50 mm, for a roll whose labels pass the head 50 mm across and 30 mm along the feed. The image then has to be turned a quarter before printing. Today template v1 cannot say so. `@spokospace/labels-niimbot` reports the turn outside the template (`ImportedTemplate.printRotation`, #32), and each host turns the image itself.
@@ -18,7 +18,11 @@ Proposed (future behavior):
 - **Warnings are wrong for turned labels.** `outside-printable-area` compares element boxes with the label width. For a turned label the head crosses the label's height, so the warning is wrong either way: missing for content that will be cut, and present for content that prints.
 
 ## 📝 Resolved decisions
-None yet: see Resolved assumptions.
+| # | Decision | Rationale |
+|---|---|---|
+| A1 | `printRotation`: degrees clockwise, 0/90/180/270 (chosen by the maintainer) | Covers 180 and 270 (NIIMBOT data uses 270); the name #32 already uses. |
+| A2 | `render()` turns the image and echoes `RenderResult.printRotation` (chosen by the maintainer) | The rendered image stays exactly what is printed; `imageToRows` stays template-free. |
+| A3–A6 | As in Resolved assumptions | Accepted defaults. |
 
 ## 📝 Proposed Solution
 **Template format (additive, still version 1).**
