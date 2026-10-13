@@ -47,7 +47,7 @@ interface ExtractResult {
 |---|---|
 | `no-templates-found` | no template records: not a NIIMBOT database, an empty file, or the app changed its format |
 | `duplicate-template` | the file holds older copies of a template with different content; the newest was kept (`count`: the copies dropped whose content differs from the kept one) |
-| `scan-incomplete` | the scan stopped early because the file is full of text that looks like unfinished JSON; templates or font-catalogue entries after that point may be missing. Real NIIMBOT files never get here |
+| `scan-incomplete` | the scan stopped early because the file is full of text that looks like unfinished JSON; templates or font-catalogue entries after that point may be missing. Not seen on a real file |
 
 How it reads the file:
 - It scans the bytes for the app's records (an elements JSON array followed by the record marker `[0,0,0,0]` and the name) instead of parsing the Isar format, so it keeps working across small app updates and fails soft on big ones: fewer templates or none, never an exception.
