@@ -52,7 +52,8 @@ interface ExtractResult {
 How it reads the file:
 - It scans the bytes for the app's records (an elements JSON array followed by the record marker `[0,0,0,0]` and the name) instead of parsing the Isar format, so it keeps working across small app updates and fails soft on big ones: fewer templates or none, never an exception.
 - Isar keeps old copies of edited records. Identical copies collapse silently; for copies with different content, the newest timestamp wins.
-- Only what `importTemplates` needs leaves the scanner: the name, the roll names, the timestamp and, for each element, the keys in What is imported. Element ids, image data and URLs, thumbnails, cloud ids and the data source of bound elements (its id and sheet name) are dropped.
+- The label size and print rotation come from the template object's fixed-size fields (the app's schema, stored in the same file). When a record does not match that layout, the size comes from the roll name instead.
+- Only what `importTemplates` needs leaves the scanner: the name, the label size, the roll names, the timestamp, the print rotation and, for each element, the keys in What is imported. Element ids, image data and URLs, thumbnails, cloud ids and the data source of bound elements (its id and sheet name) are dropped.
 - `TypeError` for anything other than a `Uint8Array`; `RangeError` above 64 MB (the real file is about 5 MB). No JSON value larger than 256 kB is read.
 
 Checked against the layout of NIIMBOT for Windows as of October 2026 (the database written by the app in use then).
@@ -65,6 +66,7 @@ interface NiimbotTemplate {
   width?: number; height?: number;   // label size in mm, when the source has it
   rollNames?: string[];              // e.g. "T50*30-230WHITE"
   updatedAt?: string;
+  rotate?: number;                   // degrees the app turns the label clockwise when printing
   elements: unknown[];               // Niimbot elements as the app stores them
 }
 ```
@@ -85,7 +87,7 @@ interface NiimbotTemplate {
 
 ```ts
 interface ImportResult { templates: ImportedTemplate[]; failures: ImportFailure[] }
-interface ImportedTemplate { source: ImportSource; template: Template; warnings: ImportWarning[] }
+interface ImportedTemplate { source: ImportSource; template: Template; printRotation: 0 | 90 | 180 | 270; warnings: ImportWarning[] }
 interface ImportFailure { source: ImportSource; code: ImportFailureCode; issues?: TemplateIssue[] }
 interface ImportSource { index: number; name?: string }
 interface ImportWarning { code: ImportWarningCode; path: string; feature?: string; issue?: IssueCode }
@@ -107,6 +109,10 @@ The label size comes from the first that works:
 3. `defaultSize`.
 
 Failing all three, the template fails with `unknown-size`. There is no silent default size.
+
+### Print rotation
+
+A label can be designed upright, for example 30 × 50 mm for a 50 × 30 mm roll. The app then turns it when printing, and stores how far in the template's `rotate` (270 for such a label). Template v1 has no print direction, so the import keeps the design as drawn (`size` 30 × 50) and reports the turn as `printRotation`: degrees clockwise, a multiple of 90. Turn the rendered image by it before printing, as `niimblue`'s image encoder does for its "left" print direction. A `rotate` that is not a multiple of 90 gives `printRotation: 0` and `unsupported-style` `rotate` at `/rotate`.
 
 ## What is imported
 

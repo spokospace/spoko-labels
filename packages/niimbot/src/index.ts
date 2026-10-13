@@ -16,4 +16,5 @@ export type {
   ImportWarningCode,
   ImportedTemplate,
   NiimbotTemplate,
+  PrintRotation,
 } from "./types.js";

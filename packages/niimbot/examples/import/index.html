@@ -102,7 +102,7 @@
     <div class="stage"><canvas id="image"></canvas><canvas id="overlay"></canvas></div>
     <p class="hint legend">
       Every square is one printed dot (8 dots per mm). The image is exactly what is sent to the printer.
-      <span style="background:#e5393566"></span>outside the 48 mm print head (not printed)
+      <span style="background:#e5393566"></span>outside the 48 mm print head (not printed; it crosses the label's height when the label is printed turned a quarter)
     </p>
     <p id="size" class="hint"></p>
     <details>
@@ -122,9 +122,11 @@
     <div class="row">
       <label>Density <select id="density"></select></label>
       <label>Copies <input id="copies" type="number" min="1" max="255" value="1" step="1" size="3"></label>
+      <label>Turn before printing <select id="rotation"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
       <button id="print" disabled>Print</button>
       <progress id="progress" max="100" value="0" hidden></progress>
     </div>
+    <p class="hint">The turn is set from the template: a label designed upright (for example 30 x 50 mm on a 50 x 30 mm roll) is turned clockwise the way the NIIMBOT app turns it. If the print comes out the wrong way round, try the opposite turn and report it.</p>
     <p class="hint">Connect opens the browser's Bluetooth chooser: pick the printer (its name starts with B1) and click Pair. Printing uses the default calibration of <code>@spokospace/labels-core</code> (image moved 0.5 mm down).</p>
   </section>
 

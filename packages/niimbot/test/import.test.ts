@@ -72,6 +72,14 @@ describe("importTemplates", () => {
     expect(templates[0]?.template.elements).toEqual([]);
   });
 
+  it("turns the app's print rotation into printRotation: a multiple of 90, else 0 with a warning", () => {
+    const rotation = (rotate: unknown) => importTemplates([niimbotTemplate({ rotate })]).templates[0];
+    expect([undefined, null, 0, 90, 270, -90, 450, 720].map((r) => rotation(r)?.printRotation)).toEqual([0, 0, 0, 90, 270, 270, 90, 0]);
+    for (const bad of [45, "270", Number.NaN]) {
+      expect(rotation(bad)).toMatchObject({ printRotation: 0, warnings: [{ code: "unsupported-style", path: "/rotate", feature: "rotate" }] });
+    }
+  });
+
   it("omits an empty or non-string name", () => {
     const { templates } = importTemplates([niimbotTemplate({ name: "   " }), niimbotTemplate({ name: 7 })]);
     expect(templates.map((t) => [t.source, t.template.name])).toEqual([[{ index: 0 }, undefined], [{ index: 1 }, undefined]]);

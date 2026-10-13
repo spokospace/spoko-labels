@@ -113,6 +113,22 @@ describe("extractTemplates", () => {
     });
   });
 
+  it("reads the label size and print rotation from the template object, which win over the roll name", () => {
+    const upright = record(spec({ canvas: { width: 30, height: 50, rotate: 270 } }));
+    const [template] = extractTemplates(isarFile(upright)).templates;
+    expect(template).toMatchObject({ width: 30, height: 50, rotate: 270, rollNames: [ROLL] });
+    const [imported] = importTemplates([template]).templates;
+    expect(imported?.template.size).toEqual({ width: 30, height: 50 });
+    expect(imported?.printRotation).toBe(270);
+  });
+
+  it("keeps the roll-name size when the object's layout does not match the known schema", () => {
+    const [template] = extractTemplates(isarFile(record(spec({ canvas: { width: 30, height: 50, rotate: 270, staticSize: 200 } })))).templates;
+    expect(template).not.toHaveProperty("width");
+    expect(template).not.toHaveProperty("rotate");
+    expect(importTemplates([template]).templates[0]?.template.size).toEqual({ width: 50, height: 30 });
+  });
+
   it("extracts a record without labelNames without rolls, which then fails with unknown-size", () => {
     const { templates } = extractTemplates(isarFile(record(spec({ rollNames: undefined }))));
     expect(templates[0]).not.toHaveProperty("rollNames");
