@@ -1,0 +1,197 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`importTemplates > imports the made-up fixture set exactly as pinned (the import output is a protected contract) 1`] = `
+"{
+  "templates": [
+    {
+      "source": {
+        "index": 0,
+        "name": "Storage box"
+      },
+      "template": {
+        "version": 1,
+        "name": "Storage box",
+        "size": {
+          "width": 50,
+          "height": 30
+        },
+        "elements": [
+          {
+            "type": "text",
+            "x": 2,
+            "y": 2,
+            "width": 30,
+            "height": 6,
+            "content": {
+              "text": "Blue crate"
+            },
+            "font": {
+              "family": "HarmonyOS Sans",
+              "size": 4
+            },
+            "fit": "shrink"
+          },
+          {
+            "type": "line",
+            "x": 2,
+            "y": 10,
+            "width": 46,
+            "height": 0.4
+          },
+          {
+            "type": "qr",
+            "x": 34,
+            "y": 12,
+            "width": 14,
+            "height": 14,
+            "content": {
+              "bindIndex": 1
+            }
+          }
+        ]
+      },
+      "warnings": []
+    },
+    {
+      "source": {
+        "index": 1,
+        "name": "Shelf label"
+      },
+      "template": {
+        "version": 1,
+        "name": "Shelf label",
+        "size": {
+          "width": 40,
+          "height": 12
+        },
+        "elements": [
+          {
+            "type": "text",
+            "x": 2,
+            "y": 2,
+            "width": 30,
+            "height": 6,
+            "content": {
+              "bindIndex": 0
+            },
+            "font": {
+              "family": "Viga",
+              "size": 5.6,
+              "fallback": [
+                "HarmonyOS Sans"
+              ]
+            },
+            "letterSpacing": 0.495,
+            "align": "center",
+            "verticalAlign": "middle",
+            "fit": "shrink"
+          },
+          {
+            "type": "text",
+            "x": 2,
+            "y": 2,
+            "width": 30,
+            "height": 6,
+            "content": {
+              "text": "Półka 3\\nRegał B"
+            },
+            "font": {
+              "family": "Inconsolata",
+              "size": 4,
+              "bold": true,
+              "fallback": [
+                "HarmonyOS Sans"
+              ]
+            },
+            "lineSpacing": -0.2,
+            "verticalAlign": "bottom",
+            "wrap": true,
+            "fit": "none",
+            "reverse": true
+          },
+          {
+            "type": "qr",
+            "x": 34,
+            "y": 12,
+            "width": 14,
+            "height": 14,
+            "content": {
+              "bindIndex": 1
+            },
+            "level": "Q"
+          }
+        ]
+      },
+      "warnings": [
+        {
+          "code": "unsupported-style",
+          "path": "/elements/1/fontStyle",
+          "feature": "underline"
+        },
+        {
+          "code": "rotated-element",
+          "path": "/elements/2/rotate"
+        },
+        {
+          "code": "unsupported-element",
+          "path": "/elements/3/type"
+        },
+        {
+          "code": "unsupported-element",
+          "path": "/elements/4/type"
+        }
+      ]
+    },
+    {
+      "source": {
+        "index": 3,
+        "name": "Unknown font"
+      },
+      "template": {
+        "version": 1,
+        "name": "Unknown font",
+        "size": {
+          "width": 30,
+          "height": 20
+        },
+        "elements": [
+          {
+            "type": "text",
+            "x": 2,
+            "y": 2,
+            "width": 30,
+            "height": 6,
+            "content": {
+              "text": "Blue crate"
+            },
+            "font": {
+              "family": "HarmonyOS Sans",
+              "size": 50
+            },
+            "fit": "shrink"
+          }
+        ]
+      },
+      "warnings": [
+        {
+          "code": "unknown-font",
+          "path": "/elements/0/fontCode"
+        },
+        {
+          "code": "value-clamped",
+          "path": "/elements/0/fontSize"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "source": {
+        "index": 2,
+        "name": "No size"
+      },
+      "code": "unknown-size"
+    }
+  ]
+}"
+`;

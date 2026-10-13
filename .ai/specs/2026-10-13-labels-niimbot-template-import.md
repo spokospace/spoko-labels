@@ -1,6 +1,6 @@
 # @spokospace/labels-niimbot: import templates from the NIIMBOT desktop app
 
-> Status: design. The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Not implemented yet.
+> Status: approved design (#27). The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Phase 1 (conversion) and Phase 2 (fonts) are implemented; Phases 3 and 4 are not yet. Phase 2 note: the `BalooPaaji-Gurmukhi` folder of `EkType/Baloo` holds only design sources, so the compiled v1 font comes from the project's GitHub release `1.443` (see `packages/niimbot/fonts/README.md`).
 
 ## 📝 TLDR
 People who designed labels in the NIIMBOT desktop app cannot use them with spoko-labels. Today the only importer is the prototype: a Python script scrapes the app's local database into ad-hoc JSON, and a browser renderer interprets Niimbot's quirks directly.
@@ -92,7 +92,7 @@ So an emitted template is always valid.
 
 Rules for that last step:
 - **What is emitted.** The converted object is emitted, without the elements the validator dropped. The validator's normalized copy, with every default filled in, is used only for checking. So `shape`, `safeMargin` and `minSize` stay omitted, and `fit` is always present.
-- **Paths.** The converter keeps an index map from each converted element to its Niimbot element. A validator path `/elements/<k>/…` is rewritten to the Niimbot element's index, so every `ImportWarning.path` points into the input.
+- **Paths.** The converter keeps an index map from each converted element to its Niimbot element. A validator path `/elements/<k>/…` becomes `/elements/<i>`, where `i` is the Niimbot element's index. The v1 sub-path is dropped because it names v1 fields, not input keys; `issue` carries the validator's code. So every `ImportWarning.path` points into the input. One warning per dropped element: the validator's first error for it.
 - **Validator warnings** (`outside-label`, `outside-safe-area`, `unknown-property`) are not copied into import warnings. `render()` reports them for the actual printer and data, and copying them would duplicate them.
 
 **`fonts/`: `niimbotFonts`, the code → family table, and the bundled font files.**
@@ -156,22 +156,26 @@ interface NiimbotTemplate {
 
 **Every element:**
 - Niimbot `qrcode` becomes v1 `type: "qr"`; `text` and `line` keep their names.
-- A non-object gets `invalid-element` (issue `invalid-type`). A missing `x`, `y`, `width` or `height` gets `invalid-element` (issue `required`), and a non-finite one gets `invalid-element` (issue `invalid-type`).
-- `rotate` other than 0 gets `rotated-element`, and the element is skipped.
-- A `type` other than `text`, `qrcode` or `line` gets `unsupported-element` and is skipped.
+- Checked in this order, and the first that applies decides:
+  1. A non-object gets `invalid-element` (issue `invalid-type`).
+  2. A `type` other than `text`, `qrcode` or `line` gets `unsupported-element` and is skipped, whatever else is wrong with it.
+  3. A `rotate` that is present and not a finite multiple of 360 gets `rotated-element`, and the element is skipped. An unreadable rotation is skipped rather than printed in a possibly wrong orientation.
+  4. A missing `x`, `y`, `width` or `height` gets `invalid-element` (issue `required`), and a non-finite one gets `invalid-element` (issue `invalid-type`).
+- `null` counts as absent for every key.
+- Optional numbers (`letterSpacing`, `wordSpacing`, `lineSpacing`, `lineWidth`) that are not finite count as absent, with no warning. `fontSize` is required: a value that is not a finite number is passed on, so the validator rejects the element (`invalid-element`).
 
 **Numbers.** Every emitted number (geometry, font size, spacing) is rounded to 0.001 after any arithmetic. This removes float noise such as `12.299999` or `0.2 × 1.65 = 0.33000000000000002` and makes the output deterministic.
 
 **Content of `text` and `qrcode`:**
 - `dataBind` is a non-empty array and `value` matches `^([A-Z]{1,2})\d+$`: `{ bindIndex }`, where A = 0, Z = 25, AA = 26 (the prototype's `column_index`).
 - `dataBind` is non-empty but `value` does not match: `{ text: value }` with `unrecognized-binding`.
-- Otherwise: `{ text }`. A string is used as is, a number or boolean goes through `String()`, and `null` or a missing `value` gives `""`. Anything else (an object or an array) gives `""` with `unsupported-style` `value`.
+- Otherwise: `{ text }`. A string is used as is, a number or boolean goes through `String()`, and `null` or a missing `value` gives `""`. Anything else (an object, an array, a function) gives `""` with `unsupported-style` `value`.
 
 **`text`:**
 
 | v1 field | From | Notes |
 |---|---|---|
-| `font.family` | `fontCode` | `options.fonts` → the table in Fonts → `fontCatalog[code]` with `unknown-font` → `"HarmonyOS Sans"` with `unknown-font`. A missing `fontCode` is `ZT001` (the app's default), with no warning |
+| `font.family` | `fontCode` | `options.fonts` → the table in Fonts → `fontCatalog[code]` with `unknown-font` → `"HarmonyOS Sans"` with `unknown-font`. A missing or empty `fontCode` is `ZT001` (the app's default), with no warning; a non-string code is unknown (`unknown-font`, HarmonyOS Sans) |
 | `font.fallback` | | `["HarmonyOS Sans"]` for every family except HarmonyOS Sans itself, fixed from Phase 1. Without it, render's family choice would try registered families in registration order, and Viga (first in `bundledFonts`) covers ł and ń but not ą, ę or ś |
 | `font.size` | `fontSize` | above 50 → 50 with `value-clamped` |
 | `font.bold` | `fontStyle` includes `"bold"` | `underline` and `italic` → `unsupported-style` (feature named) |
@@ -194,7 +198,7 @@ interface NiimbotTemplate {
 - `colorReverse` → `unsupported-style` `reverse`; not reversed.
 
 **`line`:**
-- Thickness `t = max(lineWidth || height, 0.1)` mm.
+- Thickness `t = max(lineWidth, 0.1)` mm. When `lineWidth` is missing or not positive, the box's short side is used instead: `height` for a horizontal line, `width` for a vertical one. The prototype always used `height`, which turned a vertical line without `lineWidth` into a square.
 - When `width >= height` it is horizontal: box `(x, y, width, t)`. Otherwise it is vertical: box `(x, y, t, height)`. This is the prototype's placement at the top or left edge of the stored box.
 - `lineType` other than 1 → solid, with `unsupported-style` `dashed`.
 - `colorReverse` → `unsupported-style`.
@@ -221,7 +225,7 @@ interface ImportFailure { source: ImportSource; code: ImportFailureCode; issues?
 | Code | Kind | When |
 |---|---|---|
 | `unsupported-element` | warning | barcode, image, live or form QR, vertical text, unknown `type`; skipped |
-| `rotated-element` | warning | `rotate` ≠ 0; skipped |
+| `rotated-element` | warning | `rotate` present and not a finite multiple of 360 (a string or `NaN` included); skipped |
 | `unsupported-style` | warning | a feature approximated (`feature` names it) |
 | `unknown-font` | warning | the font code is in neither the table nor `options.fonts` |
 | `unrecognized-binding` | warning | bound, but `value` is not a column reference; imported as static text |
@@ -283,7 +287,7 @@ The family names below become part of imported templates, so this spec fixes the
 - Each file has its `OFL-<Family>.txt` next to it in `packages/niimbot/fonts/`. `fonts/README.md` lists the source URL, commit, license and SHA-256 for each file, and a test asserts the hashes, as in `labels-render`.
 - Metrics (`hhea` ascent and descent per em) and `unicodeRanges` are measured with `fontTools` when the files are added. Fonts that lack Polish letters are fine: every imported family other than HarmonyOS Sans carries `fallback: ["HarmonyOS Sans"]`, so render's family choice switches to it with no warning.
 - Bold faces ship only where upstream has a static bold (Inconsolata). Elsewhere `bold: true` renders the regular face with render's `missing-font` at `/font/bold`, the same rule as Viga.
-- Total is about 0.9 MB, loaded only when a host passes `niimbotFonts` to `loadFonts()`.
+- Total is about 0.8 MB, loaded only when a host passes `niimbotFonts` to `loadFonts()`.
 - **Not bundled (maintainer's decision):** `ZT636`, `ZT681` and `ZT453`, three Chinese display fonts found in real templates. Their licenses cannot be verified, and they are several MB each. They import with the catalogue's family name, `fallback: ["HarmonyOS Sans"]` and `unknown-font`. The catalogue's `fileName` is used as is, trimmed, at most 100 characters. It is not always a clean family name: for `ZT063` it reads "Markazi Text Bold". A host that holds a license can register a font under that family name.
 - Any other code from the roughly 680 in the catalogue behaves the same. Adding one to the table later changes the import output for templates that use it, so it gets a changelog entry under the import-output rules.
 
@@ -325,7 +329,7 @@ States:
 - **Unstable source.** The Isar layout and the element keys are NIIMBOT's private format. The scanner is heuristic. Mitigation: it fails soft, warns per template, and is tested against a synthetic byte layout recorded from the observed shape. A layout change in the app is a bug fix in this package, not a breaking change for hosts.
 - **Protected output.** From the first release, the same Niimbot input must give the same v1 JSON (`BACKWARD_COMPATIBILITY.md`, "Niimbot import output"). This covers mapping changes too: the font table, the 1.65× factor, alignment readings and clamping. Snapshot tests on made-up fixtures pin it; any snapshot change needs a changelog entry.
 - **Fidelity.** The 1.65× factor, the line placement and the vertical align 3 → bottom reading were measured against app thumbnails, not specified by NIIMBOT. The hardware check compares printed labels with the app's own prints on 50×30 only.
-- **Fonts.** Four OFL families, about 0.9 MB, ship only with this package. The HarmonyOS Sans license (revocable) is handled by `labels-render`.
+- **Fonts.** Four OFL families, about 0.8 MB, ship only with this package. The HarmonyOS Sans license (revocable) is handled by `labels-render`.
 - **Privacy.** No real template, roll id, data-source id or URL appears in fixtures, tests or docs. Fixtures are built by a script from made-up values.
 - **Dependencies.** No new third-party runtime dependency. The font files are assets, not packages.
 
