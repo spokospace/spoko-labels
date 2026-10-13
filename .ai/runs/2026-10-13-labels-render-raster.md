@@ -14,6 +14,9 @@ Source doc: .ai/specs/2026-10-13-labels-render-template-engine.md (Phase 2, Step
 ## Non-goals
 - Demo page and hardware check (Phase 3). Rotation, barcodes, images.
 
+## Notes
+- The font files landed in the 2.1 commit (c5ff6b0) together with the dependencies; the registry, list and hash test came in 2.4.
+
 ## Risks
 - Golden images can differ across platforms; the manifest-based policy from the spec applies.
 - Text measurement differs slightly between Skia (tests) and browsers (demo).
@@ -31,15 +34,17 @@ Source doc: .ai/specs/2026-10-13-labels-render-template-engine.md (Phase 2, Step
 
 ## Progress
 
+PR: #25
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 2: layout, raster, QR, fonts
 
-- [ ] 2.1 Dependencies and the Node test environment
-- [ ] 2.2 Text layout
-- [ ] 2.3 QR layout
-- [ ] 2.4 Fonts: files, licenses, registry, bundled list
-- [ ] 2.5 Draw, threshold, render, errors
-- [ ] 2.6 Golden images
-- [ ] 2.7 Browser environment
-- [ ] 2.8 README and compatibility doc
+- [x] 2.1 Dependencies and the Node test environment — c5ff6b0
+- [x] 2.2 Text layout — ab38b52, e662448
+- [x] 2.3 QR layout — 69e1b41
+- [x] 2.4 Fonts: files, licenses, registry, bundled list — c6930e2
+- [x] 2.5 Draw, threshold, render, errors — 98d5ea6
+- [x] 2.6 Golden images — 90804dc
+- [x] 2.7 Browser environment — 747364f
+- [x] 2.8 README and compatibility doc — ecf5c62
