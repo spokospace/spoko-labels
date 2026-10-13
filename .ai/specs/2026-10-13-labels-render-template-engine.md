@@ -77,7 +77,7 @@ type Element = TextElement | QrElement | LineElement;
 
 interface BoxBase {
   id?: string;                        // free-form, for editors; not rendered
-  x: number; y: number; width: number; height: number;  // mm; width, height > 0
+  x: number; y: number; width: number; height: number;  // mm; x, y within -300..300; 0 < width, height <= 300
 }
 
 type Content =
@@ -114,7 +114,10 @@ Rules:
 - Unknown top-level or element properties are ignored with a `unknown-property` warning (forward compatibility; a newer editor may add fields).
 - **Binding.** A name resolves only through an own property of `row` (`Object.hasOwn(row, name)`), so `bind: "constructor"` or `"__proto__"` never reaches the prototype. A position resolves as `columns[bindIndex]` and then by name in the same way; without `columns`, or with an index past its end, it is unresolved. `bind` is tried first, `bindIndex` second; unresolved content is `""` with `missing-column`. A resolved cell is converted with `String()`; `null`/`undefined` become `""`.
 - **Length cap, text only.** A text value longer than 2000 code points is cut to 2000 with a `value-truncated` warning (protects the renderer from runaway host data; reported, so not silent). QR content is never cut: a value the encoder cannot hold is `qr-too-long` and nothing is drawn, so a QR never scans to a different value.
-- **Numbers are never coerced.** `"12"` where a number is expected is `invalid-type`.
+- **Numbers are never coerced.** `"12"` where a number is expected is `invalid-type` (also `"version": "1"`).
+- **Content forms.** When `text` is present it wins and any `bind`/`bindIndex` next to it is an `unknown-property` warning. An empty `bind` is `out-of-range`; a fractional `bindIndex` is `invalid-type`.
+- **Own properties only.** The validator reads only an object's own properties (`Object.hasOwn`), so host-built objects behave like parsed JSON.
+- **Circle safe area.** The inscribed ellipse with both semi-axes reduced by `safeMargin`: exact for round labels, slightly generous near the ends of an elongated ellipse (a true offset curve is not an ellipse).
 - `version` is required and must be `1`. A future `version: 2` ships with a `migrateTemplate()` from v1 (`BACKWARD_COMPATIBILITY.md`); v1 templates keep rendering.
 - The **safe area** is the shape (rounded corners and circles included) inset by `safeMargin`. It is a property of the label, not of a printer.
 - The **printable area** is a property of the printer and is not in the template: callers pass `printableWidth` (mm) in the options of `validateTemplate()` and `render()`, for the B1 `headDots / dotsPerMm` = 48. A template is label-sized, not head-sized: a 50x30 template renders a 400x240 image, and `imageToRows()` center-crops it to the 384-dot head, so with `printableWidth: 48` anything outside the centered 48 mm strip gets `outside-printable-area`. Without the option that check is skipped.
@@ -157,6 +160,7 @@ function browserEnvironment(): RenderEnvironment;
 
 // Rendering (synchronous once fonts are loaded)
 function render(template: unknown, data: RenderData, options: RenderOptions): RenderResult;
+// Content resolution (binding.ts) stays internal; it is not exported.
 interface RenderData { row?: Readonly<Record<string, unknown>>; columns?: readonly string[] }
 interface RenderOptions { environment: RenderEnvironment; fonts: FontRegistry; printableWidth?: number }
 interface RenderResult {
