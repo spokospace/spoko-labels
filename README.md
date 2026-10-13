@@ -7,7 +7,14 @@
 
 Print labels on NIIMBOT label printers straight from the browser — no driver, no desktop app, no phone. Over Web Bluetooth.
 
-> Work in progress. The packages below are being built.
+> Work in progress. The printer layer works today; templates, import, the embeddable dialog and the web app are being built.
+
+## What works today
+
+- **[`@spokospace/labels-core`](packages/core/README.md)**: connect to a NIIMBOT B1 from a click, read its battery and firmware, and print any black-and-white image with a chosen density, number of copies and calibration offset; a print can be aborted. Checked on a real B1 with 50×30 mm labels.
+- **A hardware-check page** for trying it on your own printer: `pnpm --filter @spokospace/labels-core example`, then open `http://localhost:8080/examples/hardware-check/` in Chrome or Edge (see the [package README](packages/core/README.md#hardware-check-page)).
+
+Not published to npm yet.
 
 ## Tested on the NIIMBOT B1
 
@@ -25,11 +32,11 @@ Development and testing happen mainly on a **NIIMBOT B1** (203 dpi, 384-dot prin
 
 | Package | Purpose |
 |---|---|
-| `@spokospace/labels-core` | printer protocol and Web Bluetooth connection |
-| `@spokospace/labels-render` | label template engine |
-| `@spokospace/labels-niimbot` | import templates from the NIIMBOT desktop app |
-| `@spokospace/labels-embed` | drop-in "Print label" dialog for other apps |
-| `apps/web` | the public web app |
+| [`@spokospace/labels-core`](packages/core/README.md) | printer protocol and Web Bluetooth connection (available) |
+| `@spokospace/labels-render` | label template engine (planned) |
+| `@spokospace/labels-niimbot` | import templates from the NIIMBOT desktop app (planned) |
+| `@spokospace/labels-embed` | drop-in "Print label" dialog for other apps (planned) |
+| `apps/web` | the public web app (planned) |
 
 ## Development
 

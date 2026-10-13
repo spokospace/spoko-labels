@@ -10,15 +10,17 @@ All packages follow [semver](https://semver.org). Until `1.0.0`, a minor version
 
 | Surface | Where | Breaking change | Required path |
 |---|---|---|---|
-| Package public API | exports of each `@spokospace/labels-*` package (*planned*) | removing or renaming an export, changing a signature or a return shape, tightening accepted input | deprecate first (JSDoc `@deprecated` + console warning), changelog, version bump |
+| Package public API | exports of each `@spokospace/labels-*` package entry point; today `@spokospace/labels-core` (`packages/core/src/index.ts`): `Printer` (`connect`, `info`, `print`, `disconnect`, `connected`) with `PrintOptions` (`density`, `copies`, `offsetMm`, `onProgress`, `signal`), `PrinterInfo`, `PrintProgress`; `WebBluetoothTransport`; the `Transport` interface; `imageToRows` and `ImageLike`; `B1` and `PrinterModel` (including `offsetMm` and `dotsPerMm`); the codec (`encodePacket`, `PacketParser`, `encodeRows`, `shiftRows`, `MAX_ROWS`, `CMD`, `INFO_KEY`); the error classes | removing or renaming an export, changing a signature or a return shape, tightening accepted input, changing a default that moves the printed image (such as `offsetMm`) | deprecate first (JSDoc `@deprecated` + console warning), changelog, version bump |
+| Error codes | the `code` string of every `LabelsCoreError` (`ErrorCode`: `bluetooth-unsupported`, `chooser-cancelled`, `device-unreachable`, `disconnected`, `no-response`, `refused`, `print-timeout`, `busy`, `aborted`, `invalid-argument`, `protocol`) and the extra fields (`step`) | removing or renaming a code, or reporting a situation under a different code | callers translate codes into user text, so treat a code like an export: deprecation window, changelog |
 | Template format | the template JSON schema (*planned*, versioned by a `version` field) | removing a field, changing units or meaning of a field, rendering an existing template differently on purpose | bump the schema version and ship a migration from the previous version; old templates keep rendering |
 | Niimbot import output | `packages/niimbot-import` (*planned*) | different JSON for the same Niimbot input | same as the template format |
 | Embed API | the dialog's options, events and URL/hash parameters (*planned*) | removing or renaming an option, event or parameter; changing its meaning | deprecation window, changelog |
 | Web app deep links | `apps/web` URL/hash parameters such as `#add=…` (*planned*) | removing or renaming a parameter; links that worked stop working | keep accepting the old form for at least one minor release |
-| Printer protocol behavior | `packages/core` (*planned*) | a printer model that printed correctly stops printing correctly | hardware evidence for every supported model in the PR; never a silent change |
+| Printer protocol behavior | `packages/core` (the print sequence in `printer.ts`, the codec in `protocol/`) | a printer model that printed correctly stops printing correctly | hardware evidence for every supported model in the PR; never a silent change |
 
 ## Not a contract
 
 - Internal modules not exported from a package entry point.
+- Error `message` text (only the `code` is a contract).
 - The exact pixels of a label between minor versions, as long as layout, text and QR content stay the same (anti-aliasing and threshold tweaks are allowed; golden images are updated in the same PR).
 - Files under `.ai/` and `.claude/`.

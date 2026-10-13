@@ -1,5 +1,7 @@
 # @spokospace/labels-core: NIIMBOT protocol and Web Bluetooth transport
 
+> **Status: implemented** in #2 (codec), #3 (`Printer`) and #4 (Web Bluetooth, hardware check on a B1), with a follow-up in #21 (Bluetooth switched off). The sections below are the design as approved; where the implementation differs, [What changed during implementation](#-what-changed-during-implementation) wins and `packages/core/README.md` documents the shipped behavior.
+
 ## 📝 TLDR
 Web apps that want to print on a NIIMBOT B1 have no reusable library today: the only working code is a prototype that mixes the BLE transport, the packet codec, the print sequence and localized messages in one class. Proposed (future behavior): `packages/core` ports it to strict, dependency-free TypeScript as a pure codec, a transport interface with a Web Bluetooth implementation, a `Printer` class and an image-to-rows helper. Render, embed and the web app build on it.
 
@@ -158,6 +160,19 @@ Fixture provenance: expected bytes are produced by running the prototype's `pack
 12. Package README: usage, the click-handler rule, the error code table, browser support notes, the experimental status of reconnect.
 13. Hardware check (maintainer): print a test label on the B1 with each of `density` min, default and max, `copies` 2, abort mid-print; `info()` values; reconnect with and without the Chrome flag. Results go into the PR description.
 
+## 📝 What changed during implementation
+Found while building it or on the B1 hardware check (#4):
+- **One print job per copy.** The B1 ignored the copy count in the `SetPageSize` packet (`copies: 2` printed one label). `print()` now sends one complete job (`PrintStart` to `PrintEnd`) per copy, with `copies = 1` in the page size, and the poll budget is applied to each job.
+- **`copies` is 1..255**, not 1..65535: every copy is a separate job, so the count is kept to a practical size.
+- **Calibration offset.** The B1 starts printing slightly before the label, so the first 4 rows (0.5 mm) landed on the gap. `PrinterModel` gained `dotsPerMm` and a default `offsetMm` (`{ x: 0, y: 0.5 }` for the B1), and `PrintOptions` gained `offsetMm: { x?, y? }` in millimetres (like the official app's Calibration screen; `y` 0..10 down, `x` within ±8). Rows are shifted by `shiftRows`; dots that leave the head are dropped.
+- **Firmware format.** The reply is two bytes (major, minor), so firmware is reported as `"5.26"` (what the official app shows), with the raw integer in a new `PrinterInfo.firmwareRaw`.
+- **No per-copy poll budget.** The `30 s + 5 s × (copies − 1)` budget was dropped: with one job per copy, each job gets the same 30 s budget.
+- **Abort cancels the label.** On the B1, aborting while rows were sent and aborting during status polling both left nothing printed, and the next print worked; the spec had said the label may still print after `PageEnd`.
+- **Bluetooth switched off.** Chrome reports it with the same `NotFoundError` as a cancelled chooser; only a "cancel" message maps to `chooser-cancelled`, anything else is `bluetooth-unsupported` with the browser's message as `cause` (#4, #21).
+- **Density range 1..5 confirmed** (default 3), matching the official app's device catalogue; the effect is subtle.
+
 ## 🧪 Hardware checks (open items for the maintainer)
+Both items below were answered by the hardware check in #4 (see above). Paths covered only by unit tests are tracked in #16.
+
 - The valid `density` range of the B1. The prototype only uses 3; the descriptor ships `densityRange` as 1..5, marked provisional in its JSDoc. The Phase 3 PR must narrow or confirm it from the hardware check before merge.
 - The printer's behavior after an aborted print (does it need `PrintEnd`, a reset, or nothing?).
