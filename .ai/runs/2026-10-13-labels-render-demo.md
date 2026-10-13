@@ -38,4 +38,4 @@ PR: #26
 - [x] 3.2 Made-up templates with a validation and render test — f8a735a
 - [x] 3.3 Demo page: editor, row form, preview with overlays, warnings — 3b6e275
 - [x] 3.4 Printing through labels-core and the HarmonyOS Sans notice — 3b6e275
-- [ ] 3.5 README section and hardware-check steps
+- [x] 3.5 README section and hardware-check steps — b8df9ac
