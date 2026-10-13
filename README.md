@@ -34,7 +34,7 @@ Development and testing happen mainly on a **NIIMBOT B1** (203 dpi, 384-dot prin
 |---|---|
 | [`@spokospace/labels-core`](packages/core/README.md) | printer protocol and Web Bluetooth connection (available) |
 | [`@spokospace/labels-render`](packages/render/README.md) | label template engine (available) |
-| [`@spokospace/labels-niimbot`](packages/niimbot/README.md) | import templates from the NIIMBOT desktop app (in progress: conversion and the free fonts its templates use available, reading the app's database coming) |
+| [`@spokospace/labels-niimbot`](packages/niimbot/README.md) | import templates from the NIIMBOT desktop app (in progress: reading the app's database, conversion and the free fonts available; example page coming) |
 | `@spokospace/labels-embed` | drop-in "Print label" dialog for other apps (planned) |
 | `apps/web` | the public web app (planned) |
 
