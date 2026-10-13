@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULTS, LIMITS, validateTemplate, type TemplateIssue } from "../src/index.js";
+import readme from "../README.md?raw";
 
 // Made-up 50x30 label used throughout.
 const text = (extra: Record<string, unknown> = {}) => ({
@@ -301,5 +302,13 @@ describe("validateTemplate: warnings", () => {
   it("refuses a printableWidth that is not a positive number", () => {
     expect(() => validateTemplate(template(), { printableWidth: 0 })).toThrow(RangeError);
     expect(() => validateTemplate(template(), { printableWidth: NaN })).toThrow(RangeError);
+  });
+});
+
+describe("README", () => {
+  it("documents a template that validates without issues", () => {
+    const json = /```json\n([\s\S]*?)```/.exec(readme)?.[1];
+    expect(json).toBeDefined();
+    expect(validateTemplate(JSON.parse(json ?? ""), { printableWidth: 48 }).issues).toEqual([]);
   });
 });
