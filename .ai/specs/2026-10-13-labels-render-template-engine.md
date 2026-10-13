@@ -9,7 +9,7 @@
 - The prototype's renderer runs only in a browser, so its output cannot be pinned by tests, and its line metrics are copied from another toolchain (Pillow/FreeType).
 - Its template format is Niimbot's data as stored by the desktop app: misspelled keys (`textAlignHorizonral`), positional bindings (`C0`), a letter spacing that renders 1.65× wider than the stored value. It is not versioned, so it cannot evolve under `BACKWARD_COMPATIBILITY.md`.
 - Hosts (the embed dialog, third-party apps) need to render a label from `{ template, row }` without knowing any of this.
-- The only redistributable font the prototype uses (Viga, OFL) has **no Polish letters** (checked: no glyphs for ą ć ę ł ń ś ź ż); the prototype falls back to HarmonyOS Sans, which may not be redistributed.
+- The prototype bundles two families: Viga (OFL), which has **no Polish letters** (checked: no glyphs for ą ć ę ł ń ś ź ż), and HarmonyOS Sans, the NIIMBOT app's default font, which covers Polish. Neither is set up as a package asset with its license.
 
 ## 📝 Resolved decisions
 | # | Decision | Rationale |
@@ -17,7 +17,7 @@
 | Q1 | The renderer draws through a `RenderEnvironment` (canvas factory + font loader). `browserEnvironment()` uses `OffscreenCanvas` or `<canvas>`; golden-image tests run in Node on a pinned dev-only `@napi-rs/canvas`. | `pnpm test` works locally without a browser. |
 | Q2 | Our own versioned schema (`version: 1`, geometry in mm, true letter spacing in mm). `labels-niimbot` converts Niimbot data. | The template format is a protected surface; another vendor's quirks are not frozen into it. |
 | Q3 | Content binds to a column by name (`bind`), with an optional positional fallback (`bindIndex`) for the importer. Static text is `text`. | Names survive reordered columns; the importer only knows positions. |
-| Q4 | Fonts are registered through `FontSource` descriptors with explicit ascent/descent per em; the package ships Viga with its OFL license; hosts add their own. **Added while finishing the spec:** a second bundled OFL family with Polish coverage (see Fonts), because Viga cannot render Polish text. | Explicit metrics keep line placement identical across browsers and Node. |
+| Q4 | Fonts are registered through `FontSource` descriptors with explicit ascent/descent per em; the package ships Viga with its OFL license; hosts add their own. **Added while finishing the spec (maintainer's decision on #23):** HarmonyOS Sans is bundled too (see Fonts): it covers Polish and is the NIIMBOT app's default font, so imported templates look like they do in the app. | Explicit metrics keep line placement identical across browsers and Node. |
 | Q5 | `qrcode-generator` (MIT) is the only runtime dependency, pinned to `2.0.4` (ESM build, out since 2025-08). | A correct QR encoder is not worth rewriting. |
 | Q6 | 0.x elements: text (wrap, shrink-to-fit, alignment, letter spacing, reversed), QR (error-correction level, whole-dot modules), line. Unknown or unsupported elements are skipped with a warning, never an exception. | Smallest scope that renders every non-rotated prototype template. |
 | Q7 | `render()` returns `{ image, warnings }`; `image` is `{ width, height, data: Uint8ClampedArray }` (RGBA, only black and white). No runtime dependency on `labels-core`. | Feeds `imageToRows()` directly; the render package stays printer-agnostic. |
@@ -46,7 +46,7 @@ Files in `packages/render/src`:
 - `schema/validate.ts`: `validateTemplate()`, issue codes.
 - `binding.ts`: resolves an element's content from `{ row, columns }`.
 - `fonts/registry.ts`: `FontSource`, `FontRegistry`, `loadFonts()`, family selection by glyph coverage.
-- `fonts/bundled.ts`: `bundledFonts` (Viga + the Polish-capable family), with their metrics and Unicode ranges; font files and license files in `packages/render/fonts/`.
+- `fonts/bundled.ts`: `bundledFonts` (Viga and HarmonyOS Sans), with their metrics and Unicode ranges; font files and license files in `packages/render/fonts/`.
 - `layout/units.ts`: mm to dots, box rounding.
 - `layout/text.ts`: wrapping, shrink-to-fit, alignment, line placement.
 - `layout/qr.ts`: QR matrix (through `qrcode-generator`) to module size and position.
@@ -202,7 +202,7 @@ Issue codes (stable strings, translated by callers; no UI text in the package):
 - **Canvas**: `round(width × 8)` × `round(height × 8)` dots, filled white; elements drawn in order; then every pixel becomes black when `(299R + 587G + 114B) / 1000 < 128`, else white, alpha 255.
 - **Font size**: `px = max(round(size × 8), 1)`; line height `ceil(ascent × px) + ceil(descent × px)`; baseline of the first line at `top + ceil(ascent × px)`.
 - **Family choice** (per element, for the whole text so all lines share metrics). Candidates, in order and without duplicates: `font.family`, each name in `font.fallback`, then every registered family in registration order; names that are not registered are left out (and warned as `missing-font`). The chosen family is the first candidate whose `unicodeRanges` cover every non-whitespace code point. When none covers the text, the first candidate is used and `missing-glyphs` is warned. `loadFonts()` rejects an empty list, so there is always a candidate.
-- **Bold**: the bold face of the chosen family when registered; otherwise its regular face and `missing-font` at `/font/bold`. No synthetic bold. (Viga ships without a bold face, so `bold: true` with Viga warns; Barlow Semi Condensed has one.)
+- **Bold**: the bold face of the chosen family when registered; otherwise its regular face and `missing-font` at `/font/bold`. No synthetic bold. (Viga ships without a bold face, so `bold: true` with Viga warns; HarmonyOS Sans has one.)
 - **Width of a line**: `measureText(line).width + letterSpacing × 8 × (codePoints − 1)`. With `letterSpacing` 0 the line is drawn with one `fillText`; otherwise one code point at a time at `x + measureText(prefix).width + letterSpacing × 8 × i` (prefix widths keep kerning).
 - **Wrap**: paragraphs split on `\n`; break opportunities are single spaces. A word goes onto the current line if the line's width stays ≤ the box width (no tolerance here); the space at a break is dropped, other spaces (leading, trailing, repeated) are kept. A single word wider than the box stays on its own line (shrink, or `text-overflow`).
 - **Shrink** (`fit: "shrink"`): the largest integer pixel size between `minSize` and `font.size` at which the block fits, rewrapping at each tried size: block height ≤ box height + 1 dot and the widest line ≤ box width + 1 dot (the prototype's tolerance). Found by binary search, so at most about 9 layouts per element (the prototype stepped down one dot at a time; the result is the same whenever fitting is monotone in size, and golden images pin it). Nothing fits: `minSize` and `text-overflow`.
@@ -213,11 +213,12 @@ Issue codes (stable strings, translated by callers; no UI text in the package):
 - **Line**: fills its box; a box thinner than one dot still paints one dot.
 
 ## 📝 Fonts
-Bundled family names (`"Viga"`, `"Barlow Semi Condensed"`) become part of templates, so this spec fixes them.
+Bundled family names (`"Viga"`, `"HarmonyOS Sans"`) become part of templates, so this spec fixes them.
 - `Viga-Regular.ttf` (OFL 1.1) ships in `packages/render/fonts/` with `OFL.txt` next to it. Metrics from its `hhea` table: ascent 1.015, descent 0.329 per em (the same values the prototype measured). Coverage: Basic Latin and Latin-1.
-- **One Latin Extended family (regular and bold, OFL 1.1, no Reserved Font Name restrictions) for Polish and other Central European text.** Chosen: **Barlow Semi Condensed** (family name `"Barlow Semi Condensed"`; the Medium file is registered as its regular face, Bold as bold), Medium and Bold (version 1.408, from `google/fonts`, `ofl/barlowsemicondensed`, about 110 kB each): condensed letters fit more text on a 50x30 label. Checked with `fontTools` while writing this spec: every Polish letter (ą ć ę ł ń ó ś ź ż and capitals) has a glyph in both files; `hhea` metrics are ascent 1.0 and descent 0.2 per em; the copyright line ("Copyright 2017 The Barlow Project Authors") names no Reserved Font Name. Phase 2 commits the two files with `OFL.txt` and records the source URL and version in `packages/render/fonts/README.md`.
+- **HarmonyOS Sans** (family name `"HarmonyOS Sans"`), for Polish and other Latin Extended text and for fidelity with the NIIMBOT app, whose default font it is (the prototype maps Niimbot's `ZT001` to it). `HarmonyOS_Sans_Medium.ttf` is registered as the regular face and `HarmonyOS_Sans_Bold.ttf` as bold, as in the prototype. Source: the official `openharmony/resources` repository, `fonts/`, at commit `0d79cad76b37ba0f3ccb1323c83833c78e0860de` (byte sizes match the prototype's copies: 146,164 and 145,860). Checked with `fontTools`: every Polish letter has a glyph; `hhea` metrics ascent 0.928, descent 0.244 per em (the values the prototype measured); about 145 kB per file.
+- **HarmonyOS Sans license conditions** (the "HarmonyOS Sans Fonts License Agreement", `LICENSE_Fonts` in the same repository; royalty-free, allows bundling and redistribution with software that is not itself font software, and commercial use). This package complies by: (1) shipping the files **unmodified**, byte for byte from the official source (no subsetting, no renaming inside the font); (2) keeping the agreement next to them as `packages/render/fonts/LICENSE-HarmonyOS-Sans.txt` with the copyright notice; (3) a **prominent notice** that HarmonyOS Sans is used, in the package README and in the UI of the demo page (and later the web app, #12); (4) never offering the fonts on their own: they ship only as part of `@spokospace/labels-render`. The license is revocable by Huawei; if that ever happens, the family is removed in a minor release and templates fall back through the normal family choice (`missing-font` warnings).
 - `bundledFonts` lists both with `data` as `new URL("../fonts/<file>", import.meta.url)`, so bundlers copy them and nothing is fetched until `loadFonts()` is called.
-- HarmonyOS Sans and any other font without a verified redistributable license stays out.
+- Fonts whose license does not allow redistribution with software stay out. The HarmonyOS Sans SC file (8 MB, Chinese) is not bundled.
 
 ## 📝 Edge Cases & Failure Scenarios
 | Case | Behavior |
@@ -227,7 +228,7 @@ Bundled family names (`"Viga"`, `"Barlow Semi Condensed"`) become part of templa
 | Hostile sizes (`font.size: 1e6`, huge spacing, long fallback lists) | `out-of-range`; the element is removed, nothing slow runs. |
 | Value of only spaces | Rendered as is (blank); not a warning. |
 | Very long unbreakable word | Shrinks to `minSize`; then `text-overflow`, drawn and clipped by the label edge only. |
-| Polish text with a Latin-1-only family | Falls back to the first registered family that covers it (the bundled Latin Extended family); no warning, because the fallback is designed behavior. |
+| Polish text with a Latin-1-only family | Falls back to the first registered family that covers it (the bundled HarmonyOS Sans); no warning, because the fallback is designed behavior. |
 | Emoji or CJK with no covering family | `missing-glyphs`; drawn with `font.family` (the canvas shows whatever it shows; the warning lets the UI tell the user). |
 | Font not loaded | `render()` takes a `FontRegistry`, which only exists after `loadFonts()` resolved, so a not-yet-loaded font cannot be passed. A family missing from the registry is `missing-font`. |
 | `loadFonts()` fails (bad URL, corrupt file) | Rejects with the environment's error as `cause`; nothing is half-registered. |
@@ -245,7 +246,8 @@ Bundled family names (`"Viga"`, `"Barlow Semi Condensed"`) become part of templa
 - **Golden images and platforms:** text rasterization can differ between Skia builds and operating systems, even after thresholding. Policy: `test/golden/manifest.json` records the platform and `@napi-rs/canvas` version each golden was generated with. On the same platform every golden must match exactly. On another platform, goldens without text (lines, QR) must still match exactly, and text goldens may differ in at most 0.2% of their pixels; the test prints the count. Layout decisions (line breaks, chosen size, positions) are asserted separately as numbers, so they are exact everywhere.
 - **Browser vs Node:** the demo renders with the browser's canvas, the tests with Skia in Node; a label can differ by a few dots between them. Layout decisions (wrap points, shrink size) come from `measureText`, so a width difference at a wrap boundary can change a line break. Accepted for 0.x; the preview shows what the browser renders, and that is what prints.
 - **Dependencies:** runtime `qrcode-generator@2.0.4` (MIT). Dev: `@napi-rs/canvas@1.0.11` (MIT; the newest release, accepted by the maintainer although it is younger than a week). Both pinned exactly.
-- **Bundle size:** two font families add a few hundred kB of assets, loaded only when `loadFonts()` is called with them.
+- **Bundle size:** the three font files add about 320 kB of assets, loaded only when `loadFonts()` is called with them.
+- **Font license:** HarmonyOS Sans is not OFL; its conditions (unmodified, notice, license file, not stand-alone) and the revocation risk are handled as described in Fonts.
 - **Privacy:** no prototype template, data set or font without a license is copied. Example templates and rows are made up.
 
 ## 📝 Research (from memory, not re-verified in this session)
@@ -272,7 +274,7 @@ One package, three PRs merged in order, each referencing this spec:
 7. Add `qrcode-generator@2.0.4` (runtime) and `@napi-rs/canvas@1.0.11` (dev). A Node `RenderEnvironment` test helper (`test/node-environment.ts`, not exported) registers fonts through `GlobalFonts`.
 8. `layout/units.ts` and `layout/text.ts` against a fake fixed-width measurer: wrap, `\n`, long word, shrink steps and the +1 dot tolerance, `minSize`, `fit: "none"`, alignments, letter spacing, line spacing, code points (surrogate pairs).
 9. `layout/qr.ts`: module size, centering, levels, `qr-empty`, `qr-too-long`, `qr-too-small`.
-10. Fonts: commit Viga and Barlow Semi Condensed (re-run the `fontTools` coverage and metrics check on the committed files) with `OFL.txt` and `fonts/README.md` (source, version). `fonts/registry.ts` (`loadFonts`, internal names, family choice by coverage, `missing-font`, `missing-glyphs`) and `fonts/bundled.ts`. Tests with fake sources.
+10. Fonts: commit `Viga-Regular.ttf` with `OFL.txt`, and `HarmonyOS_Sans_Medium.ttf` + `HarmonyOS_Sans_Bold.ttf` downloaded from the pinned `openharmony/resources` commit with `LICENSE-HarmonyOS-Sans.txt`; a test asserts their SHA-256 against the values recorded in `fonts/README.md` (source URL, commit, license per file), so a modified file fails the gate. Re-run the `fontTools` coverage and metrics check. `fonts/registry.ts` (`loadFonts`, internal names, family choice by coverage, `missing-font`, `missing-glyphs`) and `fonts/bundled.ts`. Tests with fake sources.
 11. `draw.ts`, `threshold.ts`, `render.ts`, `errors.ts`. Tests: every output pixel is pure black or white; size in dots; `TemplateError` on template-level errors; an invalid element skipped with the rest rendered and its original code reported; warnings collected; drawn-extent checks (overflowing text, `qr-too-small`) give `outside-safe-area` / `outside-printable-area`; `ctx.font` only ever receives internal names (asserted on a recording fake context); a hostile template (200 elements of 2000 characters at the largest allowed size) renders within a time budget.
 12. Golden images (PNG with `test/golden/manifest.json`, compared per the policy in Risks; `UPDATE_GOLDEN=1 pnpm test` rewrites them and writes `*.actual.png` on mismatch): a text-only label, wrap + shrink, each alignment, reversed text, letter spacing, Polish text with fallback, QR at each level, lines, a combined 50x30 made-up label.
 13. `environment/browser.ts`: `OffscreenCanvas` or `<canvas>`, `FontFace` with the internal name, added to `document.fonts` (or `self.fonts` in a worker). Unit-tested with a fake `FontFace`/canvas; real use is exercised by the Phase 3 demo.
@@ -281,10 +283,10 @@ One package, three PRs merged in order, each referencing this spec:
 **Phase 3: demo page**
 15. `packages/render/examples/demo/` (dependency-free HTML + JS, like the core hardware-check page) and an `example` script: a static server rooted at the package, an import map for `@spokospace/labels-render`, `@spokospace/labels-core` (a dev dependency, `workspace:*`) and `qrcode-generator`.
 16. Five or more made-up 50x30 templates (for example a storage box, a shelf label with QR, a cable tag, a reversed header, a long Polish name that must shrink) with made-up rows; a form to edit the row values.
-17. Preview: the rendered image at exact dots (`image-rendering: pixelated`, zoom), with overlays for the label shape, rounded corners, the safe area and the 48 mm head width; the warning list.
+17. Notice "Uses HarmonyOS Sans (Huawei)" in the demo's footer (license condition). Preview: the rendered image at exact dots (`image-rendering: pixelated`, zoom), with overlays for the label shape, rounded corners, the safe area and the 48 mm head width; the warning list.
 18. Print through `labels-core`: `Printer.connect()` straight from the click, `imageToRows(image)`, density and copies, a status line. Manual hardware check on the B1 by the maintainer, with numbered steps in the PR.
 
 ## 🧪 Hardware checks (Phase 3, maintainer)
 - A template's preview and the printed label match (position, line breaks, reversed box, QR scannable with a phone).
 - Content in the safe area prints fully; the side strips the warning marks are the ones that do not print.
-- Polish text prints with the bundled Latin Extended family.
+- Polish text prints with the bundled HarmonyOS Sans.
