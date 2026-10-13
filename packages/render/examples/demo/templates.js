@@ -30,7 +30,8 @@ export const TEMPLATES = [
           font: { family: "HarmonyOS Sans", size: 3.2, bold: true },
           wrap: true,
         },
-        { type: "qr", x: 34, y: 11, width: 14, height: 14, content: { bind: "Code" }, level: "M" },
+        // 16 mm box: a 21-module code at 6 dots per module (15.75 mm), as large as the prototype's.
+        { type: "qr", x: 32.5, y: 10, width: 16, height: 16, content: { bind: "Code" }, level: "M" },
         {
           type: "text",
           x: 2,
