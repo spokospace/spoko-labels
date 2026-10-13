@@ -29,6 +29,8 @@ importers:
 
   packages/core: {}
 
+  packages/render: {}
+
 packages:
 
   '@cacheable/memory@2.2.0':
