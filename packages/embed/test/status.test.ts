@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { defineElements } from "../src/index.js";
 import { PrinterSession } from "../src/session.js";
-import type { SpokoPrinterStatus } from "../src/status.js";
+import { batteryPercent, type SpokoPrinterStatus } from "../src/status.js";
 import { delay, FakeLocks, harness } from "./fakes.js";
 
 defineElements();
@@ -16,6 +16,14 @@ function chip(session: PrinterSession, lang = "en"): { el: SpokoPrinterStatus; b
   return { el, button, text: () => button.textContent ?? "" };
 }
 
+describe("batteryPercent", () => {
+  it("turns the printer's 0–4 level into quarters and keeps a percentage as it is", () => {
+    expect([0, 1, 2, 3, 4].map(batteryPercent)).toEqual([0, 25, 50, 75, 100]);
+    expect(batteryPercent(60)).toBe(60);
+    expect(batteryPercent(150)).toBe(100);
+  });
+});
+
 describe("<spoko-printer-status>", () => {
   it("connects on click and shows the printer, then offers Disconnect", async () => {
     const session = new PrinterSession(harness().deps);
@@ -24,7 +32,7 @@ describe("<spoko-printer-status>", () => {
     expect(el.dataset["state"]).toBe("disconnected");
     button.click();
     await delay(5);
-    expect(text()).toBe("Printer: B1-TEST · battery 3");
+    expect(text()).toBe("Printer: B1-TEST · battery ~75%");
     button.click();
     const menu = el.shadowRoot?.querySelector(".menu") as HTMLElement;
     expect(menu.hidden).toBe(false);

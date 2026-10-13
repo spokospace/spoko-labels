@@ -23,6 +23,11 @@ const CSS = `${THEME}
   @keyframes pulse { to { opacity: .3; } }
 `;
 
+/** NIIMBOT printers report charge as a level 0–4 (quarters); anything above 4 is read as a percentage already. */
+export function batteryPercent(level: number): number {
+  return level <= 4 ? Math.max(0, level) * 25 : Math.min(level, 100);
+}
+
 /** The words the chip shows for a state. */
 export function statusText(state: SessionState, lang: Lang): string {
   switch (state.kind) {
@@ -36,7 +41,7 @@ export function statusText(state: SessionState, lang: Lang): string {
       return t(lang, "connecting");
     case "connected": {
       const name = t(lang, "connected", { name: state.name });
-      return state.battery === undefined ? name : `${name} · ${t(lang, "battery", { level: state.battery })}`;
+      return state.battery === undefined ? name : `${name} · ${t(lang, "battery", { percent: batteryPercent(state.battery) })}`;
     }
     case "printing":
       return t(lang, "printingProgress", { done: state.done, total: state.total });
