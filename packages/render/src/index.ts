@@ -28,3 +28,4 @@ export { TemplateError } from "./errors.js";
 export { loadFonts, type FontRegistry } from "./fonts/registry.js";
 export { bundledFonts } from "./fonts/bundled.js";
 export type { CanvasLike, Context2DLike, FontSource, RenderEnvironment } from "./environment/types.js";
+export { browserEnvironment } from "./environment/browser.js";
