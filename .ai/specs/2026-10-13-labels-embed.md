@@ -1,6 +1,6 @@
 # @spokospace/labels-embed: print labels from another web app
 
-> Status: approved design (#37). D1–D6 come from the maintainer in chat on 2026-10-13. The maintainer accepted A1–A6. The spec review's findings are folded in; A2 is refined to use an open shadow root (see A2). Implemented (Phases 1 and 2); the bundle is built with esbuild directly instead of Vite's library mode (same engine, no asset inlining to configure). Waits for the hardware check.
+> Status: approved design (#37). D1–D6 come from the maintainer in chat on 2026-10-13. The maintainer accepted A1–A6. The spec review's findings are folded in; A2 is refined to use an open shadow root (see A2). Implemented (Phases 1 and 2); the bundle is built with esbuild directly instead of Vite's library mode (same engine, no asset inlining to configure). Hardware check on a NIIMBOT B1 (2026-10-13): connecting from the chip, the battery and printing from the example host passed.
 
 ## 📝 TLDR
 Other web apps should print labels on a NIIMBOT printer without building any of it themselves. The first host is the maintainer's inventory panel, garazyn.polo.blue (Laravel + Filament v5). There a user prints a single label from a record page, or a few labels for the rows picked on a list. The printer is connected once and stays connected while the user moves between pages.
