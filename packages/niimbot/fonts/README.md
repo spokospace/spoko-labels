@@ -2,7 +2,7 @@
 
 The fonts that Niimbot templates use beyond the two `@spokospace/labels-render` bundles (HarmonyOS Sans and Viga). They ship unmodified, byte for byte as published by their sources, and never come from NIIMBOT's CDN. A test (`test/fonts.test.ts`) checks the SHA-256 of each file against this table, so a changed file fails the validation gate. Do not subset, convert or rename them.
 
-All four families are under the SIL Open Font License 1.1. Each license file is copied unchanged from the same source as its font.
+All four families are under the SIL Open Font License 1.1. Each license file is copied from the same source as its font, with only the line endings normalized to LF by `.gitattributes`.
 
 | File | Family (`font.family`) | Face | Niimbot code | License | Source |
 |---|---|---|---|---|---|
