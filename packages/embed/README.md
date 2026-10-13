@@ -32,6 +32,8 @@ Copy the whole folder into your app's public assets, for example `public/vendor/
 
 The bundle registers the two elements, installs `window.spokoLabels` (`{ version, session, printLabels }`), listens for the `spoko-labels:print` event (below), and tries to reconnect to the printer picked earlier, where the browser allows it.
 
+It installs itself once per page. A second copy of the bundle with another version refuses to install and logs a warning. Until the first release every build says `0.0.0`, so this check cannot tell two builds apart; rely on `data-navigate-track` (below), which reloads the page when the script's URL changes.
+
 ## Printing
 
 ```ts
@@ -73,7 +75,10 @@ The result comes back as a `spoko-labels:printed` event on `window` whose `detai
 - **States.** `state` is one of: `unsupported`, `disconnected`, `busy-elsewhere`, `connecting`, `connected` (`name`, `battery`) and `printing` (`done`, `total`). It fires a `statechange` event when it changes.
 - **Methods.** `connect()` opens the device chooser; call it straight from a click. `disconnect()` closes the connection. `tryReconnect()` reconnects without the chooser, where Chrome allows it (today behind `chrome://flags/#enable-web-bluetooth-new-permissions-backend`).
 - **One tab at a time.** Only one tab of your app holds the printer, through a Web Lock. Other tabs show "Printer in use in another tab" until it lets go.
-- **While printing.** Livewire navigation (`wire:navigate`) is refused and reloading the page asks first, so a batch is not cut off.
+- **While printing.**
+  - Livewire navigation by link (`wire:navigate`) is refused, and reloading the page asks first, so a batch is not cut off.
+  - Back and forward are let through, because the URL has already changed. The batch goes on in the session and the chip shows its progress; the dialog itself goes away with the page.
+- **Reconnecting on load.** It does not block the chip: a click can connect meanwhile, and the first connection wins.
 
 ## The status chip
 
@@ -113,7 +118,7 @@ The example is a made-up inventory with three pages that switch in place like `w
 
 ## Using the npm entry
 
-The package entry (`import { printLabels, printerSession, defineElements } from "@spokospace/labels-embed"`) has no side effects. Call `defineElements()` once before using the elements; it is safe to call again.
+The package entry (`import { printLabels, printerSession, defineElements } from "@spokospace/labels-embed"`) has no side effects. Call `defineElements()` once before using the elements; it is safe to call again. Use either the npm entry or the bundle on a page, not both: each would have its own printer session.
 
 ## License
 

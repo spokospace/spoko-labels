@@ -81,7 +81,7 @@ describe("printLabels: the dialog", () => {
     expect(dialogOf().textContent).toContain("Label 1 of 2");
     expect(dialogOf().textContent).toContain("HarmonyOS Sans © Huawei");
     button("Print")?.click();
-    await until(() => dialogOf().textContent?.includes("Printed 4 labels.") ?? false);
+    await until(() => dialogOf().textContent?.includes("Labels printed: 4.") ?? false);
     expect(prints()).toBe(4);
     button("Close")?.click();
     expect(await outcome).toEqual<PrintOutcome>({ printed: 4, cancelled: false });
@@ -142,6 +142,20 @@ describe("printLabels: the dialog", () => {
     document.querySelector("spoko-print-dialog")?.remove();
     expect(await outcome).toEqual({ printed: 2, cancelled: false });
     expect(prints()).toBe(2);
+  });
+
+  it("reopens if the browser closes it while printing, and still resolves at the end", async () => {
+    const { session } = await connected();
+    const outcome = printLabels({ template, rows }, session);
+    await ready();
+    button("Print")?.click();
+    const dialog = dialogOf().querySelector("dialog") as HTMLDialogElement;
+    dialog.close();
+    await delay(1);
+    expect(dialog.open).toBe(true);
+    await until(() => button("Close") !== undefined);
+    button("Close")?.click();
+    expect(await outcome).toEqual({ printed: 2, cancelled: false });
   });
 
   it("does not close on Escape while printing", async () => {

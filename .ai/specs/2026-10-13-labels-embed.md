@@ -95,11 +95,11 @@ printLabels({
 ### Status chip (`<spoko-printer-status>`)
 - **Markup.** A `<button>` in an open shadow root. The state is announced through `aria-live="polite"`. It shows a printer icon plus the state:
   - "Połącz drukarkę";
-  - "Drukarka: B1-xxxx · bateria 3/4";
+  - "Drukarka: B1-xxxx · bateria 3";
   - "Drukuje 2/5…";
   - "W użyciu w innej karcie";
   - "Brak Bluetooth".
-- **Battery.** Shown as the printer's level out of its maximum, not as a percentage.
+- **Battery.** Shown as the printer's own level (a small number, 3 on a full B1), not as a percentage; its maximum is not known per model yet.
 - **Click.** It connects when disconnected. When connected, it opens a one-item menu: Disconnect.
 - **Theming.** Through CSS custom properties (`--spoko-labels-accent`, `--spoko-labels-fg`, `--spoko-labels-bg`, `--spoko-labels-radius`) and `::part(button)`. Light and dark come through `color-scheme`.
 - **Lifecycle.** It subscribes to the session in `connectedCallback` and unsubscribes in `disconnectedCallback`, so Livewire swaps and morphs do not leak listeners. Its own children live in the shadow root, so a morph of the host component does not wipe them. The host may still wrap it in `wire:ignore`.

@@ -91,7 +91,7 @@ export class SpokoPrinterStatus extends HTMLElement {
 
   private clicked(): void {
     const kind = this.session.state.kind;
-    if (kind === "disconnected" || kind === "busy-elsewhere") {
+    if (kind === "disconnected") {
       // Straight from the click: the chooser needs the user gesture.
       void this.session.connect();
     } else if (kind === "connected") {
@@ -101,11 +101,11 @@ export class SpokoPrinterStatus extends HTMLElement {
   }
 
   private update(): void {
-    const lang = langOf(this.getAttribute("lang") ?? undefined);
+    const lang = langOf(this.getAttribute("lang") || undefined);
     const state = this.session.state;
     this.dataset["state"] = state.kind;
     this.label.textContent = statusText(state, lang);
-    this.button.disabled = state.kind === "unsupported" || state.kind === "connecting" || state.kind === "printing";
+    this.button.disabled = state.kind !== "disconnected" && state.kind !== "connected";
     this.disconnectButton.textContent = t(lang, "disconnect");
     if (state.kind !== "connected") {
       this.menu.hidden = true;

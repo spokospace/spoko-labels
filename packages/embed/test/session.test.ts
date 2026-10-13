@@ -88,6 +88,43 @@ describe("PrinterSession: one tab holds the printer", () => {
     expect(second.state).toEqual({ kind: "busy-elsewhere" });
   });
 
+  it("stays busy-elsewhere after a refused attempt, and opens no chooser while another tab holds the printer", async () => {
+    const locks = new FakeLocks();
+    const first = new PrinterSession(harness(locks).deps);
+    await first.connect();
+    // Ordering 1: the tab connects without knowing; the lock is refused.
+    const b = harness(locks);
+    const request = vi.spyOn(b.deps, "request");
+    const second = new PrinterSession(b.deps);
+    await second.connect();
+    expect(second.state).toEqual({ kind: "busy-elsewhere" });
+    await second.connect();
+    expect(request).toHaveBeenCalledTimes(1);
+    // Ordering 2: the tab learns first (refresh), then the user clicks.
+    const c = harness(locks);
+    const third = new PrinterSession(c.deps);
+    await third.refresh();
+    await third.connect();
+    expect(c.links).toHaveLength(0);
+    expect(third.state).toEqual({ kind: "busy-elsewhere" });
+  });
+
+  it("lets go of the lock only after the printer is closed", async () => {
+    const locks = new FakeLocks();
+    const a = harness(locks);
+    const session = new PrinterSession(a.deps);
+    await session.connect();
+    let heldWhileClosing = false;
+    const close = a.links[0]!.close.bind(a.links[0]);
+    a.links[0]!.close = async () => {
+      heldWhileClosing = (await locks.query()).held.length === 1;
+      return close();
+    };
+    await session.disconnect();
+    expect(heldWhileClosing).toBe(true);
+    expect((await locks.query()).held).toEqual([]);
+  });
+
   it("connects without a lock where the Web Locks API is missing", async () => {
     const session = new PrinterSession(harness(undefined).deps);
     await session.connect();
@@ -100,6 +137,21 @@ describe("PrinterSession: tryReconnect", () => {
     const session = new PrinterSession(harness().deps);
     expect(await session.tryReconnect()).toBe(false);
     expect(session.state).toEqual({ kind: "disconnected" });
+  });
+
+  it("keeps the chip usable while it tries, and lets a click win the race", async () => {
+    let comeBack!: (link: FakeLink) => void;
+    const late = new FakeLink("B1-LATE");
+    const h = harness(undefined, { reconnect: () => new Promise((resolve) => (comeBack = resolve)) });
+    const session = new PrinterSession(h.deps);
+    const trying = session.tryReconnect();
+    expect(session.state).toEqual({ kind: "disconnected" });
+    await session.connect();
+    expect(session.state).toMatchObject({ kind: "connected", name: "B1-TEST" });
+    comeBack(late);
+    expect(await trying).toBe(false);
+    expect(late.closed).toBe(true);
+    expect(session.state).toMatchObject({ kind: "connected", name: "B1-TEST" });
   });
 
   it("connects to a printer picked earlier without the chooser", async () => {
@@ -223,6 +275,20 @@ describe("PrinterSession: printBatch", () => {
     await session.printBatch({ count: 1, copies: 1, image: blank });
     expect(blocked).toBe(1);
     expect(navigate()).toBe(false);
+  });
+
+  it("lets back and forward through while printing (the URL has already changed)", async () => {
+    const win = new EventTarget() as EventTarget & { document: EventTarget };
+    win.document = new EventTarget();
+    const h = harness(undefined, { window: win as never });
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    h.printers[0]!.onPrint = () => {
+      const event = new CustomEvent("livewire:navigate", { cancelable: true, detail: { history: true } });
+      win.document.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    };
+    expect(await session.printBatch({ count: 1, copies: 1, image: blank })).toEqual({ printed: 1, cancelled: false });
   });
 
   it("says the printer is not connected when there is nothing to print on", async () => {

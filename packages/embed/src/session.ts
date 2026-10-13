@@ -134,7 +134,8 @@ export class PrinterSession extends EventTarget {
    * the first thing awaited, so the user gesture is kept. Errors become the `disconnected` state's `error`.
    */
   async connect(): Promise<void> {
-    if (this.current.kind !== "disconnected" && this.current.kind !== "busy-elsewhere") return;
+    // Another tab holds the printer: no chooser (the state changes back when that tab lets go).
+    if (this.current.kind !== "disconnected") return;
     let link: Link;
     try {
       // Nothing may be awaited before this call.
@@ -148,23 +149,26 @@ export class PrinterSession extends EventTarget {
     await this.attach(link);
   }
 
-  /** Reconnects to a printer picked earlier, without the chooser, where the browser allows it. Never throws. */
+  /**
+   * Reconnects to a printer picked earlier, without the chooser, where the browser allows it. Never throws.
+   * The state stays `disconnected` meanwhile, so a click can still connect; whichever link comes first wins.
+   */
   async tryReconnect(): Promise<boolean> {
     if (this.current.kind !== "disconnected") return false;
-    this.setState({ kind: "connecting" });
     const link = await this.deps.reconnect(this.deps.model).catch(() => null);
-    if (!link) {
-      this.setState({ kind: "disconnected" });
-      return false;
-    }
+    if (!link) return false;
     return this.attach(link);
   }
 
   async disconnect(): Promise<void> {
     const printer = this.printer;
     if (!printer) return;
+    // The lock is let go only once the printer is closed, so no other tab starts talking to it mid-print.
+    const releaseLock = this.releaseLock;
+    this.releaseLock = null;
     this.detach();
     await this.run(() => printer.disconnect()).catch(() => undefined);
+    releaseLock?.();
     this.setState({ kind: "disconnected" });
   }
 
@@ -176,11 +180,12 @@ export class PrinterSession extends EventTarget {
     if (held.held?.some((lock) => lock.name === LOCK_NAME)) this.watchLock();
   }
 
-  /** Waits for the other tab's lock to go, then lets go of it at once and offers to connect. */
+  /** Shows `busy-elsewhere` and waits for the other tab's lock to go, then lets go of it and offers to connect. */
   private watchLock(): void {
-    if (this.watchingLock || !this.deps.locks) return;
-    this.watchingLock = true;
+    if (!this.deps.locks) return;
     if (this.current.kind === "disconnected") this.setState({ kind: "busy-elsewhere" });
+    if (this.watchingLock) return;
+    this.watchingLock = true;
     void this.deps.locks
       .request(LOCK_NAME, {}, async () => undefined)
       .catch(() => undefined)
@@ -211,6 +216,11 @@ export class PrinterSession extends EventTarget {
   }
 
   private async attach(link: Link): Promise<boolean> {
+    // A silent reconnect and a click can both bring a link; the first one attached wins.
+    if (this.printer) {
+      await link.close().catch(() => undefined);
+      return false;
+    }
     if (!(await this.acquireLock())) {
       await link.close().catch(() => undefined);
       this.setState({ kind: "disconnected" });
@@ -331,6 +341,8 @@ export class PrinterSession extends EventTarget {
     const win = this.deps.window;
     if (!win) return () => undefined;
     const navigate = (event: Event) => {
+      // Back and forward have already changed the URL; let those through (the batch goes on in the session).
+      if ((event as CustomEvent<{ history?: boolean } | null>).detail?.history) return;
       event.preventDefault();
       this.dispatchEvent(new Event("navigationblocked"));
     };

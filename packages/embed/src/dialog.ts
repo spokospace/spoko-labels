@@ -240,6 +240,12 @@ export class SpokoPrintDialog extends HTMLElement {
       event.preventDefault();
       if (!this.batch) this.close();
     });
+    // Browsers may still close it (a second Escape cannot always be refused): reopen it while printing, so
+    // Cancel and the progress stay reachable; otherwise finish.
+    this.dialog.addEventListener("close", () => {
+      if (this.batch && this.isConnected) this.dialog.showModal();
+      else this.finish();
+    });
   }
 
   private async prepare(): Promise<void> {
@@ -315,6 +321,7 @@ export class SpokoPrintDialog extends HTMLElement {
     printed.height = image.height;
     const printedCtx = printed.getContext("2d");
     if (!ctx || !printedCtx) return;
+    ctx.imageSmoothingEnabled = false;
     printedCtx.putImageData(new ImageData(image.data as Uint8ClampedArray<ArrayBuffer>, image.width, image.height), 0, 0);
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate((-printRotation * Math.PI) / 180);
@@ -369,7 +376,7 @@ export class SpokoPrintDialog extends HTMLElement {
     this.status.textContent =
       state.kind === "printing" ? t(this.uiLang, "progress", { done: state.done, total: state.total }) : statusText(state, this.uiLang);
     this.connectButton.hidden = connected;
-    this.connectButton.disabled = !(state.kind === "disconnected" || state.kind === "busy-elsewhere");
+    this.connectButton.disabled = state.kind !== "disconnected";
     this.hint.hidden = connected || state.kind === "unsupported";
     this.printButton.hidden = !connected;
     this.printButton.disabled = printing || state.kind !== "connected" || !this.fonts || !this.template;
