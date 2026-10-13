@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Produkty · labels-embed example host</title>
+  <!-- Loaded once, as a host would after copying dist/bundle/ into its assets. data-navigate-track makes a
+       Livewire app reload fully when the bundle's version changes. -->
+  <script type="module" src="/dist/bundle/labels-embed.js" data-navigate-track></script>
+  <script type="module" src="./host.js"></script>
+  <link rel="stylesheet" href="./host.css">
+</head>
+<body>
+  <header id="topbar">
+    <strong>Made-up inventory</strong>
+    <nav>
+      <a href="./" data-nav>Start</a>
+      <a href="./tools.html" data-nav>Narzędzia</a>
+      <a href="./products.html" data-nav>Produkty</a>
+    </nav>
+    <spoko-printer-status></spoko-printer-status>
+  </header>
+  <main>
+    <h1>Produkty i pojemniki</h1>
+    <table>
+      <thead><tr><th></th><th>Nazwa</th><th>Kod</th><th>Lokalizacja</th><th></th></tr></thead>
+      <tbody>
+        <tr data-record="{&quot;name&quot;:&quot;Lampa przednia lewa&quot;,&quot;code&quot;:&quot;P-1201&quot;,&quot;location&quot;:&quot;Półka 3&quot;,&quot;url&quot;:&quot;https://example.invalid/p/1201&quot;}"><td><input type="checkbox" aria-label="Zaznacz: Lampa przednia lewa"></td><td>Lampa przednia lewa</td><td>P-1201</td><td>Półka 3</td><td><button type="button" data-print-one="product">Drukuj etykietę</button></td></tr>
+        <tr data-record="{&quot;name&quot;:&quot;Pojemnik: śruby M6&quot;,&quot;code&quot;:&quot;C-0042&quot;,&quot;location&quot;:&quot;Półka 1&quot;,&quot;url&quot;:&quot;https://example.invalid/c/42&quot;}"><td><input type="checkbox" aria-label="Zaznacz: Pojemnik: śruby M6"></td><td>Pojemnik: śruby M6</td><td>C-0042</td><td>Półka 1</td><td><button type="button" data-print-one="product">Drukuj etykietę</button></td></tr>
+        <tr data-record="{&quot;name&quot;:&quot;Czujnik ABS przód&quot;,&quot;code&quot;:&quot;P-1202&quot;,&quot;location&quot;:&quot;Półka 3&quot;,&quot;url&quot;:&quot;https://example.invalid/p/1202&quot;}"><td><input type="checkbox" aria-label="Zaznacz: Czujnik ABS przód"></td><td>Czujnik ABS przód</td><td>P-1202</td><td>Półka 3</td><td><button type="button" data-print-one="product">Drukuj etykietę</button></td></tr>
+      </tbody>
+    </table>
+    <p><button type="button" data-print-selected="product">Drukuj zaznaczone</button></p>
+  </main>
+  <footer>
+    <button type="button" data-morph>Re-render the top bar (like a Livewire morph)</button>
+    <p>Example host for <code>@spokospace/labels-embed</code>. Every record here is made up. The page switches in place like Livewire's <code>wire:navigate</code>: the body is replaced, the printer connection stays.</p>
+  </footer>
+</body>
+</html>

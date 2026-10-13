@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Start · labels-embed example host</title>
+  <!-- Loaded once, as a host would after copying dist/bundle/ into its assets. data-navigate-track makes a
+       Livewire app reload fully when the bundle's version changes. -->
+  <script type="module" src="/dist/bundle/labels-embed.js" data-navigate-track></script>
+  <script type="module" src="./host.js"></script>
+  <link rel="stylesheet" href="./host.css">
+</head>
+<body>
+  <header id="topbar">
+    <strong>Made-up inventory</strong>
+    <nav>
+      <a href="./" data-nav>Start</a>
+      <a href="./tools.html" data-nav>Narzędzia</a>
+      <a href="./products.html" data-nav>Produkty</a>
+    </nav>
+    <spoko-printer-status></spoko-printer-status>
+  </header>
+  <main>
+    <h1>Start</h1>
+    <p>Connect the printer once with the chip in the top bar, then move between <a href="./tools.html" data-nav>Narzędzia</a> and <a href="./products.html" data-nav>Produkty</a> and print. The connection should stay.</p>
+    <ol>
+      <li>Close the NIIMBOT phone app and switch the B1 on with a 50 x 30 mm roll.</li>
+      <li>Click "Połącz drukarkę" in the top bar, pick the printer whose name starts with B1, click Pair.</li>
+      <li>Open a list, print one label, select a few rows and print them, then switch lists and print again.</li>
+    </ol>
+  </main>
+  <footer>
+    <button type="button" data-morph>Re-render the top bar (like a Livewire morph)</button>
+    <p>Example host for <code>@spokospace/labels-embed</code>. Every record here is made up. The page switches in place like Livewire's <code>wire:navigate</code>: the body is replaced, the printer connection stays.</p>
+  </footer>
+</body>
+</html>

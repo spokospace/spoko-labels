@@ -1,0 +1,33 @@
+{
+  "name": "@spokospace/labels-embed",
+  "version": "0.0.0",
+  "description": "Print labels on a NIIMBOT printer from any web app: a shared printer connection, a status chip and a print dialog, with no framework.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "bundle": "node scripts/bundle.mjs",
+    "example": "node scripts/bundle.mjs && node examples/serve.mjs"
+  },
+  "dependencies": {
+    "@spokospace/labels-core": "workspace:*",
+    "@spokospace/labels-niimbot": "workspace:*",
+    "@spokospace/labels-render": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "happy-dom": "21.0.1"
+  }
+}
