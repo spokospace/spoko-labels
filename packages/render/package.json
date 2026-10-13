@@ -1,0 +1,21 @@
+{
+  "name": "@spokospace/labels-render",
+  "version": "0.0.0",
+  "description": "Label template engine for NIIMBOT printers: a versioned, millimetre-based template format, validation and rendering to a black-and-white image.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
