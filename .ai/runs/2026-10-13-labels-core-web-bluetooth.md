@@ -43,3 +43,4 @@ PR: #4
 - [x] 3.2 Printer.connect and exports — 9ed4514
 - [x] 3.3 Package README — 9ed4514
 - [x] 3.4 Hardware-check example page — 038abe1
+- [x] 3.5 Fixes found by the hardware check (error mapping, copies, top offset and calibration, firmware format, abort docs) — 629d1d8
