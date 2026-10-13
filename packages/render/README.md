@@ -1,8 +1,31 @@
 # @spokospace/labels-render
 
-Label templates for NIIMBOT printers: a versioned, millimetre-based template format (text, QR codes, lines; content bound to data columns by name) and its validator. Rendering a template to a black-and-white image that `@spokospace/labels-core` can print is being added next.
+Label templates for NIIMBOT printers: a versioned, millimetre-based template format (text, QR codes, lines; content bound to data columns by name), its validator, and a renderer that turns a template and a row of data into a pure black-and-white image that `@spokospace/labels-core` prints as is.
 
-> **Status: pre-release (`0.0.0`), schema and validation only.** The template format may still change until the renderer lands and golden images pin its defaults; after that it is a protected contract (see `BACKWARD_COMPATIBILITY.md`). Not published to npm yet.
+> **Status: pre-release (`0.0.0`).** The template format v1, the issue codes and the exports are protected contracts (see `BACKWARD_COMPATIBILITY.md`). Not published to npm yet.
+
+> **Fonts:** this package bundles **HarmonyOS Sans** (© Huawei Device Co., Ltd., under the HarmonyOS Sans Fonts License Agreement) and **Viga** (SIL Open Font License 1.1). Software that shows labels rendered with HarmonyOS Sans must say that it uses HarmonyOS Sans. Details: [`fonts/README.md`](fonts/README.md).
+
+## Quick start
+
+```ts
+import { browserEnvironment, bundledFonts, loadFonts, render } from "@spokospace/labels-render";
+import { B1, imageToRows, Printer } from "@spokospace/labels-core";
+
+const environment = browserEnvironment();
+const fonts = await loadFonts(environment, bundledFonts); // once; fetches the font files
+
+const { image, warnings } = render(template, { row: { Name: "Blue crate", Code: "BX-0012" } }, {
+  environment,
+  fonts,
+  printableWidth: B1.headDots / B1.dotsPerMm, // 48 mm
+});
+// show `warnings` to the user and draw `image` as a preview; then, in a click handler:
+const printer = await Printer.connect(); // must be the first await after the click
+await printer.print(imageToRows(image));
+```
+
+`render()` is synchronous. The image is label-sized (a 50x30 mm template gives 400x240 dots); `imageToRows()` center-crops it to the print head.
 
 ## Template format, version 1
 
@@ -95,6 +118,27 @@ Only an object's own properties are read, so objects built in code behave exactl
 
 The package also exports `TEMPLATE_VERSION` (`1`), `DEFAULTS` (the values filled in for omitted fields), `LIMITS` (the ranges above), the template types (`Template`, `Element`, `TextElement`, `QrElement`, `LineElement`, `Content`, `Shape`, `FontSpec` and the option unions) and the `Normalized*` types that describe what `validateTemplate` returns, with every default present.
 
+## Rendering
+
+`render(template, { row, columns }, { environment, fonts, printableWidth? })` returns `{ image, warnings }`:
+
+- `image`: `{ width, height, data }`, RGBA, every pixel black or white, at 8 dots per mm.
+- `warnings`: `{ code, path }`. Every validation issue of the template is included (an element with an error is skipped and the rest renders), plus what rendering found: missing columns and fonts, text that does not fit, QR problems, and drawn content (overflowing text, an oversized QR code) outside the safe or printable area.
+- A template-level error (bad `version`, `size`, `shape`, `elements`) throws `TemplateError`, whose `issues` are the validation issues.
+
+How elements are drawn:
+
+- **Text** uses the font's own metrics: line height is `ceil(ascent × px) + ceil(descent × px)`. With `fit: "shrink"`, the size is the largest whole pixel size from `minSize` to `font.size` at which the text fits its box (one dot of overhang allowed); with `wrap`, the text rewraps at every size tried. Text that still does not fit is drawn and reported as `text-overflow`, never cut silently.
+- **Fonts**: the family is chosen per element, for the whole text, by glyph coverage: `font.family`, then each `fallback`, then every loaded family in order; the first that has every character wins. So Polish text in Viga (which has no Polish letters) is drawn in HarmonyOS Sans with no warning. A missing bold face uses the regular one (`missing-font`); there is no synthetic bold.
+- **QR codes** are encoded as UTF-8, in the smallest symbol that fits, with whole dots per module, centered in the box. No quiet zone is added: leave a margin around the box.
+- **Lines** fill their box, at least one dot thick.
+
+### Fonts and environments
+
+`loadFonts(environment, sources)` loads fonts once and returns a registry for `render()`. `bundledFonts` lists the bundled files (families `"Viga"` and `"HarmonyOS Sans"`, regular and bold); add your own `FontSource` (`family`, `bold?`, `data` as a `URL` or `ArrayBuffer`, `ascent` and `descent` per em from the font's `hhea` table, `unicodeRanges` from its `cmap`). Each font is registered under an internal name, so the host page's fonts never stand in for it and a template's family name never reaches a CSS font string.
+
+`browserEnvironment()` draws on an `OffscreenCanvas` (or a `<canvas>`) and loads fonts with `FontFace`. Any other `RenderEnvironment` (`createCanvas`, `loadFont`) works too; this package's tests use `@napi-rs/canvas` in Node. Text measurement differs slightly between canvas engines, so the same template can break a line differently in another browser; the preview shows what will print.
+
 ## Issue codes
 
 Callers translate the codes; the package has no user-facing text.
@@ -111,7 +155,20 @@ Callers translate the codes; the package has no user-facing text.
 | `outside-safe-area` | warning | An element box is inside the label but leaves the safe area (the shape, its rounded corners, `safeMargin`). |
 | `outside-printable-area` | warning | An element box leaves the centered `printableWidth` strip. |
 
-The renderer will add `missing-column`, `value-truncated`, `missing-font`, `missing-glyphs`, `text-overflow`, `qr-empty`, `qr-too-long` and `qr-too-small`.
+Raised by `render()` (always warnings):
+
+| `code` | When |
+|---|---|
+| `missing-column` | The content names a column the row does not have (path `…/content`); the value is empty. |
+| `value-truncated` | A text value over 2000 code points was cut (path `…/content`). |
+| `missing-font` | `font.family` (`…/font/family`), a fallback (`…/font/fallback/<i>`) or the bold face (`…/font/bold`) is not loaded. |
+| `missing-glyphs` | No loaded family has every character of the text. |
+| `text-overflow` | The text does not fit its box even at `minSize` (or with `fit: "none"`). |
+| `qr-empty` | The QR content is empty; nothing is drawn. |
+| `qr-too-long` | The content does not fit a QR symbol at this level; nothing is drawn. |
+| `qr-too-small` | The box is smaller than one dot per module; the symbol is drawn at one dot per module, overflowing the box. |
+
+`outside-safe-area` and `outside-printable-area` are also raised by `render()` for what was drawn, not only for element boxes.
 
 ## License
 
