@@ -68,8 +68,10 @@ export interface PrintOptions {
   copies?: number;
   onProgress?: (progress: PrintProgress) => void;
   /**
-   * Abort the print. Before the page ends the printer is told to finish (best effort);
-   * after `PageEnd` the page is already in the printer and may still print.
+   * Abort the print. The printer is told to end the job (best effort) and the call rejects with `aborted`.
+   * On a real B1 this cancels the label: aborting while rows were still being sent, and aborting while
+   * the printer was already working on the page, both left nothing printed (after the first, the next
+   * print worked normally).
    */
   signal?: AbortSignal;
 }

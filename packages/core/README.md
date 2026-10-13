@@ -49,7 +49,7 @@ On the B1 the printer starts printing slightly before a label begins, so without
 
 ### Aborting
 
-Pass an `AbortSignal` to `print()`. Before the page is finished the printer is told to end the job (best effort) and the call rejects with `aborted`. After the last row has been sent the page is already inside the printer, so the label may still print.
+Pass an `AbortSignal` to `print()`. The printer is told to end the job (best effort) and the call rejects with `aborted`. Checked on a B1: aborting while rows were being sent, and aborting after all rows were sent while the printer was already working, both cancel the label (nothing is printed); after the first the printer was ready for the next print straight away. With `copies` greater than 1, labels that were already printed stay printed and the remaining copies are not sent.
 
 ### Reconnecting without the chooser (experimental)
 
