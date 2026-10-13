@@ -162,6 +162,16 @@ const isObject = (value: unknown): value is Json => typeof value === "object" &&
  * @throws RangeError when `options.printableWidth` is given and is not a positive finite number.
  */
 export function validateTemplate(input: unknown, options: ValidateOptions = {}): ValidationResult {
+  const { template, issues } = validateWithSources(input, options);
+  return { template, issues };
+}
+
+/**
+ * `validateTemplate`, plus where each kept element came from: `sources[i]` is the index in the input's
+ * `elements` of `template.elements[i]`, so the renderer can point its own warnings into the input.
+ */
+export function validateWithSources(input: unknown, options: ValidateOptions = {}): ValidationResult & { sources: number[] } {
+  const sources: number[] = [];
   const { printableWidth } = options;
   if (printableWidth !== undefined && !(Number.isFinite(printableWidth) && printableWidth > 0)) {
     throw new RangeError(`printableWidth must be a positive number of millimetres, got ${printableWidth}`);
@@ -170,7 +180,7 @@ export function validateTemplate(input: unknown, options: ValidateOptions = {}):
   const issues: TemplateIssue[] = [];
   if (!isObject(input)) {
     issues.push({ severity: "error", code: input === undefined ? "required" : "invalid-type", path: "" });
-    return { template: null, issues };
+    return { template: null, issues, sources };
   }
   const r = new Reader(issues, "", input);
   r.onlyKeys(KEYS.template);
@@ -188,7 +198,7 @@ export function validateTemplate(input: unknown, options: ValidateOptions = {}):
   else if (!Array.isArray(elements)) r.error("invalid-type", "/elements");
   else if (elements.length > LIMITS.maxElements) r.error("out-of-range", "/elements");
 
-  if (!r.ok || !size || !shape || !Array.isArray(elements)) return { template: null, issues };
+  if (!r.ok || !size || !shape || !Array.isArray(elements)) return { template: null, issues, sources };
 
   const template: NormalizedTemplate = { version: TEMPLATE_VERSION, size, shape, safeMargin, elements: [] };
   if (name !== undefined) template.name = name;
@@ -202,8 +212,9 @@ export function validateTemplate(input: unknown, options: ValidateOptions = {}):
     if (!element) return;
     for (const code of checkPlacement(element, template, printableWidth)) issues.push({ severity: "warning", code, path });
     template.elements.push(element);
+    sources.push(i);
   });
-  return { template, issues };
+  return { template, issues, sources };
 }
 
 function readSize(parent: Reader): NormalizedTemplate["size"] | undefined {
