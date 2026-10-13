@@ -11,6 +11,7 @@ import {
 import { B1, type PrinterModel } from "./model.js";
 import { CMD, INFO_KEY } from "./protocol/commands.js";
 import { encodePacket, PacketParser, u16, type Packet } from "./protocol/packet.js";
+import { parseRfid, type RfidInfo } from "./protocol/rfid.js";
 import { encodeRows, shiftRows } from "./protocol/rows.js";
 import type { Transport } from "./transport.js";
 import { WebBluetoothTransport } from "./web-bluetooth.js";
@@ -129,6 +130,27 @@ export class Printer {
         info.firmware = formatFirmware(info.firmwareRaw);
       }
       return info;
+    });
+  }
+
+  /**
+   * Read the loaded roll's RFID tag: label type, serial and the used/total label count — the same
+   * data the official NIIMBOT app reads to show which roll is loaded and how many labels are left.
+   * The printer reads the tag itself; this only asks it for the result. Resolves to `null` when no
+   * tag is present or the printer does not answer; a malformed reply rejects with `ProtocolError`.
+   *
+   * The reply layout comes from community reverse engineering, not the vendor. It was checked on a real B1
+   * with a genuine 50x30 mm roll (October 2026); other roll sizes are not checked yet.
+   */
+  async readRfid(): Promise<RfidInfo | null> {
+    return this.locked(async () => {
+      await this.ensureHandshake();
+      // Only silence counts as "no tag": a garbled reply rejects with `protocol` instead of looking like an empty roll.
+      const reply = await this.request("rfid", CMD.GET_RFID).catch((error: unknown) => {
+        if (error instanceof NoResponseError) return undefined;
+        throw error;
+      });
+      return reply ? parseRfid(reply.data) : null;
     });
   }
 

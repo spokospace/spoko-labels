@@ -35,17 +35,31 @@ button.addEventListener("click", async () => {
 | `Printer.connect(model?)` | Opens the chooser and returns a connected `Printer`. |
 | `new Printer(transport, model?)` | A printer over any `Transport` (for tests, or another link). |
 | `printer.info()` | `{ battery?, serial?, firmware? }`. A value the printer does not answer is left out. `battery` is a small level (3 on a B1), not a percentage. `firmware` is formatted as `"5.26"` (the printer reports two bytes, 5 and 26, which is the integer 1306; this is what the official NIIMBOT app shows); the unformatted integer is in `firmwareRaw`. |
+| `printer.readRfid()` | `{ uid, barcode, serial, total, used, type }` for the loaded roll, or `null` when there is no tag. See [Reading the loaded roll](#reading-the-loaded-roll-rfid). Checked on a B1 with a 50×30 roll. |
 | `printer.print(rows, options?)` | Prints one page. Options: `density` (integer within the model's range), `copies` (1 to 255; each copy is a separate print job), `offsetMm` (`{ x, y }` calibration in millimetres, like the official app; the B1 default is 0.5 mm down, see below), `onProgress({ stage, percent })`, `signal` (`AbortSignal`). |
 | `printer.disconnect()`, `printer.connected` | Close the link, check the link. |
 | `WebBluetoothTransport` | `isSupported()`, `request(model?)`, `reconnect(model?, { timeoutMs? })`, `deviceName`. |
 | `imageToRows(image, model?)` | RGBA image to 1-bit rows of `headDots / 8` bytes. |
-| `encodePacket`, `PacketParser`, `encodeRows`, `CMD`, `INFO_KEY` | The pure protocol codec, usable without any I/O. |
+| `encodePacket`, `PacketParser`, `encodeRows`, `parseRfid`, `CMD`, `INFO_KEY` | The pure protocol codec, usable without any I/O. `parseRfid` decodes a `GET_RFID` reply into `RfidInfo`. |
 | `B1`, `PrinterModel` | The model descriptor: head width, name prefixes, density range, row gap. |
 | `Transport` | The interface a link must implement. |
 
 ### Where the print lands on the label (calibration)
 
 On the B1 the printer starts printing slightly before a label begins, so without a correction the first rows of the image fall on the gap between labels. The model therefore moves the image down by `offsetMm.y` (0.5 mm, that is 4 blank rows; 8 rows are 1 mm). The value was measured on one B1 with 50x30 gap labels, so it may differ a little on other printers or rolls. Pass `offsetMm` to `print()` to calibrate, the way the official app's "Calibration" screen does: `x` moves the image right (negative: left), `y` moves it down (0 to 10 mm). Raise `y` if the top of a print is cut off, lower it if the bottom is; `{ x: 0, y: 0 }` sends the image as given. Dots that leave the head are dropped. Also keep text away from the label edges: the head prints 48 mm across, so a 50 mm label has about 1 mm of blank space on each side, and the corners of most labels are rounded.
+
+### Reading the loaded roll (RFID)
+
+A genuine NIIMBOT roll carries an RFID tag; the printer reads it to identify the roll and to count the labels left. `readRfid()` asks the printer for that data over BLE — you do not need an NFC reader — and returns it, or `null` when no tag is present:
+
+```ts
+const roll = await printer.readRfid();
+if (roll) console.log(`${roll.total - roll.used} of ${roll.total} labels left, type ${roll.type}`);
+```
+
+Use it to detect which roll is loaded (so the app can pick the matching template) and to show how many labels are left. `total - used` is the remaining count. Dimensions are not always on the tag — the official app looks them up from a server by `serial`/`barcode` — so there are no width/height fields.
+
+> **Checked on a B1 with a genuine 50×30 roll** (October 2026): `total`, `used` and `type` came back consistent, and `total - used` matched the labels left on the roll. The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor, and other roll sizes are not checked yet. The `readRfid()` button on the [hardware check page](#hardware-check-page) reads a roll; please report results for other sizes.
 
 ### Aborting
 
@@ -83,7 +97,7 @@ The `Printer` only needs a `Transport`. Implement the four-method interface over
 
 ## Hardware check page
 
-`examples/hardware-check/` is a small manual page for trying the package on a real printer: connect, `info()`, print made-up test labels at any density and copy count, abort at different moments, and log raw packets. It is meant for the hardware verification of a new release, not as an app.
+`examples/hardware-check/` is a small manual page for trying the package on a real printer: connect, `info()`, `readRfid()`, print made-up test labels at any density and copy count, abort at different moments, and log raw packets. It is meant for the hardware verification of a new release, not as an app.
 
 ```bash
 pnpm --filter @spokospace/labels-core example

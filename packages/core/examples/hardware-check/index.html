@@ -58,8 +58,10 @@
     </div>
     <div class="row">
       <button id="info">info()</button>
+      <button id="rfid">readRfid()</button>
       <button id="probe" title="Needs 'log raw packets'">Probe label / status (read-only)</button>
     </div>
+    <p class="hint">readRfid() asks the printer for the loaded roll's tag and logs the label counts and type; the UID, barcode and serial are masked.</p>
     <p class="hint">Probe sends read-only queries (heartbeat, RFID, printer settings) and shows the raw replies. Tick "log raw packets" before connecting. Run it once per label roll, with the lid closed. The serial number is never written to the log.</p>
   </section>
 

@@ -1,5 +1,6 @@
 export { CMD, INFO_KEY } from "./protocol/commands.js";
 export { encodePacket, PacketParser, type Packet, type ParsedFrame } from "./protocol/packet.js";
+export { parseRfid, type RfidInfo } from "./protocol/rfid.js";
 export { encodeRows, MAX_ROWS, shiftRows } from "./protocol/rows.js";
 export { imageToRows, type ImageLike } from "./image.js";
 export { B1, type PrinterModel } from "./model.js";
