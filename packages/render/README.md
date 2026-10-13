@@ -135,7 +135,7 @@ How elements are drawn:
 
 ### Fonts and environments
 
-`loadFonts(environment, sources)` loads fonts once and returns a registry for `render()`. `bundledFonts` lists the bundled files (families `"Viga"` and `"HarmonyOS Sans"`, regular and bold); add your own `FontSource` (`family`, `bold?`, `data` as a `URL` or `ArrayBuffer`, `ascent` and `descent` per em from the font's `hhea` table, `unicodeRanges` from its `cmap`). Each font is registered under an internal name, so the host page's fonts never stand in for it and a template's family name never reaches a CSS font string.
+`loadFonts(environment, sources)` loads fonts once and returns a registry for `render()`. Pass `render()` the same environment object (create it once, as in the quick start): a registry used with another environment throws `TypeError`, because that canvas could silently draw with a system font. `bundledFonts` lists the bundled files (families `"Viga"` and `"HarmonyOS Sans"`, regular and bold); add your own `FontSource` (`family`, `bold?`, `data` as a `URL` or `ArrayBuffer`, `ascent` and `descent` per em from the font's `hhea` table, `unicodeRanges` from its `cmap`). Each font is registered under an internal name, so the host page's fonts never stand in for it and a template's family name never reaches a CSS font string.
 
 `browserEnvironment()` draws on an `OffscreenCanvas` (or a `<canvas>`) and loads fonts with `FontFace`. Any other `RenderEnvironment` (`createCanvas`, `loadFont`) works too; this package's tests use `@napi-rs/canvas` in Node. Text measurement differs slightly between canvas engines, so the same template can break a line differently in another browser; the preview shows what will print.
 

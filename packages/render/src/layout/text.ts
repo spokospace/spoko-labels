@@ -55,13 +55,16 @@ const codePointCount = (s: string): number => {
 };
 
 /**
- * The letter spacing a line is drawn with. Negative spacing is limited so the characters can at most collapse
- * onto one another: the line never gets a negative width, never runs backwards out of its box unreported.
+ * The letter spacing a line is drawn with. Negative spacing is limited to the narrowest character's width, so
+ * the pen never moves backwards: characters may overlap but stay in order, the line keeps a non-negative
+ * width, and everything drawn lies between the line's start and its start plus its width (give or take
+ * kerning), where the placement checks see it.
  */
 export function effectiveSpacing(line: string, measure: Measure, letterSpacing: number): number {
-  if (letterSpacing >= 0) return letterSpacing;
-  const gaps = codePointCount(line) - 1;
-  return gaps > 0 ? Math.max(letterSpacing, -measure(line) / gaps) : 0;
+  if (letterSpacing >= 0 || line.length === 0) return letterSpacing;
+  let narrowest = Infinity;
+  for (const ch of line) narrowest = Math.min(narrowest, measure(ch));
+  return Math.max(letterSpacing, -narrowest);
 }
 
 /** Width of a line with letter spacing: spacing goes between characters, not after the last one. */

@@ -12,6 +12,7 @@ import { validateWithSources } from "./schema/validate.js";
 import { threshold } from "./threshold.js";
 
 export interface RenderOptions {
+  /** The same environment object the fonts were loaded into with `loadFonts()`; another one throws `TypeError`. */
   environment: RenderEnvironment;
   /** From `loadFonts()`. */
   fonts: FontRegistry;

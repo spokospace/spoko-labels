@@ -197,13 +197,16 @@ describe("render", () => {
     for (const f of fontsSet) expect(f).toMatch(/^\d+px "spoko-labels-\d+"$/);
   });
 
-  it("keeps negatively spaced text inside its reported extent", () => {
-    const { warnings } = render(
-      template([text({ x: 0, content: { text: "ABCDEFGHIJ" }, letterSpacing: -5, width: 20 })]),
-      {},
-      options(),
-    );
-    expect(warnings).toEqual([]);
+  it("draws negatively spaced text, whatever the alignment, inside its reported extent", () => {
+    for (const align of ["left", "center", "right"] as const) {
+      const { image, warnings } = render(
+        template([text({ x: 2, y: 2, width: 46, height: 26, content: { text: "ABCDEFGHIJ" }, letterSpacing: -5, align })]),
+        {},
+        options(),
+      );
+      expect(warnings).toEqual([]);
+      expect(blackCount(image.data)).toBeGreaterThan(50);
+    }
   });
 
   it("refuses fonts loaded into another environment", async () => {

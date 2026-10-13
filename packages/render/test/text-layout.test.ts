@@ -150,12 +150,12 @@ describe("layoutText", () => {
     expect(layoutText(input({ ...base, verticalAlign: "bottom" })).lines.map((l) => l.baseline)).toEqual([81, 106]);
   });
 
-  it("limits negative letter spacing so a line never has a negative width", () => {
-    // 4 code points, 5 dots each = 20 dots; spacing below -20 / 3 would run backwards.
+  it("limits negative letter spacing to the narrowest character, so the pen never moves backwards", () => {
+    // Every character is 5 dots wide at 10 px: spacing is limited to -5, the characters stack up.
     const l = layoutText(input({ text: "abcd", sizePx: 10, letterSpacing: -40 }));
-    expect(l.lines[0]?.width).toBe(0);
-    expect(l.lines[0]?.spacing).toBeCloseTo(-20 / 3);
-    expect(l.extent).toEqual({ x: 10, y: 20, width: 0, height: 10 });
+    expect(l.lines[0]?.spacing).toBe(-5);
+    expect(l.lines[0]?.width).toBe(5);
+    expect(l.extent).toEqual({ x: 10, y: 20, width: 5, height: 10 });
     expect(layoutText(input({ text: "abcd", sizePx: 10, letterSpacing: -2 })).lines[0]?.spacing).toBe(-2);
   });
 
