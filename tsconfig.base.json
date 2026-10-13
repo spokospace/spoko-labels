@@ -13,6 +13,13 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // Type-check workspace packages against each other's sources, so `pnpm typecheck` works on a fresh
+    // checkout before anything is built. Each tsconfig.build.json clears this: builds use the dist types.
+    "paths": {
+      "@spokospace/labels-core": ["./packages/core/src/index.ts"],
+      "@spokospace/labels-render": ["./packages/render/src/index.ts"],
+      "@spokospace/labels-niimbot": ["./packages/niimbot/src/index.ts"]
+    }
   }
 }

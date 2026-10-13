@@ -29,6 +29,12 @@ importers:
 
   packages/core: {}
 
+  packages/niimbot:
+    dependencies:
+      '@spokospace/labels-render':
+        specifier: workspace:*
+        version: link:../render
+
   packages/render:
     dependencies:
       qrcode-generator:

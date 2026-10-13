@@ -33,8 +33,8 @@ Development and testing happen mainly on a **NIIMBOT B1** (203 dpi, 384-dot prin
 | Package | Purpose |
 |---|---|
 | [`@spokospace/labels-core`](packages/core/README.md) | printer protocol and Web Bluetooth connection (available) |
-| `@spokospace/labels-render` | label template engine (planned) |
-| `@spokospace/labels-niimbot` | import templates from the NIIMBOT desktop app (planned) |
+| [`@spokospace/labels-render`](packages/render/README.md) | label template engine (available) |
+| [`@spokospace/labels-niimbot`](packages/niimbot/README.md) | import templates from the NIIMBOT desktop app (in progress: conversion available, reading the app's database coming) |
 | `@spokospace/labels-embed` | drop-in "Print label" dialog for other apps (planned) |
 | `apps/web` | the public web app (planned) |
 

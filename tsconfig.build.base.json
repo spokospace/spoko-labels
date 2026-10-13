@@ -1,0 +1,8 @@
+{
+  // Shared by every packages/*/tsconfig.build.json: emit, and resolve sibling packages through their dist
+  // types instead of the source `paths` that type-checking and tests use.
+  "compilerOptions": {
+    "noEmit": false,
+    "paths": {}
+  }
+}
