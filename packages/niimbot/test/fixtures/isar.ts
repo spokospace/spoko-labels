@@ -2,6 +2,8 @@
 // "Observed source format"). Every value is invented; URLs use example.invalid. No real database, template,
 // data-source id or roll serial belongs here.
 
+import { CANVAS } from "../../src/extract/scan.js";
+
 const encoder = new TextEncoder();
 
 export type Part = Uint8Array | string;
@@ -39,6 +41,28 @@ export interface RecordSpec {
   updatedAt?: string | undefined;
   /** false leaves out the `[0,0,0,0]` record marker. */
   marker?: boolean | undefined;
+  /** The Isar object's static part with the label size and print rotation; `staticSize` breaks the layout on purpose. */
+  canvas?: { width: number; height: number; rotate: number; staticSize?: number } | undefined;
+}
+
+/**
+ * The fixed-size part of the app's template object (see CANVAS in src/extract/scan.ts): a u16 size and the
+ * fields in schema order, with the elements slot pointing `elementsAt` bytes past the object's start.
+ */
+const u24 = (n: number): Uint8Array => Uint8Array.of(n & 0xff, (n >> 8) & 0xff, n >> 16);
+
+/** The u16 size and the static fields that follow it. */
+const STATIC_BYTES = 2 + CANVAS.staticSize;
+
+function staticPart(canvas: NonNullable<RecordSpec["canvas"]>, elementsAt: number): Uint8Array {
+  const out = new Uint8Array(STATIC_BYTES);
+  const view = new DataView(out.buffer);
+  view.setUint16(0, canvas.staticSize ?? CANVAS.staticSize, true);
+  out.set(u24(elementsAt), CANVAS.elements);
+  view.setFloat64(CANVAS.height, canvas.height, true);
+  view.setBigInt64(CANVAS.rotate, BigInt(canvas.rotate), true);
+  view.setFloat64(CANVAS.width, canvas.width, true);
+  return out;
 }
 
 const labelNames = (rolls: string[]): string =>
@@ -52,15 +76,22 @@ const labelNames = (rolls: string[]): string =>
 export function record(spec: RecordSpec, seed = 1): Uint8Array {
   const name = encoder.encode(spec.name ?? "");
   const rolls = spec.rollNames ? labelNames(spec.rollNames) : "";
-  return bytes(
-    noise(24, seed),
+  const strings = bytes(
     "https://example.invalid/thumbnails/made-up.png",
     noise(3, seed + 1),
     "00000000-0000-0000-0000-made-up00000",
     noise(2, seed + 2),
     spec.updatedAt ?? "",
-    noise(4, seed + 3),
-    JSON.stringify(spec.elements),
+    noise(1, seed + 3),
+  );
+  const elements = encoder.encode(JSON.stringify(spec.elements));
+  const object = spec.canvas ? staticPart(spec.canvas, STATIC_BYTES + strings.length) : new Uint8Array(0);
+  return bytes(
+    noise(24, seed),
+    object,
+    strings,
+    u24(elements.length),
+    elements,
     noise(4, seed + 4),
     rolls,
     noise(6, seed + 5),

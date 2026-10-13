@@ -52,7 +52,8 @@ interface ExtractResult {
 How it reads the file:
 - It scans the bytes for the app's records (an elements JSON array followed by the record marker `[0,0,0,0]` and the name) instead of parsing the Isar format, so it keeps working across small app updates and fails soft on big ones: fewer templates or none, never an exception.
 - Isar keeps old copies of edited records. Identical copies collapse silently; for copies with different content, the newest timestamp wins.
-- Only what `importTemplates` needs leaves the scanner: the name, the roll names, the timestamp and, for each element, the keys in What is imported. Element ids, image data and URLs, thumbnails, cloud ids and the data source of bound elements (its id and sheet name) are dropped.
+- The label size and print rotation come from the template object's fixed-size fields (the app's schema, stored in the same file). When a record does not match that layout, the size comes from the roll name instead.
+- Only what `importTemplates` needs leaves the scanner: the name, the label size, the roll names, the timestamp, the print rotation and, for each element, the keys in What is imported. Element ids, image data and URLs, thumbnails, cloud ids and the data source of bound elements (its id and sheet name) are dropped.
 - `TypeError` for anything other than a `Uint8Array`; `RangeError` above 64 MB (the real file is about 5 MB). No JSON value larger than 256 kB is read.
 
 Checked against the layout of NIIMBOT for Windows as of October 2026 (the database written by the app in use then).
@@ -65,6 +66,7 @@ interface NiimbotTemplate {
   width?: number; height?: number;   // label size in mm, when the source has it
   rollNames?: string[];              // e.g. "T50*30-230WHITE"
   updatedAt?: string;
+  rotate?: number;                   // degrees the app turns the label clockwise when printing
   elements: unknown[];               // Niimbot elements as the app stores them
 }
 ```
@@ -85,7 +87,7 @@ interface NiimbotTemplate {
 
 ```ts
 interface ImportResult { templates: ImportedTemplate[]; failures: ImportFailure[] }
-interface ImportedTemplate { source: ImportSource; template: Template; warnings: ImportWarning[] }
+interface ImportedTemplate { source: ImportSource; template: Template; printRotation: 0 | 90 | 180 | 270; warnings: ImportWarning[] }
 interface ImportFailure { source: ImportSource; code: ImportFailureCode; issues?: TemplateIssue[] }
 interface ImportSource { index: number; name?: string }
 interface ImportWarning { code: ImportWarningCode; path: string; feature?: string; issue?: IssueCode }
@@ -107,6 +109,10 @@ The label size comes from the first that works:
 3. `defaultSize`.
 
 Failing all three, the template fails with `unknown-size`. There is no silent default size.
+
+### Print rotation
+
+A label can be designed upright, for example 30 × 50 mm for a 50 × 30 mm roll. The app then turns it when printing, and stores how far in the template's `rotate` (270 for such a label). Template v1 has no print direction, so the import keeps the design as drawn (`size` 30 × 50) and reports the turn as `printRotation`: degrees clockwise, a multiple of 90. Turn the rendered image by it before printing, as `niimblue`'s image encoder does for its "left" print direction. A `rotate` that is not a multiple of 90 gives `printRotation: 0` and `unsupported-style` `rotate` at `/rotate`.
 
 ## What is imported
 
@@ -164,6 +170,17 @@ Optional numbers of the wrong type (`letterSpacing: "0.3"`) count as absent.
 `NIIMBOT_FONT_FAMILIES` exports this table. Pass `niimbotFonts` to `loadFonts()` together with render's `bundledFonts` (Quick start) and every family in the table is registered. The files (about 0.8 MB in all) ship in the package's `fonts/` folder and are fetched only by `loadFonts()`; each `data` is a `new URL("../../fonts/<file>", import.meta.url)`, which bundlers such as Vite copy as assets.
 
 All four are under the SIL Open Font License 1.1, with the license next to each file. `fonts/README.md` lists the source, the pinned commit and the SHA-256 of every file; they come from the upstream repositories (`google/fonts`, `EkType/Baloo`), never from NIIMBOT's servers. Every family covers the Polish letters. Only Inconsolata has a bold face: `bold: true` in any other of these families draws the regular face with render's `missing-font` warning at `/font/bold`. Markazi Text is a variable font drawn at its default weight, 400. Any other code imports with the app catalogue's family name (when `fontCatalog` has it) and an `unknown-font` warning; a host that has such a font can register it under that name. Every family other than HarmonyOS Sans gets `fallback: ["HarmonyOS Sans"]`, so text with letters a font lacks (Polish ones in Viga, for example) is drawn in HarmonyOS Sans.
+
+## Example page
+
+`packages/niimbot/examples/import/` is a developer and hardware-check page. It reads a picked database file, lists the imported templates with their warnings and failures, previews one at exact dots with made-up values in its bound columns, shows its v1 JSON, and prints it on a NIIMBOT B1 over Web Bluetooth.
+
+```bash
+pnpm --filter @spokospace/labels-niimbot example
+# open http://localhost:8082/examples/import/ in Chrome or Edge
+```
+
+The file stays in the browser; the local server only serves the page and the package builds.
 
 ## Privacy
 

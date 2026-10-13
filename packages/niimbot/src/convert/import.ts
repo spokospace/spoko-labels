@@ -6,8 +6,9 @@ import type {
   ImportSource,
   ImportWarning,
   ImportedTemplate,
+  PrintRotation,
 } from "../types.js";
-import { ElementContext, get, isObject, present } from "./context.js";
+import { ElementContext, finite, get, isObject, present, type Json } from "./context.js";
 import { convertElement } from "./element.js";
 import { convertSize, isValidSize } from "./size.js";
 
@@ -27,12 +28,23 @@ function sourceOf(raw: unknown, index: number): ImportSource {
 
 type Outcome = Omit<ImportedTemplate, "source"> | Omit<ImportFailure, "source">;
 
+/** The template's print rotation: a multiple of 90 degrees, or 0 with `unsupported-style` `rotate`. */
+function printRotationOf(raw: Json, warnings: ImportWarning[]): PrintRotation {
+  const rotate = get(raw, "rotate");
+  if (!present(rotate)) return 0;
+  if (finite(rotate) && rotate % 90 === 0) return ((((rotate % 360) + 360) % 360) + 0) as PrintRotation; // + 0: -0 becomes 0
+  warnings.push({ code: "unsupported-style", path: "/rotate", feature: "rotate" });
+  return 0;
+}
+
 function importOne(raw: unknown, options: ImportOptions): Outcome {
   if (!isObject(raw)) return { code: "invalid-input" };
   const rawElements = get(raw, "elements");
   if (!Array.isArray(rawElements)) return { code: "invalid-input" };
   const size = convertSize(raw, options.defaultSize);
   if (!size) return { code: "unknown-size" };
+  const templateWarnings: ImportWarning[] = [];
+  const printRotation = printRotationOf(raw, templateWarnings);
 
   // Warnings are kept per Niimbot element so the validator's findings land in element order too.
   const warnings: ImportWarning[][] = Array.from(rawElements, () => []);
@@ -76,7 +88,7 @@ function importOne(raw: unknown, options: ImportOptions): Outcome {
   }
   template.elements = elements.filter((_, k) => !rejected.has(k));
 
-  return { template, warnings: warnings.flat() };
+  return { template, printRotation, warnings: [...templateWarnings, ...warnings.flat()] };
 }
 
 /**

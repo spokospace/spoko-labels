@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>labels-niimbot import</title>
+  <!-- No bundler: map the package names to the builds this package's server exposes (see ../serve.mjs). -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@spokospace/labels-niimbot": "/dist/index.js",
+        "@spokospace/labels-render": "/node_modules/@spokospace/labels-render/dist/index.js",
+        "@spokospace/labels-core": "/node_modules/@spokospace/labels-core/dist/index.js",
+        "qrcode-generator": "/node_modules/@spokospace/labels-render/node_modules/qrcode-generator/dist/qrcode.mjs"
+      }
+    }
+  </script>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 64rem; margin: 0 auto; padding: 1rem; line-height: 1.4; }
+    h1 { font-size: 1.3rem; }
+    h2 { font-size: 1rem; margin: 0 0 .5rem; }
+    h3 { font-size: .95rem; margin: .8rem 0 .3rem; }
+    section { border: 1px solid #8884; border-radius: 8px; padding: .75rem 1rem; margin: 1rem 0; }
+    button, select, input, textarea { font: inherit; padding: .35rem .6rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .4rem 0; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    @media (max-width: 52rem) { .grid { grid-template-columns: minmax(0, 1fr); } }
+    .hint { opacity: .75; font-size: .9rem; }
+    .notice { border: 1px solid #d9822b; background: #d9822b22; border-radius: 8px; padding: .6rem 1rem; margin: 1rem 0; }
+    .error { color: #c62828; font-weight: 600; }
+    code { font: .85em ui-monospace, monospace; background: #8882; padding: 0 .25rem; border-radius: 3px; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+    th, td { text-align: left; padding: .25rem .5rem; border-bottom: 1px solid #8883; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover { background: #8881; }
+    tbody tr[aria-selected="true"] { background: #1e88e522; }
+    .stage { position: relative; display: inline-block; background: #fff; border: 1px solid #8886; max-width: 100%; overflow: auto; }
+    .stage canvas { display: block; }
+    #image { image-rendering: pixelated; }
+    #overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+    .legend span { display: inline-block; width: .9rem; height: .9rem; vertical-align: -.15rem; margin-right: .25rem; border: 1px solid #8886; }
+    #fields label { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: .5rem; align-items: center; margin: .3rem 0; }
+    #fields input { width: 100%; box-sizing: border-box; }
+    ul { margin: .3rem 0; padding-left: 1.2rem; }
+    #json { width: 100%; height: 18rem; font: .8rem ui-monospace, monospace; box-sizing: border-box; }
+    #status { font-weight: 600; }
+    progress { width: 12rem; }
+    footer { margin: 2rem 0 1rem; font-size: .85rem; opacity: .8; }
+  </style>
+</head>
+<body>
+  <h1>labels-niimbot import</h1>
+  <p class="hint">Read the templates out of the NIIMBOT desktop app, check how they import and print one on a NIIMBOT B1 (50x30 mm labels). Use Chrome or Edge, and close the NIIMBOT phone app before printing.</p>
+  <div id="unsupported" class="notice" hidden>This browser has no Web Bluetooth: the preview works, printing does not. Use Chrome or Edge on a computer or Android (Brave needs <code>brave://flags/#brave-web-bluetooth-api</code>).</div>
+
+  <section>
+    <h2>1. Database file</h2>
+    <div class="row"><input id="file" type="file" accept=".isar"></div>
+    <p class="hint">Close the NIIMBOT app, then pick <code>%APPDATA%\niimbot.com\NIIMBOT\Niimbot\niimbot_db.isar</code>. The file is read in this browser only; nothing is uploaded.</p>
+    <p id="filestatus"></p>
+  </section>
+
+  <section id="results" hidden>
+    <h2>2. Templates</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Size (mm)</th><th>Fonts</th><th>Elements</th><th>Warnings</th></tr></thead>
+      <tbody id="templates"></tbody>
+    </table>
+    <div id="failuresbox" hidden>
+      <h3>Not imported</h3>
+      <ul id="failures"></ul>
+    </div>
+    <div id="extractbox" hidden>
+      <h3>Reading the file</h3>
+      <ul id="extractwarnings"></ul>
+    </div>
+  </section>
+
+  <section id="selected" hidden>
+    <h2>3. <span id="selectedname"></span></h2>
+    <div class="grid">
+      <div>
+        <h3>Sample data</h3>
+        <div id="fields"></div>
+        <p class="hint" id="nofields" hidden>This template has no bound fields.</p>
+        <p class="hint">Niimbot binds by column position: column C reads the third column of your data. The values here are made up.</p>
+      </div>
+      <div>
+        <h3>Import warnings</h3>
+        <ul id="importwarnings"></ul>
+        <h3>Render warnings</h3>
+        <ul id="renderwarnings"></ul>
+        <p class="hint">Import warnings point into the Niimbot template; render warnings into the imported v1 template (its JSON below), which has no skipped elements.</p>
+      </div>
+    </div>
+    <h3>Preview</h3>
+    <div class="row">
+      <label>Zoom <select id="zoom"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+      <label><input type="checkbox" id="showoverlay" checked> show the print head</label>
+    </div>
+    <div class="stage"><canvas id="image"></canvas><canvas id="overlay"></canvas></div>
+    <p class="hint legend">
+      Every square is one printed dot (8 dots per mm). The image is exactly what is sent to the printer.
+      <span style="background:#e5393566"></span>outside the 48 mm print head (not printed; it crosses the label's height when the label is printed turned a quarter)
+    </p>
+    <p id="size" class="hint"></p>
+    <details>
+      <summary>Template v1 JSON</summary>
+      <div class="row"><button id="copy">Copy JSON</button><span id="copystatus" class="hint"></span></div>
+      <textarea id="json" readonly spellcheck="false"></textarea>
+    </details>
+  </section>
+
+  <section id="printing" hidden>
+    <h2>4. Print</h2>
+    <div class="row">
+      <button id="connect">Connect printer</button>
+      <button id="disconnect" disabled>Disconnect</button>
+      <span id="status">Not connected</span>
+    </div>
+    <div class="row">
+      <label>Density <select id="density"></select></label>
+      <label>Copies <input id="copies" type="number" min="1" max="255" value="1" step="1" size="3"></label>
+      <label>Turn before printing <select id="rotation"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+      <button id="print" disabled>Print</button>
+      <progress id="progress" max="100" value="0" hidden></progress>
+    </div>
+    <p class="hint">The turn is set from the template: a label designed upright (for example 30 x 50 mm on a 50 x 30 mm roll) is turned clockwise the way the NIIMBOT app turns it. If the print comes out the wrong way round, try the opposite turn and report it.</p>
+    <p class="hint">Connect opens the browser's Bluetooth chooser: pick the printer (its name starts with B1) and click Pair. Printing uses the default calibration of <code>@spokospace/labels-core</code> (image moved 0.5 mm down).</p>
+  </section>
+
+  <footer>
+    Example of <code>@spokospace/labels-niimbot</code>, <code>@spokospace/labels-render</code> and <code>@spokospace/labels-core</code>. Not affiliated with NIIMBOT.
+    Uses <strong>HarmonyOS Sans</strong> (© Huawei Device Co., Ltd., used under the HarmonyOS Sans Fonts License Agreement), and Viga, Inconsolata, Baloo Paaji, Markazi Text and Cookie (SIL Open Font License 1.1).
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

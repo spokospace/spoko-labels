@@ -181,6 +181,46 @@ function readName(bytes: Uint8Array, from: number): string | undefined {
   return name.length > 0 ? name : undefined;
 }
 
+// The template record is an Isar object of the app's `NiimBotTemplateCanvasDataModel` (its schema is stored in
+// the same file). Isar keeps fixed-size fields in a static part: a u16 size, then the fields in schema order,
+// strings and lists as a u24 offset (from the object's start) to their data, which is a u24 length and the
+// bytes. These offsets hold for the schema observed in October 2026; a record that does not match all of them
+// keeps the size from its roll name.
+export const CANVAS = {
+  staticSize: 244, // u16 at the object's start
+  elements: 80, // u24 offset of the elements string
+  height: 102, // f64, mm
+  rotate: 178, // i64, degrees the app turns the label when printing
+  width: 236, // f64, mm
+  /** How far before the elements array the object may start (the strings stored before it). */
+  window: 8 * 1024,
+};
+
+const u24 = (bytes: Uint8Array, p: number): number => (bytes[p] ?? 0) | ((bytes[p + 1] ?? 0) << 8) | ((bytes[p + 2] ?? 0) << 16);
+const plausibleMm = (v: number): boolean => Number.isFinite(v) && v > 0 && v <= 1000;
+
+/** The label size and print rotation of the record whose elements array starts at `array`, when its layout matches. */
+function canvasOf(
+  bytes: Uint8Array,
+  view: DataView,
+  array: number,
+  lowest: number,
+  budget: Budget,
+): { width: number; height: number; rotate: number } | undefined {
+  const from = Math.max(lowest, array - CANVAS.window);
+  budget.left -= array - from;
+  // The object start is where the elements slot points at this array (whose u24 length sits just before it).
+  for (let o = array - 3 - CANVAS.staticSize; o >= from; o--) {
+    if (u24(bytes, o + CANVAS.elements) !== array - 3 - o || view.getUint16(o, true) !== CANVAS.staticSize) continue;
+    const width = view.getFloat64(o + CANVAS.width, true);
+    const height = view.getFloat64(o + CANVAS.height, true);
+    const rotate = Number(view.getBigInt64(o + CANVAS.rotate, true));
+    if (!plausibleMm(width) || !plausibleMm(height) || !Number.isSafeInteger(rotate)) return undefined;
+    return { width, height, rotate };
+  }
+  return undefined;
+}
+
 /** The last `YYYY-MM-DD HH:MM:SS` in `bytes[from, to)`. */
 function lastTimestamp(bytes: Uint8Array, from: number, to: number): string | undefined {
   return latin1.decode(bytes.subarray(from, to)).match(TIMESTAMP)?.at(-1);
@@ -236,7 +276,7 @@ interface Found {
 interface Candidate {
   start: number;
   template: NiimbotTemplate;
-  /** Elements and roll names as JSON: what decides whether two copies are the same. */
+  /** Elements, roll names, size and rotation as JSON: what decides whether two copies are the same. */
   content: string;
 }
 
@@ -260,6 +300,7 @@ function elementArrays(bytes: Uint8Array, budget: Budget): Found[] {
 
 function records(bytes: Uint8Array, budget: Budget): Candidate[] {
   const arrays = elementArrays(bytes, budget);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const out: Candidate[] = [];
   for (const [i, array] of arrays.entries()) {
     const windowEnd = Math.min(array.end + AFTER_WINDOW, arrays[i + 1]?.start ?? bytes.length);
@@ -269,14 +310,17 @@ function records(bytes: Uint8Array, budget: Budget): Candidate[] {
     const name = readName(bytes, marker + RECORD_MARKER.length);
     const rolls = rollNames(bytes, array.end, windowEnd, budget);
     const updatedAt = lastTimestamp(bytes, Math.max(array.start - BEFORE_WINDOW, arrays[i - 1]?.end ?? 0), array.start);
+    const canvas = canvasOf(bytes, view, array.start, arrays[i - 1]?.end ?? 0, budget);
     const elements = array.elements.map(whitelist);
     const template: NiimbotTemplate = {
       ...(name !== undefined && { name }),
+      ...canvas,
       ...(rolls !== undefined && { rollNames: rolls }),
       ...(updatedAt !== undefined && { updatedAt }),
       elements,
     };
-    out.push({ start: array.start, template, content: JSON.stringify([elements, rolls ?? null]) });
+    const content = JSON.stringify([elements, rolls ?? null, canvas ?? null]);
+    out.push({ start: array.start, template, content });
   }
   return out;
 }

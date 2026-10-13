@@ -14,6 +14,11 @@ export interface NiimbotTemplate {
   rollNames?: string[];
   /** As found in the source; used only to pick the newest of several copies. */
   updatedAt?: string;
+  /**
+   * Degrees the app turns the label clockwise when printing it: 0, 90, 180 or 270. A label designed upright
+   * (30 x 50 mm) for a 50 x 30 mm roll has 270. Becomes `printRotation` in the import result.
+   */
+  rotate?: number;
   /** Niimbot elements: objects with `type`, `x`, `y`, `width`, `height` (mm) and type-specific keys. */
   elements: unknown[];
 }
@@ -54,9 +59,17 @@ export interface ImportWarning {
   issue?: IssueCode;
 }
 
+/** Degrees clockwise. */
+export type PrintRotation = 0 | 90 | 180 | 270;
+
 export interface ImportedTemplate {
   source: ImportSource;
   template: Template;
+  /**
+   * How far to turn the rendered image clockwise before printing it, as the app does: template v1 has no
+   * print direction, so the host applies it (for example before `imageToRows`). Usually 0.
+   */
+  printRotation: PrintRotation;
   warnings: ImportWarning[];
 }
 
