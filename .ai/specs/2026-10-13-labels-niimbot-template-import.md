@@ -65,7 +65,12 @@ Before the elements there are URLs, ids and a `YYYY-MM-DD HH:MM:SS` timestamp. L
 A small package with no runtime dependency other than `@spokospace/labels-render`, which provides the types and `validateTemplate()`. It has three modules.
 
 **`extract/`: Isar bytes → `{ templates: NiimbotTemplate[], fontCatalog, warnings }`.** The scanner works on the bytes; it never parses the whole file as text:
-- An element array is any `[{` whose JSON parses within 256 kB and is an array of objects that each have a string `type` and numeric `x`, `y`, `width`, `height`.
+- An element array is accepted only when all three hold:
+  - its JSON parses within 256 kB;
+  - it is an array of objects that each have a string `type` and numeric `x`, `y`, `width`, `height`;
+  - the metadata window after it (below) contains the record marker `[0,0,0,0]`. This NIIMBOT-specific signal keeps generic JSON in foreign files from being read as templates.
+
+  A missing `labelNames` array does not reject a recognized record. Such a record comes out without `rollNames` and reaches the `unknown-size` path.
 - Candidates are found in one linear pass. A JSON-aware bracket matcher (it tracks strings and escapes) finds each candidate's end, giving up past 256 kB. Only then is the slice parsed. After an accepted array, scanning resumes past its end, so the whole file is scanned in O(n) plus the parse of accepted arrays.
 - The template's metadata is read from a bounded window around the array:
   - before it: the last timestamp within 2 kB;
@@ -74,7 +79,9 @@ A small package with no runtime dependency other than `@spokospace/labels-render
 - Font catalogue objects are recognized by `"code":"ZT` followed by a parseable object with string `code` and `fileName`.
 - Duplicates (records with the same name, elements and roll) collapse silently. Same name with different content: the newest timestamp wins, with a `duplicate-template` warning, because Isar can leave stale copies. On equal or missing timestamps, the first in file order wins. Unnamed records collapse only when their content is identical.
 - **Order.** Templates come out in the file order of the kept copy. For the font catalogue, the first occurrence of a code wins.
-- **Element whitelist.** Elements are returned with only the keys the converter reads (the Data Model tables). Image keys (`imageUrl`, `localUrl`, `imageData`, …) and every other app key are dropped. A non-empty `dataBind` keeps its length, but its strings are blanked (`["", ""]`), so data-source ids and sheet names never leave the scanner.
+- **Element whitelist.** Elements are returned with only the keys the converter reads (the Data Model tables). Image keys (`imageUrl`, `localUrl`, `imageData`, …) and every other app key are dropped. A non-empty `dataBind` keeps its length, but its strings are blanked (`["", ""]`), so data-source ids and sheet names never leave the scanner. Retained values are scalars only:
+  - A `value` that is an object or an array is replaced by `{}`. The converter still reports `unsupported-style` `value` for it, but none of its content leaves the scanner.
+  - Any other retained key whose value has the wrong JSON type (an object where a number or string is read) is dropped.
 - Only the fields in `NiimbotTemplate` are returned: no URLs, thumbnails or cloud ids.
 
 **`convert/`: `NiimbotTemplate[]` → v1 templates.** Each template is converted inside its own `try`, so a malformed record becomes one failure and never aborts the batch. After conversion the result goes through `validateTemplate()`:
@@ -277,7 +284,7 @@ The family names below become part of imported templates, so this spec fixes the
 - Metrics (`hhea` ascent and descent per em) and `unicodeRanges` are measured with `fontTools` when the files are added. Fonts that lack Polish letters are fine: every imported family other than HarmonyOS Sans carries `fallback: ["HarmonyOS Sans"]`, so render's family choice switches to it with no warning.
 - Bold faces ship only where upstream has a static bold (Inconsolata). Elsewhere `bold: true` renders the regular face with render's `missing-font` at `/font/bold`, the same rule as Viga.
 - Total is about 0.9 MB, loaded only when a host passes `niimbotFonts` to `loadFonts()`.
-- **Not bundled (maintainer's decision):** `ZT636`, `ZT681` and `ZT453`, three Chinese display fonts found in real templates. Their licenses cannot be verified, and they are several MB each. They import with the catalogue's family name, `fallback: ["HarmonyOS Sans"]` and `unknown-font`. A host that holds a license can register a font under that family name.
+- **Not bundled (maintainer's decision):** `ZT636`, `ZT681` and `ZT453`, three Chinese display fonts found in real templates. Their licenses cannot be verified, and they are several MB each. They import with the catalogue's family name, `fallback: ["HarmonyOS Sans"]` and `unknown-font`. The catalogue's `fileName` is used as is, trimmed, at most 100 characters. It is not always a clean family name: for `ZT063` it reads "Markazi Text Bold". A host that holds a license can register a font under that family name.
 - Any other code from the roughly 680 in the catalogue behaves the same. Adding one to the table later changes the import output for templates that use it, so it gets a changelog entry under the import-output rules.
 
 ## 📝 UI/UX (example page only)
@@ -392,6 +399,9 @@ One package, four PRs merged in order, each referencing this spec:
     - a record without `labelNames` (no `rollNames`, so `unknown-size` later);
     - the font catalogue;
     - random bytes → `no-templates-found`;
+    - a foreign file holding a generic JSON element array without the record marker → `no-templates-found`;
+    - a recognized record without `labelNames` → extracted without `rollNames`, then `unknown-size` in `importTemplates`;
+    - a `value` object is replaced by `{}`;
     - a truncated JSON array;
     - a 256 kB window cap;
     - `RangeError` above 64 MB;
