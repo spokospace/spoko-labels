@@ -170,6 +170,17 @@ Raised by `render()` (always warnings):
 
 `outside-safe-area` and `outside-printable-area` are also raised by `render()` for what was drawn, not only for element boxes.
 
+## Demo page
+
+`examples/demo/` is a small page for trying templates and printing them on a NIIMBOT B1: pick one of six made-up 50x30 templates, edit its data or its JSON, see the exact dots that will print (with the label's rounded corners, the safe area and the strips the 48 mm head does not cover), read the warnings, and print with a chosen density and number of copies. It needs no bundler: an import map points at the builds of this package, `@spokospace/labels-core` and `qrcode-generator`.
+
+```bash
+pnpm --filter @spokospace/labels-render example
+# then open http://localhost:8081/examples/demo/ in Chrome or Edge
+```
+
+It is a stepping stone to the web app, not the app itself: English only, no xlsx or API data.
+
 ## License
 
 MIT
