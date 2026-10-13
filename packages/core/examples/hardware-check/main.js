@@ -94,6 +94,19 @@ function loggingTransport(inner) {
 
 // ---------- UI state ----------
 
+/** Web Bluetooth cannot switch the adapter on, but it can tell that it is off: show how to turn it on. */
+async function updateBluetoothNotice() {
+  // when the answer cannot be read, assume Bluetooth is fine rather than nag
+  const available = await Promise.resolve(navigator.bluetooth?.getAvailability?.()).then(
+    (value) => value !== false,
+    () => true,
+  );
+  $("btnotice").hidden = available || !WebBluetoothTransport.isSupported();
+  $("btsettings").hidden = !/Windows/.test(navigator.userAgent);
+}
+
+navigator.bluetooth?.addEventListener?.("availabilitychanged", () => void updateBluetoothNotice());
+
 function refresh() {
   const connected = printer?.connected === true;
   $("status").textContent = !WebBluetoothTransport.isSupported()
@@ -117,7 +130,10 @@ function setRunning(value) {
   refresh();
 }
 
-setInterval(refresh, 1000);
+setInterval(() => {
+  refresh();
+  void updateBluetoothNotice();
+}, 1000);
 
 // ---------- preview ----------
 
@@ -340,4 +356,5 @@ $("offsetx").value = String(B1.offsetMm.x);
 $("offsety").value = String(B1.offsetMm.y);
 updatePreview();
 refresh();
+void updateBluetoothNotice();
 log(`Page loaded. B1 density range in the library: ${B1.densityRange.min}..${B1.densityRange.max}.`);
