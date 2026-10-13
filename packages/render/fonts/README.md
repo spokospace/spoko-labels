@@ -29,5 +29,5 @@ If you take these files out of this package, the agreement's conditions apply to
 
 `src/fonts/bundled.ts` holds each file's ascent and descent per em (`hhea` table) and the code point ranges of its `cmap`, read with fontTools:
 
-- Viga: ascent 1.015, descent 0.329; Basic Latin and Latin-1, no Polish letters.
+- Viga: ascent 1.015, descent 0.329; Basic Latin, Latin-1 and a few more letters (it has Ł ł Ń ń but lacks ą ć ę ś ź ż, so Polish text falls back to HarmonyOS Sans).
 - HarmonyOS Sans (both faces): ascent 0.928, descent 0.244; Latin (including Latin Extended-A, so every Polish letter), Greek, Cyrillic.

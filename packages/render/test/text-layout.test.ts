@@ -83,7 +83,7 @@ describe("layoutText", () => {
     const l = layoutText(input());
     expect(l.px).toBe(20);
     expect(l.overflow).toBe(false);
-    expect(l.lines).toEqual([{ text: "Blue crate", x: 10, baseline: 36, width: 100 }]);
+    expect(l.lines).toEqual([{ text: "Blue crate", x: 10, baseline: 36, width: 100, spacing: 0 }]);
     expect(l.extent).toEqual({ x: 10, y: 20, width: 100, height: 20 });
   });
 
@@ -148,6 +148,15 @@ describe("layoutText", () => {
     expect(layoutText(input({ ...base, verticalAlign: "top" })).lines.map((l) => l.baseline)).toEqual([26, 51]);
     expect(layoutText(input({ ...base, verticalAlign: "middle" })).lines.map((l) => l.baseline)).toEqual([54, 79]);
     expect(layoutText(input({ ...base, verticalAlign: "bottom" })).lines.map((l) => l.baseline)).toEqual([81, 106]);
+  });
+
+  it("limits negative letter spacing so a line never has a negative width", () => {
+    // 4 code points, 5 dots each = 20 dots; spacing below -20 / 3 would run backwards.
+    const l = layoutText(input({ text: "abcd", sizePx: 10, letterSpacing: -40 }));
+    expect(l.lines[0]?.width).toBe(0);
+    expect(l.lines[0]?.spacing).toBeCloseTo(-20 / 3);
+    expect(l.extent).toEqual({ x: 10, y: 20, width: 0, height: 10 });
+    expect(layoutText(input({ text: "abcd", sizePx: 10, letterSpacing: -2 })).lines[0]?.spacing).toBe(-2);
   });
 
   it("has no extent for empty text", () => {

@@ -1,7 +1,8 @@
 import type { FontSource } from "../environment/types.js";
 
 // Code point ranges and metrics read from each file's cmap and hhea tables with fontTools (see fonts/README.md).
-// The files live in packages/render/fonts/, two levels up from both src/fonts/ and dist/fonts/.
+// The files live in packages/render/fonts/, two levels up from both src/fonts/ and dist/fonts/. Each URL is
+// written as a literal `new URL("…", import.meta.url)`, the form bundlers recognise and copy as an asset.
 
 const VIGA_RANGES: [number, number][] = [
   [0x20, 0x7e], [0xa0, 0xac], [0xae, 0xff], [0x127, 0x129], [0x131, 0x135], [0x137, 0x138], [0x13f, 0x144],
@@ -40,7 +41,6 @@ const HARMONY_RANGES: [number, number][] = [
 // Medium is registered as the regular face, as in the prototype (and the NIIMBOT app's default weight).
 const HARMONY = { family: "HarmonyOS Sans", ascent: 0.928, descent: 0.244, unicodeRanges: HARMONY_RANGES };
 
-const file = (name: string): URL => new URL(`../../fonts/${name}`, import.meta.url);
 
 /**
  * The fonts that ship with the package: Viga (SIL OFL 1.1) and HarmonyOS Sans Medium and Bold (HarmonyOS Sans
@@ -48,7 +48,7 @@ const file = (name: string): URL => new URL(`../../fonts/${name}`, import.meta.u
  * Software that shows labels rendered with HarmonyOS Sans must say so (a condition of its license).
  */
 export const bundledFonts: readonly FontSource[] = Object.freeze([
-  { family: "Viga", data: file("Viga-Regular.ttf"), ascent: 1.015, descent: 0.329, unicodeRanges: VIGA_RANGES },
-  { ...HARMONY, data: file("HarmonyOS_Sans_Medium.ttf") },
-  { ...HARMONY, bold: true, data: file("HarmonyOS_Sans_Bold.ttf") },
+  { family: "Viga", data: new URL("../../fonts/Viga-Regular.ttf", import.meta.url), ascent: 1.015, descent: 0.329, unicodeRanges: VIGA_RANGES },
+  { ...HARMONY, data: new URL("../../fonts/HarmonyOS_Sans_Medium.ttf", import.meta.url) },
+  { ...HARMONY, bold: true, data: new URL("../../fonts/HarmonyOS_Sans_Bold.ttf", import.meta.url) },
 ]);

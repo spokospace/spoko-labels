@@ -21,16 +21,16 @@ interface Family {
   bold?: Face;
 }
 
-/** The registries `loadFonts()` created, with their faces; a registry object from anywhere else is unknown. */
-const families = new WeakMap<FontRegistry, Map<string, Family>>();
+/** The registries `loadFonts()` created, with their environment and faces; any other object is unknown. */
+const registries = new WeakMap<FontRegistry, { environment: RenderEnvironment; families: Map<string, Family> }>();
 let nextId = 0;
 
 /**
  * Load fonts into an environment. Every source gets its own internal name (`spoko-labels-<n>`), so fonts of
  * the host page can never stand in for them and a template's family name never reaches a CSS font string.
  *
- * @throws RangeError for an empty list or a source with an empty family or non-positive metrics; rejects with the
- * environment's error when a file cannot be loaded.
+ * @throws RangeError for an empty list or a source with an empty family or non-positive metrics; rejects with an
+ * `Error` whose `cause` is the environment's error when a file cannot be loaded.
  */
 export async function loadFonts(environment: RenderEnvironment, sources: readonly FontSource[]): Promise<FontRegistry> {
   if (sources.length === 0) throw new RangeError("loadFonts needs at least one font");
@@ -41,7 +41,13 @@ export async function loadFonts(environment: RenderEnvironment, sources: readonl
     }
   }
   const faces = sources.map((source) => ({ source, internalName: `spoko-labels-${nextId++}` }));
-  await Promise.all(faces.map(({ source, internalName }) => environment.loadFont(source, internalName)));
+  await Promise.all(
+    faces.map(({ source, internalName }) =>
+      environment.loadFont(source, internalName).catch((cause: unknown) => {
+        throw new Error(`Could not load font ${source.family}${source.bold ? " (bold)" : ""}`, { cause });
+      }),
+    ),
+  );
 
   const byFamily = new Map<string, Family>();
   for (const { source, internalName } of faces) {
@@ -55,8 +61,18 @@ export async function loadFonts(environment: RenderEnvironment, sources: readonl
     byFamily.set(source.family, family);
   }
   const registry: FontRegistry = Object.freeze({ families: Object.freeze([...byFamily.keys()]) });
-  families.set(registry, byFamily);
+  registries.set(registry, { environment, families: byFamily });
   return registry;
+}
+
+/**
+ * Fonts are loaded into one environment; a canvas from another one would silently draw with a system font.
+ * @throws TypeError when `registry` was not created by `loadFonts()` with this `environment`.
+ */
+export function assertLoadedInto(registry: FontRegistry, environment: RenderEnvironment): void {
+  const entry = registries.get(registry);
+  if (!entry) throw new TypeError("Unknown font registry: create it with loadFonts()");
+  if (entry.environment !== environment) throw new TypeError("The fonts were loaded into a different environment");
 }
 
 function covers(face: Face, codePoint: number): boolean {
@@ -100,7 +116,7 @@ export function chooseFace(
   text: string,
   path: string,
 ): FaceChoice {
-  const known = families.get(registry);
+  const known = registries.get(registry)?.families;
   if (!known) throw new TypeError("Unknown font registry: create it with loadFonts()");
   const warnings: FaceChoice["warnings"] = [];
 

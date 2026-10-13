@@ -83,8 +83,9 @@ describe("loadFonts", () => {
   });
 
   it("rejects with the environment's error when a file does not load", async () => {
-    const env = { ...fakeEnv(), loadFont: () => Promise.reject(new Error("corrupt")) };
-    await expect(loadFonts(env, [source("A", LATIN1)])).rejects.toThrow("corrupt");
+    const corrupt = new Error("corrupt");
+    const env = { ...fakeEnv(), loadFont: () => Promise.reject(corrupt) };
+    await expect(loadFonts(env, [source("A", LATIN1)])).rejects.toMatchObject({ message: "Could not load font A", cause: corrupt });
   });
 });
 

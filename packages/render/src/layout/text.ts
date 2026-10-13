@@ -29,7 +29,10 @@ export interface PlacedLine {
   /** Left edge and baseline, in dots. */
   x: number;
   baseline: number;
+  /** Never negative. */
   width: number;
+  /** Letter spacing to draw this line with, in dots: the requested spacing, limited so the width stays >= 0. */
+  spacing: number;
 }
 
 export interface TextLayout {
@@ -51,10 +54,21 @@ const codePointCount = (s: string): number => {
   return n;
 };
 
+/**
+ * The letter spacing a line is drawn with. Negative spacing is limited so the characters can at most collapse
+ * onto one another: the line never gets a negative width, never runs backwards out of its box unreported.
+ */
+export function effectiveSpacing(line: string, measure: Measure, letterSpacing: number): number {
+  if (letterSpacing >= 0) return letterSpacing;
+  const gaps = codePointCount(line) - 1;
+  return gaps > 0 ? Math.max(letterSpacing, -measure(line) / gaps) : 0;
+}
+
 /** Width of a line with letter spacing: spacing goes between characters, not after the last one. */
 export function lineWidth(line: string, measure: Measure, letterSpacing: number): number {
   if (line.length === 0) return 0;
-  return measure(line) + (letterSpacing === 0 ? 0 : letterSpacing * (codePointCount(line) - 1));
+  if (letterSpacing === 0) return measure(line);
+  return measure(line) + effectiveSpacing(line, measure, letterSpacing) * (codePointCount(line) - 1);
 }
 
 /**
@@ -100,6 +114,7 @@ export function wrapText(text: string, measure: Measure, letterSpacing: number, 
 interface Block {
   lines: string[];
   widths: number[];
+  spacings: number[];
   lineHeight: number;
   height: number;
 }
@@ -108,9 +123,10 @@ function block(input: TextLayoutInput, px: number): Block {
   const measure = input.measureAt(px);
   const lines = wrapText(input.text, measure, input.letterSpacing, input.box.width, input.wrap);
   const widths = lines.map((l) => lineWidth(l, measure, input.letterSpacing));
+  const spacings = lines.map((l) => effectiveSpacing(l, measure, input.letterSpacing));
   const lineHeight = Math.ceil(input.ascent * px) + Math.ceil(input.descent * px);
   const height = lines.length * lineHeight + (lines.length - 1) * input.lineSpacing;
-  return { lines, widths, lineHeight, height };
+  return { lines, widths, spacings, lineHeight, height };
 }
 
 /** The prototype's tolerance: a block may overhang its box by one dot and still count as fitting. */
@@ -168,10 +184,11 @@ export function layoutText(input: TextLayoutInput): TextLayout {
       input.align === "left"
         ? box.x
         : Math.round(input.align === "center" ? box.x + (box.width - width) / 2 : box.x + box.width - width);
-    return { text, x, baseline: top + ascentPx + i * (b.lineHeight + input.lineSpacing), width };
+    const baseline = top + ascentPx + i * (b.lineHeight + input.lineSpacing);
+    return { text, x, baseline, width, spacing: b.spacings[i] ?? 0 };
   });
 
-  const visible = lines.filter((l) => l.width > 0);
+  const visible = lines.filter((l) => l.text.length > 0);
   let extent: DotRect | null = null;
   if (visible.length > 0) {
     const left = Math.min(...visible.map((l) => l.x));

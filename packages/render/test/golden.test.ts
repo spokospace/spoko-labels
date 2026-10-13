@@ -182,12 +182,12 @@ function toPng(image: { width: number; height: number; data: Uint8ClampedArray }
   return canvas.encodeSync("png");
 }
 
-async function fromPng(bytes: Buffer): Promise<Uint8ClampedArray> {
+async function fromPng(bytes: Buffer): Promise<{ width: number; height: number; data: Uint8ClampedArray }> {
   const img = await loadImage(bytes);
   const canvas = createCanvas(img.width, img.height);
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0);
-  return ctx.getImageData(0, 0, img.width, img.height).data;
+  return { width: img.width, height: img.height, data: ctx.getImageData(0, 0, img.width, img.height).data };
 }
 
 describe("golden images", () => {
@@ -206,9 +206,10 @@ describe("golden images", () => {
         return;
       }
       const golden = await fromPng(readFileSync(goldenUrl));
-      expect(golden.length).toBe(image.data.length);
+      expect([golden.width, golden.height]).toEqual([image.width, image.height]);
       let diff = 0;
-      for (let i = 0; i < golden.length; i += 4) if (golden[i] !== image.data[i]) diff++;
+      for (let i = 0; i < golden.data.length; i += 4) if (golden.data[i] !== image.data[i]) diff++;
+      if (diff > 0) console.info(`golden ${c.name}: ${diff} pixels differ`);
       const allowed = samePlatform || !c.hasText ? 0 : Math.floor(image.width * image.height * 0.002);
       if (diff > allowed) writeFileSync(new URL(`${c.name}.actual.png`, dir), toPng(image));
       expect(diff, `${diff} pixels differ (allowed ${allowed}); see ${c.name}.actual.png`).toBeLessThanOrEqual(allowed);

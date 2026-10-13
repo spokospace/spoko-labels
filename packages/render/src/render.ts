@@ -1,7 +1,7 @@
 import { resolveContent, type RenderData } from "./binding.js";
 import type { Context2DLike, RenderEnvironment } from "./environment/types.js";
 import { TemplateError } from "./errors.js";
-import { chooseFace, type FontRegistry } from "./fonts/registry.js";
+import { assertLoadedInto, chooseFace, type FontRegistry } from "./fonts/registry.js";
 import { layoutQr } from "./layout/qr.js";
 import { checkPlacement } from "./layout/safe-area.js";
 import { layoutText } from "./layout/text.js";
@@ -52,6 +52,7 @@ export function render(template: unknown, data: RenderData, options: RenderOptio
   const validated = validateWithSources(template, printableWidth === undefined ? {} : { printableWidth });
   const t = validated.template;
   if (!t) throw new TemplateError(validated.issues);
+  assertLoadedInto(options.fonts, options.environment);
 
   const warnings: RenderWarning[] = validated.issues.map(({ code, path }) => ({ code, path }));
   const warn: Warn = (code, path) => {
@@ -77,10 +78,11 @@ export function render(template: unknown, data: RenderData, options: RenderOptio
     } else if (element.type === "qr") {
       drawn = drawQr(ctx, element, box, data, path, warn);
     } else {
-      drawn = drawText(ctx, element, box, data, options.fonts, path, warn);
+      drawn = drawText(ctx, element, box, data, options.fonts, path, warn, width);
     }
     // What was actually drawn can leave the box (overflowing text, a QR code too big for it).
     for (const rect of drawn) {
+      if (rect === box) continue;
       for (const code of checkPlacement(dotsToMm(rect), t, printableWidth, true)) warn(code, path);
     }
   });
@@ -135,6 +137,7 @@ function drawText(
   fonts: FontRegistry,
   path: string,
   warn: Warn,
+  canvasWidth: number,
 ): DotRect[] {
   const content = resolveContent(element.content, data, "text");
   if (content.missing) warn("missing-column", `${path}/content`);
@@ -144,11 +147,12 @@ function drawText(
     fillBlack(ctx, box);
     drawn.push(box);
   }
+  // Font warnings depend on the template, not on whether this row's value is empty.
+  const { face, warnings } = chooseFace(fonts, element.font, content.value, path);
+  for (const w of warnings) warn(w.code, w.path);
   if (content.value.length === 0) return drawn;
 
   const spacing = element.letterSpacing * DOTS_PER_MM;
-  const { face, warnings } = chooseFace(fonts, element.font, content.value, path);
-  for (const w of warnings) warn(w.code, w.path);
   const setFont = (px: number) => {
     // Only the internal name and an integer size ever reach the CSS font string.
     ctx.font = `${px}px "${face.internalName}"`;
@@ -176,17 +180,20 @@ function drawText(
   setFont(layout.px);
   ctx.fillStyle = element.reverse ? WHITE : BLACK;
   for (const line of layout.lines) {
-    if (spacing === 0) {
+    if (line.spacing === 0) {
       ctx.fillText(line.text, line.x, line.baseline);
       continue;
     }
-    // Letter spacing through prefix widths, which keeps the font's kerning.
-    let prefix = "";
-    let i = 0;
+    // One character at a time. A character's advance is measured together with the next one
+    // (width("ab") - width("b")), which keeps the font's kerning at a cost linear in the line length.
+    // Drawing stops past the right edge of the canvas: nothing there would be visible.
+    let pen = line.x;
+    let previous = "";
     for (const ch of line.text) {
-      ctx.fillText(ch, line.x + ctx.measureText(prefix).width + spacing * i, line.baseline);
-      prefix += ch;
-      i++;
+      if (previous) pen += ctx.measureText(previous + ch).width - ctx.measureText(ch).width + line.spacing;
+      if (pen > canvasWidth) break;
+      ctx.fillText(ch, pen, line.baseline);
+      previous = ch;
     }
   }
   if (layout.extent) drawn.push(layout.extent);

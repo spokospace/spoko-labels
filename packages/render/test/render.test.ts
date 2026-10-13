@@ -167,7 +167,7 @@ describe("render", () => {
     expect(Math.abs(blackCount(reversed.image.data) - (400 * 240 - glyph))).toBeLessThan(glyph * 0.05);
   });
 
-  it("only ever puts internal font names into ctx.font", () => {
+  it("only ever puts internal font names into ctx.font", async () => {
     const fontsSet: string[] = [];
     const recording: RenderEnvironment = {
       ...nodeEnvironment,
@@ -191,10 +191,30 @@ describe("render", () => {
     render(
       template([text({ font: { family: '900px x, serif"', size: 4, fallback: ["Viga"] }, content: { text: "Hi" } })]),
       {},
-      { environment: recording, fonts },
+      { environment: recording, fonts: await loadFonts(recording, bundledFonts) },
     );
     expect(fontsSet.length).toBeGreaterThan(0);
     for (const f of fontsSet) expect(f).toMatch(/^\d+px "spoko-labels-\d+"$/);
+  });
+
+  it("keeps negatively spaced text inside its reported extent", () => {
+    const { warnings } = render(
+      template([text({ x: 0, content: { text: "ABCDEFGHIJ" }, letterSpacing: -5, width: 20 })]),
+      {},
+      options(),
+    );
+    expect(warnings).toEqual([]);
+  });
+
+  it("refuses fonts loaded into another environment", async () => {
+    const other: RenderEnvironment = { ...nodeEnvironment };
+    const otherFonts = await loadFonts(other, bundledFonts);
+    expect(() => render(template([text()]), { row }, { environment: nodeEnvironment, fonts: otherFonts })).toThrow(TypeError);
+  });
+
+  it("reports missing fonts even when the value is empty", () => {
+    const { warnings } = render(template([text({ font: { family: "Arial", size: 3 } })]), { row: { Name: "" } }, options());
+    expect(warnings).toEqual([{ code: "missing-font", path: "/elements/0/font/family" }]);
   });
 
   it("renders a hostile template within a time budget", () => {
@@ -207,8 +227,9 @@ describe("render", () => {
       font: { family: "HarmonyOS Sans", size: 50 },
       content: { text: "Żółta skrzynka ".repeat(140) },
     });
+    const spaced = { ...element, wrap: false, letterSpacing: 0.1, content: { text: "Ż".repeat(2000) } };
     const start = performance.now();
-    render(template(Array.from({ length: 200 }, () => element)), {}, options());
+    render(template(Array.from({ length: 200 }, (_, i) => (i % 2 ? element : spaced))), {}, options());
     expect(performance.now() - start).toBeLessThan(20_000);
   }, 30_000);
 });
