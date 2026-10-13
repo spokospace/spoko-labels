@@ -17,5 +17,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "qrcode-generator": "2.0.4"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.0.11",
+    "@types/node": "22.20.5"
   }
 }
