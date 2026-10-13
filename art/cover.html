@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>spoko-labels cover</title>
+<!--
+  README cover. Render at 1600x900 CSS px, device scale 2 (3200x1800); art/render.py does
+  both themes and writes the JPGs. Add ?theme=dark for the dark variant.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fbfaf7; --grid: rgba(15,23,42,.045); --glow: rgba(16,185,129,.16);
+    --ink: #0f172a; --muted: #475569; --chip-bg: #fff; --chip-border: #e2e8f0;
+    --accent: #059669; --accent-2: #10b981;
+    --window: #fff; --window-border: rgba(15,23,42,.08);
+    --shadow: 0 40px 80px -30px rgba(15,23,42,.35), 0 12px 30px -12px rgba(15,23,42,.18);
+    --titlebar: #f8fafc; --side: #fff; --canvas: #e7ecf1; --field: #f1f5f9; --sep: #eef2f6;
+  }
+  .dark {
+    --bg: #0b0f16; --grid: rgba(148,163,184,.06); --glow: rgba(16,185,129,.16);
+    --ink: #f1f5f9; --muted: #a3b1c2; --chip-bg: #121926; --chip-border: #1f2a3a;
+    --window: #17212b; --window-border: rgba(255,255,255,.06);
+    --shadow: 0 40px 90px -30px rgba(0,0,0,.8), 0 12px 30px -12px rgba(0,0,0,.6);
+    --titlebar: #1c2733; --side: #17212b; --canvas: #0e1621; --field: #1f2d3b; --sep: #243242;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1600px; height: 900px; overflow: hidden; }
+  body {
+    font-family: Inter, system-ui, sans-serif; color: var(--ink); background: var(--bg);
+    position: relative;
+  }
+  .intro { position: absolute; left: 96px; top: 96px; width: 760px; }
+  .eyebrow { display: flex; align-items: center; gap: 14px; font-weight: 700; letter-spacing: .32em; font-size: 20px; color: var(--muted); }
+  .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 0 6px var(--glow); }
+  h1 { font-size: 128px; line-height: 1; font-weight: 900; letter-spacing: -.04em; margin-top: 30px; white-space: nowrap; }
+  h1 .bottom { background: linear-gradient(90deg, #10b981, #0e7490); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .dark h1 .bottom { background-image: linear-gradient(90deg, #6ee7b7, #22d3ee); }
+  .tagline { margin-top: 30px; font-size: 30px; line-height: 1.45; color: var(--muted); text-wrap: balance; }
+  .tagline strong { color: var(--ink); font-weight: 700; }
+  .chips { display: flex; gap: 16px; margin-top: 44px; }
+  .chip { background: var(--chip-bg); border: 1px solid var(--chip-border); border-radius: 999px; padding: 12px 24px; font-weight: 600; font-size: 20px; }
+  .chip i { color: var(--accent); font-style: normal; margin-right: 10px; }
+  .install { margin-top: 44px; font-family: "JetBrains Mono", monospace; font-size: 24px; color: var(--muted); }
+  .install b { color: var(--accent); margin-right: 14px; font-weight: 500; }
+  .backdrop { position: absolute; inset: 0; background: url(cover-backdrop-light.jpg) center / cover; }
+  .dark .backdrop { background-image: url(cover-backdrop-dark.jpg); }
+</style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <section class="intro">
+    <div class="eyebrow"><span class="dot"></span>NIIMBOT · WEB BLUETOOTH</div>
+    <h1><span class="top">spoko</span> <span class="bottom">labels</span></h1>
+    <p class="tagline">Print labels straight from the <strong>browser</strong>.<br>No driver, no desktop app, no phone.</p>
+  </section>
+
+<script>
+  if (new URLSearchParams(location.search).get('theme') === 'dark') document.documentElement.classList.add('dark');
+</script>
+</body>
+</html>
