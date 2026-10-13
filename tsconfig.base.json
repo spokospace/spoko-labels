@@ -19,7 +19,8 @@
     "paths": {
       "@spokospace/labels-core": ["./packages/core/src/index.ts"],
       "@spokospace/labels-render": ["./packages/render/src/index.ts"],
-      "@spokospace/labels-niimbot": ["./packages/niimbot/src/index.ts"]
+      "@spokospace/labels-niimbot": ["./packages/niimbot/src/index.ts"],
+      "@spokospace/labels-embed": ["./packages/embed/src/index.ts"]
     }
   }
 }

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Narzędzia · labels-embed example host</title>
+  <!-- Loaded once, as a host would after copying dist/bundle/ into its assets. data-navigate-track makes a
+       Livewire app reload fully when the bundle's version changes. -->
+  <script type="module" src="/dist/bundle/labels-embed.js" data-navigate-track></script>
+  <script type="module" src="./host.js"></script>
+  <link rel="stylesheet" href="./host.css">
+</head>
+<body>
+  <header id="topbar">
+    <strong>Made-up inventory</strong>
+    <nav>
+      <a href="./" data-nav>Start</a>
+      <a href="./tools.html" data-nav>Narzędzia</a>
+      <a href="./products.html" data-nav>Produkty</a>
+    </nav>
+    <spoko-printer-status></spoko-printer-status>
+  </header>
+  <main>
+    <h1>Narzędzia</h1>
+    <table>
+      <thead><tr><th></th><th>Nazwa</th><th>Kod</th><th>Lokalizacja</th><th></th></tr></thead>
+      <tbody>
+        <tr data-record="{&quot;name&quot;:&quot;Klucz dynamometryczny 1/2 cala&quot;,&quot;code&quot;:&quot;N-0001&quot;,&quot;location&quot;:&quot;Regał A-2&quot;,&quot;url&quot;:&quot;https://example.invalid/t/1&quot;}"><td><input type="checkbox" aria-label="Zaznacz: Klucz dynamometryczny 1/2 cala"></td><td>Klucz dynamometryczny 1/2 cala</td><td>N-0001</td><td>Regał A-2</td><td><button type="button" data-print-one="tool">Drukuj etykietę</button></td></tr>
+        <tr data-record="{&quot;name&quot;:&quot;Wkrętarka akumulatorowa&quot;,&quot;code&quot;:&quot;N-0002&quot;,&quot;location&quot;:&quot;Regał A-3&quot;,&quot;url&quot;:&quot;https://example.invalid/t/2&quot;}"><td><input type="checkbox" aria-label="Zaznacz: Wkrętarka akumulatorowa"></td><td>Wkrętarka akumulatorowa</td><td>N-0002</td><td>Regał A-3</td><td><button type="button" data-print-one="tool">Drukuj etykietę</button></td></tr>
+        <tr data-record="{&quot;name&quot;:&quot;Zestaw kluczy płaskich&quot;,&quot;code&quot;:&quot;N-0003&quot;,&quot;location&quot;:&quot;Szuflada 4&quot;,&quot;url&quot;:&quot;https://example.invalid/t/3&quot;}"><td><input type="checkbox" aria-label="Zaznacz: Zestaw kluczy płaskich"></td><td>Zestaw kluczy płaskich</td><td>N-0003</td><td>Szuflada 4</td><td><button type="button" data-print-one="tool">Drukuj etykietę</button></td></tr>
+      </tbody>
+    </table>
+    <p><button type="button" data-print-selected="tool">Drukuj zaznaczone</button></p>
+  </main>
+  <footer>
+    <button type="button" data-morph>Re-render the top bar (like a Livewire morph)</button>
+    <p>Example host for <code>@spokospace/labels-embed</code>. Every record here is made up. The page switches in place like Livewire's <code>wire:navigate</code>: the body is replaced, the printer connection stays.</p>
+  </footer>
+</body>
+</html>

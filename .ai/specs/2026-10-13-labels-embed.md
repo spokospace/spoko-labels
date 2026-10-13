@@ -1,6 +1,6 @@
 # @spokospace/labels-embed: print labels from another web app
 
-> Status: approved design (#37). D1–D6 come from the maintainer in chat on 2026-10-13. The maintainer accepted A1–A6. The spec review's findings are folded in; A2 is refined to use an open shadow root (see A2). Not implemented yet.
+> Status: approved design (#37). D1–D6 come from the maintainer in chat on 2026-10-13. The maintainer accepted A1–A6. The spec review's findings are folded in; A2 is refined to use an open shadow root (see A2). Implemented (Phases 1 and 2); the bundle is built with esbuild directly instead of Vite's library mode (same engine, no asset inlining to configure). Hardware check on a NIIMBOT B1 (2026-10-13): connecting from the chip, the battery and printing from the example host passed.
 
 ## 📝 TLDR
 Other web apps should print labels on a NIIMBOT printer without building any of it themselves. The first host is the maintainer's inventory panel, garazyn.polo.blue (Laravel + Filament v5). There a user prints a single label from a record page, or a few labels for the rows picked on a list. The printer is connected once and stays connected while the user moves between pages.
@@ -95,11 +95,11 @@ printLabels({
 ### Status chip (`<spoko-printer-status>`)
 - **Markup.** A `<button>` in an open shadow root. The state is announced through `aria-live="polite"`. It shows a printer icon plus the state:
   - "Połącz drukarkę";
-  - "Drukarka: B1-xxxx · bateria 3/4";
+  - "Drukarka: B1-xxxx · bateria 3";
   - "Drukuje 2/5…";
   - "W użyciu w innej karcie";
   - "Brak Bluetooth".
-- **Battery.** Shown as the printer's level out of its maximum, not as a percentage.
+- **Battery.** Shown as the printer's own level (a small number, 3 on a full B1), not as a percentage; its maximum is not known per model yet.
 - **Click.** It connects when disconnected. When connected, it opens a one-item menu: Disconnect.
 - **Theming.** Through CSS custom properties (`--spoko-labels-accent`, `--spoko-labels-fg`, `--spoko-labels-bg`, `--spoko-labels-radius`) and `::part(button)`. Light and dark come through `color-scheme`.
 - **Lifecycle.** It subscribes to the session in `connectedCallback` and unsubscribes in `disconnectedCallback`, so Livewire swaps and morphs do not leak listeners. Its own children live in the shadow root, so a morph of the host component does not wipe them. The host may still wrap it in `wire:ignore`.

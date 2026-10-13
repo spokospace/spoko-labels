@@ -1,3 +1,6 @@
 packages:
   - packages/*
   - apps/*
+allowBuilds:
+  # esbuild works from its prebuilt optional binary; its install script is not needed.
+  esbuild: false
