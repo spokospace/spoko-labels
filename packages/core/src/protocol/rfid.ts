@@ -33,8 +33,8 @@ const toHex = (bytes: Uint8Array): string => Array.from(bytes, (b) => b.toString
  * and parses defensively: a reply too short for the fixed fields, or a length prefix that runs past
  * the end of the reply, yields `null` rather than throwing.
  *
- * The layout is taken from community reverse engineering of NIIMBOT printers, not from the vendor, and
- * has not yet been verified against a real B1.
+ * The layout is taken from community reverse engineering of NIIMBOT printers, not from the vendor. It was
+ * checked on a real B1 with a genuine 50x30 mm roll (October 2026); other roll sizes are not checked yet.
  */
 export function parseRfid(data: Uint8Array): RfidInfo | null {
   if (data.length < UID_BYTES || data[0] === 0) return null;

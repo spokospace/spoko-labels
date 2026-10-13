@@ -35,7 +35,7 @@ button.addEventListener("click", async () => {
 | `Printer.connect(model?)` | Opens the chooser and returns a connected `Printer`. |
 | `new Printer(transport, model?)` | A printer over any `Transport` (for tests, or another link). |
 | `printer.info()` | `{ battery?, serial?, firmware? }`. A value the printer does not answer is left out. `battery` is a small level (3 on a B1), not a percentage. `firmware` is formatted as `"5.26"` (the printer reports two bytes, 5 and 26, which is the integer 1306; this is what the official NIIMBOT app shows); the unformatted integer is in `firmwareRaw`. |
-| `printer.readRfid()` | `{ uid, barcode, serial, total, used, type }` for the loaded roll, or `null` when there is no tag. See [Reading the loaded roll](#reading-the-loaded-roll-rfid). **Not yet verified on a real B1.** |
+| `printer.readRfid()` | `{ uid, barcode, serial, total, used, type }` for the loaded roll, or `null` when there is no tag. See [Reading the loaded roll](#reading-the-loaded-roll-rfid). Checked on a B1 with a 50×30 roll. |
 | `printer.print(rows, options?)` | Prints one page. Options: `density` (integer within the model's range), `copies` (1 to 255; each copy is a separate print job), `offsetMm` (`{ x, y }` calibration in millimetres, like the official app; the B1 default is 0.5 mm down, see below), `onProgress({ stage, percent })`, `signal` (`AbortSignal`). |
 | `printer.disconnect()`, `printer.connected` | Close the link, check the link. |
 | `WebBluetoothTransport` | `isSupported()`, `request(model?)`, `reconnect(model?, { timeoutMs? })`, `deviceName`. |
@@ -57,9 +57,9 @@ const roll = await printer.readRfid();
 if (roll) console.log(`${roll.total - roll.used} of ${roll.total} labels left, type ${roll.type}`);
 ```
 
-Use it to detect which roll is loaded (so the app can pick the matching template) and to show how many labels are left. `total - used` is the remaining count. Dimensions are not always on the tag — the official app looks them up from a server by `serial`/`barcode` — so there are no width/height fields yet; whether the B1 reports them is one of the things the hardware check should settle.
+Use it to detect which roll is loaded (so the app can pick the matching template) and to show how many labels are left. `total - used` is the remaining count. Dimensions are not always on the tag — the official app looks them up from a server by `serial`/`barcode` — so there are no width/height fields.
 
-> **Not yet verified on a real B1.** The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor. Treat the fields as best effort until a hardware check on a real B1 confirms them: the `readRfid()` button on the [hardware check page](#hardware-check-page) compares `total`/`used`/`type` and the raw reply across a 50×30 roll and another size, such as 12×40.
+> **Checked on a B1 with a genuine 50×30 roll** (October 2026): `total`, `used` and `type` came back consistent, and `total - used` matched the labels left on the roll. The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor, and other roll sizes are not checked yet. The `readRfid()` button on the [hardware check page](#hardware-check-page) reads a roll; please report results for other sizes.
 
 ### Aborting
 

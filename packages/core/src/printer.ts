@@ -139,8 +139,8 @@ export class Printer {
    * The printer reads the tag itself; this only asks it for the result. Resolves to `null` when no
    * tag is present or the printer does not answer; a malformed reply rejects with `ProtocolError`.
    *
-   * The reply layout comes from community reverse engineering, not the vendor, and is not yet verified
-   * on a real B1; treat the fields as best effort until a hardware check confirms them.
+   * The reply layout comes from community reverse engineering, not the vendor. It was checked on a real B1
+   * with a genuine 50x30 mm roll (October 2026); other roll sizes are not checked yet.
    */
   async readRfid(): Promise<RfidInfo | null> {
     return this.locked(async () => {
