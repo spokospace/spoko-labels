@@ -1,6 +1,6 @@
 # @spokospace/labels-niimbot: import templates from the NIIMBOT desktop app
 
-> Status: design. The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Not implemented yet.
+> Status: approved design (#27). The maintainer answered Q1 to Q11 on #10 ("a" for all; for Q6, bundle the free fonts instead of only mapping them, and skip the Chinese ones). Phase 1 (conversion) is implemented; Phases 2 to 4 are not yet.
 
 ## 📝 TLDR
 People who designed labels in the NIIMBOT desktop app cannot use them with spoko-labels. Today the only importer is the prototype: a Python script scrapes the app's local database into ad-hoc JSON, and a browser renderer interprets Niimbot's quirks directly.
@@ -92,7 +92,7 @@ So an emitted template is always valid.
 
 Rules for that last step:
 - **What is emitted.** The converted object is emitted, without the elements the validator dropped. The validator's normalized copy, with every default filled in, is used only for checking. So `shape`, `safeMargin` and `minSize` stay omitted, and `fit` is always present.
-- **Paths.** The converter keeps an index map from each converted element to its Niimbot element. A validator path `/elements/<k>/…` is rewritten to the Niimbot element's index, so every `ImportWarning.path` points into the input.
+- **Paths.** The converter keeps an index map from each converted element to its Niimbot element. A validator path `/elements/<k>/…` becomes `/elements/<i>`, where `i` is the Niimbot element's index. The v1 sub-path is dropped because it names v1 fields, not input keys; `issue` carries the validator's code. So every `ImportWarning.path` points into the input. One warning per dropped element: the validator's first error for it.
 - **Validator warnings** (`outside-label`, `outside-safe-area`, `unknown-property`) are not copied into import warnings. `render()` reports them for the actual printer and data, and copying them would duplicate them.
 
 **`fonts/`: `niimbotFonts`, the code → family table, and the bundled font files.**
@@ -156,9 +156,12 @@ interface NiimbotTemplate {
 
 **Every element:**
 - Niimbot `qrcode` becomes v1 `type: "qr"`; `text` and `line` keep their names.
-- A non-object gets `invalid-element` (issue `invalid-type`). A missing `x`, `y`, `width` or `height` gets `invalid-element` (issue `required`), and a non-finite one gets `invalid-element` (issue `invalid-type`).
-- `rotate` other than 0 gets `rotated-element`, and the element is skipped.
-- A `type` other than `text`, `qrcode` or `line` gets `unsupported-element` and is skipped.
+- Checked in this order, and the first that applies decides:
+  1. A non-object gets `invalid-element` (issue `invalid-type`).
+  2. A `type` other than `text`, `qrcode` or `line` gets `unsupported-element` and is skipped, whatever else is wrong with it.
+  3. A `rotate` that is not a multiple of 360 gets `rotated-element`, and the element is skipped.
+  4. A missing `x`, `y`, `width` or `height` gets `invalid-element` (issue `required`), and a non-finite one gets `invalid-element` (issue `invalid-type`).
+- Optional numbers (`letterSpacing`, `wordSpacing`, `lineSpacing`, `lineWidth`) that are not finite count as absent, with no warning. `fontSize` is required: a value that is not a finite number is passed on, so the validator rejects the element (`invalid-element`).
 
 **Numbers.** Every emitted number (geometry, font size, spacing) is rounded to 0.001 after any arithmetic. This removes float noise such as `12.299999` or `0.2 × 1.65 = 0.33000000000000002` and makes the output deterministic.
 
@@ -194,7 +197,7 @@ interface NiimbotTemplate {
 - `colorReverse` → `unsupported-style` `reverse`; not reversed.
 
 **`line`:**
-- Thickness `t = max(lineWidth || height, 0.1)` mm.
+- Thickness `t = max(lineWidth, 0.1)` mm. When `lineWidth` is missing or not positive, the box's short side is used instead: `height` for a horizontal line, `width` for a vertical one. The prototype always used `height`, which turned a vertical line without `lineWidth` into a square.
 - When `width >= height` it is horizontal: box `(x, y, width, t)`. Otherwise it is vertical: box `(x, y, t, height)`. This is the prototype's placement at the top or left edge of the stored box.
 - `lineType` other than 1 → solid, with `unsupported-style` `dashed`.
 - `colorReverse` → `unsupported-style`.

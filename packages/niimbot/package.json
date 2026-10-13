@@ -1,0 +1,24 @@
+{
+  "name": "@spokospace/labels-niimbot",
+  "version": "0.0.0",
+  "description": "Import label templates designed in the NIIMBOT desktop app into the @spokospace/labels-render template format.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@spokospace/labels-render": "workspace:*"
+  }
+}
