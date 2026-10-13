@@ -9,7 +9,6 @@ export {
   type LineElement,
   type NormalizedElement,
   type NormalizedFontSpec,
-  type NormalizedLineElement,
   type NormalizedQrElement,
   type NormalizedTemplate,
   type NormalizedTextElement,

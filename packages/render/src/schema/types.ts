@@ -142,9 +142,7 @@ export interface NormalizedQrElement extends BoxBase {
   level: QrLevel;
 }
 
-export type NormalizedLineElement = LineElement;
-
-export type NormalizedElement = NormalizedTextElement | NormalizedQrElement | NormalizedLineElement;
+export type NormalizedElement = NormalizedTextElement | NormalizedQrElement | LineElement;
 
 export interface NormalizedTemplate {
   version: 1;

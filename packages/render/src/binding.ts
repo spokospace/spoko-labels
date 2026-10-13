@@ -34,13 +34,24 @@ export function resolveContent(content: Content, data: RenderData, kind: "text" 
   }
 
   const value = cell?.value === undefined || cell.value === null ? "" : String(cell.value);
+  // A string of at most maxTextLength UTF-16 units cannot have more code points than that.
   if (kind === "text" && value.length > LIMITS.maxTextLength) {
-    const codePoints = Array.from(value);
-    if (codePoints.length > LIMITS.maxTextLength) {
-      return { value: codePoints.slice(0, LIMITS.maxTextLength).join(""), missing: !cell, truncated: true };
-    }
+    const cut = cutAtCodePoint(value, LIMITS.maxTextLength);
+    if (cut !== undefined) return { value: cut, missing: !cell, truncated: true };
   }
   return { value, missing: !cell, truncated: false };
+}
+
+/** The first `max` code points of `value`, or `undefined` when it has no more than that. */
+function cutAtCodePoint(value: string, max: number): string | undefined {
+  let count = 0;
+  let end = 0;
+  for (const ch of value) {
+    if (count === max) return value.slice(0, end);
+    count++;
+    end += ch.length;
+  }
+  return undefined;
 }
 
 function lookup(row: RenderData["row"], name: string | undefined): { value: unknown } | undefined {

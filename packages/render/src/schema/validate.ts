@@ -34,6 +34,8 @@ interface Range {
   max?: number;
   /** The value must be greater than this. */
   above?: number;
+  /** A fractional value is `invalid-type`. */
+  integer?: boolean;
 }
 
 const BOX_KEYS = ["type", "id", "x", "y", "width", "height"];
@@ -42,10 +44,7 @@ const KEYS = {
   size: ["width", "height"],
   line: BOX_KEYS,
   qr: [...BOX_KEYS, "content", "level"],
-  text: [
-    ...BOX_KEYS,
-    ...["content", "font", "letterSpacing", "lineSpacing", "align", "verticalAlign", "wrap", "fit", "minSize", "reverse"],
-  ],
+  text: [...BOX_KEYS, "content", "font", "letterSpacing", "lineSpacing", "align", "verticalAlign", "wrap", "fit", "minSize", "reverse"],
   font: ["family", "size", "bold", "fallback"],
 };
 const SIZE_RANGE: Range = { above: 0, max: LIMITS.maxLabelSize };
@@ -87,9 +86,8 @@ class Reader {
   }
 
   /** A reader for the object at `key`, or `undefined` (with an error) when it is missing or not an object. */
-  child(key: string, optional = false): Reader | undefined {
+  child(key: string): Reader | undefined {
     const value = this.obj[key];
-    if (value === undefined && optional) return undefined;
     if (!isObject(value)) {
       this.error(value === undefined ? "required" : "invalid-type", this.at(key));
       return undefined;
@@ -105,7 +103,7 @@ class Reader {
   number(key: string, range: Range, fallback?: number): number {
     const value = this.obj[key];
     if (value === undefined && fallback !== undefined) return fallback;
-    if (typeof value !== "number" || !Number.isFinite(value)) {
+    if (typeof value !== "number" || !Number.isFinite(value) || (range.integer && !Number.isInteger(value))) {
       this.error(value === undefined ? "required" : "invalid-type", this.at(key));
       return NaN;
     }
@@ -208,8 +206,9 @@ function readSize(parent: Reader): NormalizedTemplate["size"] | undefined {
 }
 
 function readShape(parent: Reader, size: NormalizedTemplate["size"]): Shape | undefined {
-  const r = parent.child("shape", true);
-  if (!r) return parent.obj.shape === undefined ? { kind: "rectangle" } : undefined;
+  if (parent.obj.shape === undefined) return { kind: "rectangle" };
+  const r = parent.child("shape");
+  if (!r) return undefined;
   const kind = r.oneOf("kind", ["rectangle", "rounded", "circle"] as const);
   if (kind !== "rounded") {
     r.onlyKeys(["kind"]);
@@ -300,11 +299,8 @@ function readContent(parent: Reader): Content | undefined {
   }
   r.onlyKeys(["bind", "bindIndex"]);
   const bind = r.string("bind", { optional: true, nonEmpty: true });
-  const index = r.obj.bindIndex;
-  if (index !== undefined && (typeof index !== "number" || !Number.isInteger(index))) r.error("invalid-type", r.at("bindIndex"));
-  else if (typeof index === "number" && index < 0) r.error("out-of-range", r.at("bindIndex"));
+  const bindIndex = r.obj.bindIndex === undefined ? undefined : r.number("bindIndex", { min: 0, integer: true });
   if (!r.ok) return undefined;
-  const bindIndex = index as number | undefined;
   if (bind === undefined) return bindIndex === undefined ? undefined : { bindIndex };
   return bindIndex === undefined ? { bind } : { bind, bindIndex };
 }
