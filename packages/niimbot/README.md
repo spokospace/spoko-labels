@@ -2,21 +2,21 @@
 
 Import label templates designed in the NIIMBOT desktop app into the [`@spokospace/labels-render`](../render/README.md) template format, so existing designs print with spoko-labels. Everything Niimbot-specific lives here: font codes, `C0` column bindings, the app's misspelled keys and its letter-spacing scale. The render format knows nothing about Niimbot.
 
-> **Status: pre-release (`0.0.0`).** `importTemplates()` and its output are protected contracts (see `BACKWARD_COMPATIBILITY.md`). Reading templates out of the app's database (`extractTemplates()`) and the bundled fonts (`niimbotFonts`) are coming in the next releases. Not published to npm yet.
+> **Status: pre-release (`0.0.0`).** `importTemplates()`, its output and `niimbotFonts` are protected contracts (see `BACKWARD_COMPATIBILITY.md`). Reading templates out of the app's database (`extractTemplates()`) is coming in a next release. Not published to npm yet.
 
 The NIIMBOT data format is unofficial and undocumented. The importer reads it defensively: one template that cannot be converted is reported and skipped, and never stops the rest.
 
 ## Quick start
 
 ```ts
-import { importTemplates } from "@spokospace/labels-niimbot";
+import { importTemplates, niimbotFonts } from "@spokospace/labels-niimbot";
 import { browserEnvironment, bundledFonts, loadFonts, render } from "@spokospace/labels-render";
 
 const { templates, failures } = importTemplates(niimbotTemplates);
 // show `failures` and each template's `warnings` to the user; store `template` (plain JSON) as you like
 
 const environment = browserEnvironment();
-const fonts = await loadFonts(environment, bundledFonts);
+const fonts = await loadFonts(environment, [...bundledFonts, ...niimbotFonts]);
 const { image } = render(templates[0].template, { row, columns }, { environment, fonts, printableWidth: 48 });
 ```
 
@@ -121,12 +121,14 @@ Optional numbers of the wrong type (`letterSpacing: "0.3"`) count as absent.
 |---|---|---|
 | `ZT001` | HarmonyOS Sans | `@spokospace/labels-render` |
 | `ZT347` | Viga | `@spokospace/labels-render` |
-| `ZT021` | Inconsolata | this package (coming) |
-| `ZT348` | Baloo Paaji | this package (coming) |
-| `ZT063` | Markazi Text | this package (coming) |
-| `ZT015` | Cookie | this package (coming) |
+| `ZT021` | Inconsolata (regular and bold) | this package, `niimbotFonts` |
+| `ZT348` | Baloo Paaji | this package, `niimbotFonts` |
+| `ZT063` | Markazi Text | this package, `niimbotFonts` |
+| `ZT015` | Cookie | this package, `niimbotFonts` |
 
-`NIIMBOT_FONT_FAMILIES` exports this table. Any other code imports with the app catalogue's family name (when `fontCatalog` has it) and an `unknown-font` warning; a host that has such a font can register it under that name. Every family other than HarmonyOS Sans gets `fallback: ["HarmonyOS Sans"]`, so text with letters a font lacks (Polish ones, for example) is drawn in HarmonyOS Sans.
+`NIIMBOT_FONT_FAMILIES` exports this table. Pass `niimbotFonts` to `loadFonts()` together with render's `bundledFonts` (Quick start) and every family in the table is registered. The files (about 0.8 MB in all) ship in the package's `fonts/` folder and are fetched only by `loadFonts()`; each `data` is a `new URL("../../fonts/<file>", import.meta.url)`, which bundlers such as Vite copy as assets.
+
+All four are under the SIL Open Font License 1.1, with the license next to each file. `fonts/README.md` lists the source, the pinned commit and the SHA-256 of every file; they come from the upstream repositories (`google/fonts`, `EkType/Baloo`), never from NIIMBOT's servers. Every family covers the Polish letters. Only Inconsolata has a bold face: `bold: true` in any other of these families draws the regular face with render's `missing-font` warning at `/font/bold`. Markazi Text is a variable font drawn at its default weight, 400. Any other code imports with the app catalogue's family name (when `fontCatalog` has it) and an `unknown-font` warning; a host that has such a font can register it under that name. Every family other than HarmonyOS Sans gets `fallback: ["HarmonyOS Sans"]`, so text with letters a font lacks (Polish ones, for example) is drawn in HarmonyOS Sans.
 
 ## Privacy
 
@@ -134,4 +136,4 @@ The importer is a pure function: it reads only what it is given, runs locally an
 
 ## License
 
-MIT
+MIT. The font files in `fonts/` keep their own license, the SIL Open Font License 1.1 (see Fonts).

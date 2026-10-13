@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "fonts"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -20,5 +21,8 @@
   },
   "dependencies": {
     "@spokospace/labels-render": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5"
   }
 }
