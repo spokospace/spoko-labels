@@ -46,8 +46,8 @@ let imported = []; // ImportedTemplate[] of the file
 let selected = null; // the ImportedTemplate shown
 let columns = [];
 let row = {};
-let image = null; // last rendered image, or null when the template cannot render
-let rotation = 0; // degrees clockwise the image is turned before printing (the template's printRotation)
+let image = null; // last rendered image, as printed (turned by the template's printRotation), or null
+let rotation = 0; // that turn, in degrees clockwise; the preview turns the image back to the design
 
 let printer = null;
 let printing = false;
@@ -65,25 +65,6 @@ function code(text) {
   const c = document.createElement("code");
   c.textContent = text;
   return c;
-}
-
-/** `image` turned `degrees` (0, 90, 180, 270) clockwise, as the NIIMBOT app turns an upright label before printing. */
-function rotate(image, degrees) {
-  if (degrees === 0) return image;
-  const { width: w, height: h, data } = image;
-  const outWidth = degrees === 180 ? w : h;
-  // Where the pixel at (x, y) lands, as an index into the turned image.
-  const target = {
-    90: (x, y) => x * outWidth + (h - 1 - y),
-    180: (x, y) => (h - 1 - y) * outWidth + (w - 1 - x),
-    270: (x, y) => (w - 1 - x) * outWidth + y,
-  }[degrees];
-  // One RGBA pixel is one 32-bit word.
-  const from = new Uint32Array(data.buffer, data.byteOffset, w * h);
-  const out = new Uint8ClampedArray(data.length);
-  const to = new Uint32Array(out.buffer);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) to[target(x, y)] = from[y * w + x];
-  return { width: outWidth, height: degrees === 180 ? h : w, data: out };
 }
 
 /** Whether the head crosses the label's width (no turn, or a half turn) rather than its height. */
@@ -212,8 +193,6 @@ function select(index) {
       item(code(w.code), ` ${IMPORT_MESSAGES[w.code] ?? ""} ${w.feature ?? w.issue ?? ""} `, code(w.path)),
     ),
   );
-  rotation = selected.printRotation;
-  $("rotation").value = String(rotation);
   $("json").value = JSON.stringify(selected.template, null, 2);
   $("copystatus").textContent = "";
   draw();
@@ -238,9 +217,9 @@ function draw() {
     return;
   }
   try {
-    const options = { environment, fonts, ...(headAcrossWidth() && { printableWidth: HEAD_MM }) };
-    const result = render(selected.template, { row, columns }, options);
+    const result = render(selected.template, { row, columns }, { environment, fonts, printableWidth: HEAD_MM });
     image = result.image;
+    rotation = result.printRotation;
     fill(list, result.warnings.map((w) => item(code(w.code), ` ${RENDER_MESSAGES[w.code] ?? ""} `, code(w.path || "(template)"))));
   } catch (error) {
     image = null;
@@ -259,10 +238,20 @@ function paint() {
     $("size").textContent = "The template cannot be rendered; see the warnings.";
     return;
   }
-  canvas.width = image.width;
-  canvas.height = image.height;
-  canvas.getContext("2d").putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
-  $("size").textContent = `${image.width} x ${image.height} dots = ${image.width / DOTS_PER_MM} x ${image.height / DOTS_PER_MM} mm.`;
+  // The preview shows the design upright: the printed image turned back by the template's printRotation.
+  const printed = document.createElement("canvas");
+  printed.width = image.width;
+  printed.height = image.height;
+  printed.getContext("2d").putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+  const across = headAcrossWidth();
+  canvas.width = across ? image.width : image.height;
+  canvas.height = across ? image.height : image.width;
+  const ctx = canvas.getContext("2d");
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((-rotation * Math.PI) / 180);
+  ctx.drawImage(printed, -image.width / 2, -image.height / 2);
+  const turned = rotation === 0 ? "" : ` Printed turned ${rotation}° clockwise (${image.width} x ${image.height} dots).`;
+  $("size").textContent = `${canvas.width} x ${canvas.height} dots = ${canvas.width / DOTS_PER_MM} x ${canvas.height / DOTS_PER_MM} mm.${turned}`;
   paintOverlay();
 }
 
@@ -272,15 +261,15 @@ function paintOverlay() {
   const canvas = $("image");
   const overlay = $("overlay");
   const zoom = Number($("zoom").value);
-  canvas.style.width = `${image.width * zoom}px`;
-  canvas.style.height = `${image.height * zoom}px`;
-  overlay.width = image.width * zoom;
-  overlay.height = image.height * zoom;
+  canvas.style.width = `${canvas.width * zoom}px`;
+  canvas.style.height = `${canvas.height * zoom}px`;
+  overlay.width = canvas.width * zoom;
+  overlay.height = canvas.height * zoom;
   const ctx = overlay.getContext("2d");
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   // The strips the 48 mm head does not cover (imageToRows crops the image to the head, centered).
   const across = headAcrossWidth();
-  const extent = (across ? image.width : image.height) / DOTS_PER_MM;
+  const extent = (across ? canvas.width : canvas.height) / DOTS_PER_MM;
   if ($("showoverlay").checked && extent > HEAD_MM) {
     const side = ((extent - HEAD_MM) / 2) * DOTS_PER_MM * zoom;
     ctx.fillStyle = "#e5393566";
@@ -370,7 +359,7 @@ $("print").addEventListener("click", async () => {
   progress.value = 0;
   try {
     setStatus(`Printing ${copies} label${copies === 1 ? "" : "s"}…`);
-    await printer.print(imageToRows(rotate(image, rotation), B1), {
+    await printer.print(imageToRows(image, B1), {
       density: Number($("density").value),
       copies,
       onProgress: (p) => {
@@ -394,10 +383,6 @@ for (let d = B1.densityRange.min; d <= B1.densityRange.max; d++) {
   $("density").append(new Option(d === B1.defaultDensity ? `${d} (default)` : String(d), String(d), false, d === B1.defaultDensity));
 }
 $("zoom").addEventListener("change", paintOverlay);
-$("rotation").addEventListener("change", () => {
-  rotation = Number($("rotation").value);
-  draw();
-});
 $("showoverlay").addEventListener("change", paintOverlay);
 $("unsupported").hidden = WebBluetoothTransport.isSupported();
 $("file").addEventListener("change", () => {

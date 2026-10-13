@@ -74,7 +74,11 @@ describe("importTemplates", () => {
 
   it("turns the app's print rotation into printRotation: a multiple of 90, else 0 with a warning", () => {
     const rotation = (rotate: unknown) => importTemplates([niimbotTemplate({ rotate })]).templates[0];
-    expect([undefined, null, 0, 90, 270, -90, 450, 720].map((r) => rotation(r)?.printRotation)).toEqual([0, 0, 0, 90, 270, 270, 90, 0]);
+    const turns = [undefined, null, 0, 90, 270, -90, 450, 720].map((r) => rotation(r));
+    expect(turns.map((t) => t?.template.printRotation)).toEqual([undefined, undefined, undefined, 90, 270, 270, 90, undefined]);
+    // The deprecated mirror on the result, 0 when the template leaves the field out.
+    expect(turns.map((t) => t?.printRotation)).toEqual([0, 0, 0, 90, 270, 270, 90, 0]);
+    expect(turns.every((t) => t && validateTemplate(t.template).issues.length === 0)).toBe(true);
     for (const bad of [45, "270", Number.NaN]) {
       expect(rotation(bad)).toMatchObject({ printRotation: 0, warnings: [{ code: "unsupported-style", path: "/rotate", feature: "rotate" }] });
     }

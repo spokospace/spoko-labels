@@ -41,6 +41,7 @@ describe("validateTemplate: valid input", () => {
       size: { width: 50, height: 30 },
       shape: { kind: "rectangle" },
       safeMargin: DEFAULTS.safeMargin,
+      printRotation: DEFAULTS.printRotation,
       elements: [
         {
           type: "text",
@@ -121,6 +122,27 @@ describe("validateTemplate: valid input", () => {
   });
 });
 
+describe("validateTemplate: printRotation", () => {
+  it("keeps each quarter turn", () => {
+    for (const printRotation of [0, 90, 180, 270]) {
+      expect(validateTemplate(template({ printRotation })).template?.printRotation).toBe(printRotation);
+    }
+  });
+
+  it("checks the printable strip across the side the head crosses", () => {
+    // A 30 x 50 label printed turned a quarter: the 48 mm head crosses its 50 mm height.
+    const upright = (y: number, printRotation: number) =>
+      template({ size: { width: 30, height: 50 }, printRotation, elements: [{ type: "line", x: 0, y, width: 30, height: 0.5 }] });
+    const codesFor = (y: number, printRotation: number) =>
+      codes(validateTemplate(upright(y, printRotation), { printableWidth: 48 }).issues);
+    expect(codesFor(0.5, 270)).toEqual(["warning outside-printable-area /elements/0"]);
+    expect(codesFor(1, 270)).toEqual([]);
+    expect(codesFor(0.5, 90)).toEqual(["warning outside-printable-area /elements/0"]);
+    // Unturned, the head crosses the 30 mm width: nothing to cut.
+    expect(codesFor(0.5, 0)).toEqual([]);
+  });
+});
+
 describe("validateTemplate: template-level errors give template null", () => {
   it.each([
     ["not an object", "label", ["error invalid-type "]],
@@ -129,6 +151,11 @@ describe("validateTemplate: template-level errors give template null", () => {
     ["missing version", { size: { width: 50, height: 30 }, elements: [] }, ["error required /version"]],
     ["version 2", template({ version: 2 }), ["error unsupported-version /version"]],
     ["version as a string", template({ version: "1" }), ["error invalid-type /version"]],
+    ["printRotation 45", template({ printRotation: 45 }), ["error out-of-range /printRotation"]],
+    ["printRotation -90", template({ printRotation: -90 }), ["error out-of-range /printRotation"]],
+    ["printRotation as a string", template({ printRotation: "90" }), ["error invalid-type /printRotation"]],
+    ["printRotation not whole", template({ printRotation: 90.5 }), ["error invalid-type /printRotation"]],
+    ["printRotation null", template({ printRotation: null }), ["error invalid-type /printRotation"]],
     ["missing size", template({ size: undefined }), ["error required /size"]],
     ["size not an object", template({ size: [50, 30] }), ["error invalid-type /size"]],
     ["size as strings", template({ size: { width: "50", height: 30 } }), ["error invalid-type /size/width"]],

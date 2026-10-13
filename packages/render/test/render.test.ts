@@ -51,6 +51,31 @@ const blackCount = (data: Uint8ClampedArray) => {
   return n;
 };
 
+describe("render: printRotation", () => {
+  // A 30 x 50 mm label with a 1 mm square in its top-left corner: 240 x 400 dots, the mark at dots 0..7.
+  const marked = (printRotation?: number) =>
+    template([{ type: "line", x: 0, y: 0, width: 1, height: 1 }], {
+      size: { width: 30, height: 50 },
+      ...(printRotation === undefined ? {} : { printRotation }),
+    });
+
+  it("turns the image clockwise and echoes the turn", () => {
+    const cases: [number | undefined, number, number, [number, number]][] = [
+      [undefined, 240, 400, [0, 0]],
+      [0, 240, 400, [0, 0]],
+      [90, 400, 240, [399, 0]], // the top-left corner goes to the top right
+      [180, 240, 400, [239, 399]],
+      [270, 400, 240, [0, 239]], // and to the bottom left
+    ];
+    for (const [rotation, width, height, [x, y]] of cases) {
+      const { image, printRotation } = render(marked(rotation), {}, options());
+      expect([image.width, image.height, printRotation]).toEqual([width, height, rotation ?? 0]);
+      expect(isBlack(image.data, width, x, y)).toBe(true);
+      expect(blackCount(image.data)).toBe(64);
+    }
+  });
+});
+
 describe("render", () => {
   it("returns a label-sized image of pure black and white pixels", () => {
     const { image, warnings } = render(template([text(), qr(), { type: "line", x: 2, y: 10, width: 46, height: 0.4 }]), { row }, options());

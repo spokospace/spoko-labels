@@ -87,7 +87,7 @@ interface NiimbotTemplate {
 
 ```ts
 interface ImportResult { templates: ImportedTemplate[]; failures: ImportFailure[] }
-interface ImportedTemplate { source: ImportSource; template: Template; printRotation: 0 | 90 | 180 | 270; warnings: ImportWarning[] }
+interface ImportedTemplate { source: ImportSource; template: Template; printRotation: 0 | 90 | 180 | 270 /* deprecated */; warnings: ImportWarning[] }
 interface ImportFailure { source: ImportSource; code: ImportFailureCode; issues?: TemplateIssue[] }
 interface ImportSource { index: number; name?: string }
 interface ImportWarning { code: ImportWarningCode; path: string; feature?: string; issue?: IssueCode }
@@ -112,7 +112,9 @@ Failing all three, the template fails with `unknown-size`. There is no silent de
 
 ### Print rotation
 
-A label can be designed upright, for example 30 × 50 mm for a 50 × 30 mm roll. The app then turns it when printing, and stores how far in the template's `rotate` (270 for such a label). Template v1 has no print direction, so the import keeps the design as drawn (`size` 30 × 50) and reports the turn as `printRotation`: degrees clockwise, a multiple of 90. Turn the rendered image by it before printing, as `niimblue`'s image encoder does for its "left" print direction. A `rotate` that is not a multiple of 90 gives `printRotation: 0` and `unsupported-style` `rotate` at `/rotate`.
+A label can be designed upright, for example 30 × 50 mm for a 50 × 30 mm roll. The app then turns it when printing, and stores how far in the template's `rotate` (270 for such a label). The import keeps the design as drawn (`size` 30 × 50) and writes the turn into the template's `printRotation` (degrees clockwise; left out when 0), which `render()` applies: its image is the printed one, so print it as it comes. A `rotate` that is not a multiple of 90 is treated as 0, with `unsupported-style` `rotate` at `/rotate`.
+
+`ImportedTemplate.printRotation` mirrors the template's value (0 when absent). It is deprecated, and removed at 1.0. Do not turn the image by it any more: `render()` already does.
 
 ## What is imported
 

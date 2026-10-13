@@ -22,6 +22,7 @@ export const LIMITS = {
 /** Values the validator fills in for omitted optional fields. */
 export const DEFAULTS = {
   safeMargin: 0,
+  printRotation: 0,
   letterSpacing: 0,
   lineSpacing: 0,
   align: "left",
@@ -108,9 +109,16 @@ export interface Template {
   shape?: Shape;
   /** An extra inset from the shape's edge that should stay clear, mm. Default 0. */
   safeMargin?: number;
+  /**
+   * Degrees clockwise the printed image is turned from the design, for a label designed upright (30 x 50 mm)
+   * and printed across a 50 x 30 mm roll. `render()` returns the turned image. Default 0.
+   */
+  printRotation?: PrintRotation;
   /** Painted in array order: later elements on top. */
   elements: Element[];
 }
+
+export type PrintRotation = 0 | 90 | 180 | 270;
 
 // The shapes `validateTemplate()` returns: every default filled in, unknown properties removed.
 
@@ -150,5 +158,6 @@ export interface NormalizedTemplate {
   size: { width: number; height: number };
   shape: Shape;
   safeMargin: number;
+  printRotation: PrintRotation;
   elements: NormalizedElement[];
 }

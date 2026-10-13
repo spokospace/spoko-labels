@@ -17,10 +17,12 @@ describe("demo templates", () => {
   });
 
   for (const t of TEMPLATES) {
-    it(`${t.id}: is a valid 50x30 template that fits the B1 head`, () => {
+    it(`${t.id}: is a valid template for a 50x30 roll that fits the B1 head`, () => {
       const { template, issues } = validateTemplate(t.template, { printableWidth: HEAD_MM });
       expect(issues).toEqual([]);
-      expect(template?.size).toEqual({ width: 50, height: 30 });
+      // Designed 50x30, or upright 30x50 and printed turned a quarter.
+      const quarter = template?.printRotation === 90 || template?.printRotation === 270;
+      expect(template?.size).toEqual(quarter ? { width: 30, height: 50 } : { width: 50, height: 30 });
     });
 
     it(`${t.id}: renders its sample row without warnings`, () => {

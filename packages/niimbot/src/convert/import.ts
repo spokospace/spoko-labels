@@ -68,9 +68,14 @@ function importOne(raw: unknown, options: ImportOptions): Outcome {
   }
 
   const name = nameOf(raw);
-  const template: Template = name === undefined
-    ? { version: TEMPLATE_VERSION, size, elements }
-    : { version: TEMPLATE_VERSION, name, size, elements };
+  // Defaults are left out, so a label printed as designed keeps the same JSON as before printRotation existed.
+  const template: Template = {
+    version: TEMPLATE_VERSION,
+    ...(name !== undefined && { name }),
+    size,
+    ...(printRotation !== 0 && { printRotation }),
+    elements,
+  };
 
   // The validator checks the result; the converted object (not its normalized copy) is what is emitted.
   const { template: checked, issues } = validateTemplate(template);

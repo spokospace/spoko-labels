@@ -70,6 +70,7 @@ All geometry is in millimetres. The origin is the top-left corner of the label a
 | `size` | The label: `width`, `height`, each above 0 and at most 300 mm. |
 | `shape` | Optional. `{ "kind": "rectangle" }` (default), `{ "kind": "rounded", "radius": mm }` or `{ "kind": "circle" }` (an ellipse inscribed in `size`). Used for the preview and the safe-area warning only; the printed image is always the full rectangle. For a circle with `safeMargin`, the safe area is the ellipse with both semi-axes reduced by the margin: exact for round labels, slightly generous near the ends of an elongated one. |
 | `safeMargin` | Optional extra inset from the shape's edge to keep clear, 0 to 10 mm. Default 0. |
+| `printRotation` | Optional. 0 (default), 90, 180 or 270: degrees clockwise the printed image is turned from the design. For a label designed upright (`size` 30 × 50) and printed across a 50 × 30 mm roll, use 90 or 270. `render()` returns the turned image. |
 | `elements` | At most 200 elements. |
 
 Every element has `type`, `x`, `y` (−300 to 300), `width`, `height` (above 0, at most 300) and an optional free-form `id`.
@@ -109,7 +110,7 @@ const { template, issues } = validateTemplate(JSON.parse(json), { printableWidth
 
 `validateTemplate` never throws on bad input (only on a bad `printableWidth`). It returns:
 
-- `template`: the template with every default filled in and unknown properties removed, or `null` when a template-level field (`version`, `name`, `size`, `shape`, `safeMargin`, `elements`) is wrong. An element with an error is removed; the rest stay.
+- `template`: the template with every default filled in and unknown properties removed, or `null` when a template-level field (`version`, `name`, `size`, `shape`, `safeMargin`, `printRotation`, `elements`) is wrong. An element with an error is removed; the rest stay.
 - `issues`: `{ severity, code, path }` with a JSON pointer `path` into the input, for example `/elements/3/font/size`. `"error"` means the element (or the whole template) was dropped; `"warning"` means it was kept.
 
 `printableWidth` is the width the print head covers, in mm. It belongs to the printer, not to the template: a NIIMBOT B1 prints 48 mm across (`headDots / dotsPerMm` of the `B1` model in `@spokospace/labels-core`), so on a 50 mm label about 1 mm on each side never prints.
@@ -120,9 +121,10 @@ The package also exports `TEMPLATE_VERSION` (`1`), `DEFAULTS` (the values filled
 
 ## Rendering
 
-`render(template, { row, columns }, { environment, fonts, printableWidth? })` returns `{ image, warnings }`:
+`render(template, { row, columns }, { environment, fonts, printableWidth? })` returns `{ image, printRotation, warnings }`:
 
-- `image`: `{ width, height, data }`, RGBA, every pixel black or white, at 8 dots per mm.
+- `image`: `{ width, height, data }`, RGBA, every pixel black or white, at 8 dots per mm. It is the printed image: already turned by the template's `printRotation`, so a 30 × 50 mm template with 270 gives 400 × 240 dots.
+- `printRotation`: the template's turn (0 when absent), so a preview can turn the image back to the design.
 - `warnings`: `{ code, path }`. Every validation issue of the template is included (an element with an error is skipped and the rest renders), plus what rendering found: missing columns and fonts, text that does not fit, QR problems, and drawn content (overflowing text, an oversized QR code) outside the safe or printable area.
 - A template-level error (bad `version`, `size`, `shape`, `elements`) throws `TemplateError`, whose `issues` are the validation issues.
 
@@ -153,7 +155,7 @@ Callers translate the codes; the package has no user-facing text.
 | `unknown-property` | warning | A property the format does not know; it is removed. |
 | `outside-label` | warning | An element box reaches past the label. |
 | `outside-safe-area` | warning | An element box is inside the label but leaves the safe area (the shape, its rounded corners, `safeMargin`). |
-| `outside-printable-area` | warning | An element box leaves the centered `printableWidth` strip. |
+| `outside-printable-area` | warning | An element box leaves the centered `printableWidth` strip: across the label's width, or across its height when `printRotation` is 90 or 270. |
 
 Raised by `render()` (always warnings):
 

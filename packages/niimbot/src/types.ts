@@ -1,4 +1,6 @@
-import type { IssueCode, Template, TemplateIssue } from "@spokospace/labels-render";
+import type { IssueCode, PrintRotation, Template, TemplateIssue } from "@spokospace/labels-render";
+
+export type { PrintRotation };
 
 /**
  * One template as the NIIMBOT desktop app stores it: the input of `importTemplates()`. Every field is read
@@ -16,7 +18,7 @@ export interface NiimbotTemplate {
   updatedAt?: string;
   /**
    * Degrees the app turns the label clockwise when printing it: 0, 90, 180 or 270. A label designed upright
-   * (30 x 50 mm) for a 50 x 30 mm roll has 270. Becomes `printRotation` in the import result.
+   * (30 x 50 mm) for a 50 x 30 mm roll has 270. Becomes the template's `printRotation`.
    */
   rotate?: number;
   /** Niimbot elements: objects with `type`, `x`, `y`, `width`, `height` (mm) and type-specific keys. */
@@ -59,15 +61,14 @@ export interface ImportWarning {
   issue?: IssueCode;
 }
 
-/** Degrees clockwise. */
-export type PrintRotation = 0 | 90 | 180 | 270;
-
 export interface ImportedTemplate {
   source: ImportSource;
   template: Template;
   /**
-   * How far to turn the rendered image clockwise before printing it, as the app does: template v1 has no
-   * print direction, so the host applies it (for example before `imageToRows`). Usually 0.
+   * The template's `printRotation` (0 when the template leaves it out). `render()` already turns the image by
+   * it, so do not turn the image again.
+   *
+   * @deprecated Read `template.printRotation` instead; this mirror is removed at 1.0.
    */
   printRotation: PrintRotation;
   warnings: ImportWarning[];
