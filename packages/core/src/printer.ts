@@ -24,6 +24,7 @@ const POLL_BUDGET_MS = 30_000;
 const ABORT_PRINT_END_TIMEOUT_MS = 1000;
 /** Every copy is a separate print job, so the number is kept to a practical size. */
 const MAX_COPIES = 255;
+const MAX_TOP_OFFSET_ROWS = 80;
 /** Gap labels; the only label type supported for the B1. */
 const LABEL_TYPE_GAP = 1;
 const PERCENT_DONE = 100;
@@ -51,6 +52,11 @@ export interface PrintProgress {
 export interface PrintOptions {
   /** Print density, an integer inside the model's `densityRange`. */
   density?: number;
+  /**
+   * Blank rows sent before the image (default: the model's `topOffsetRows`, 4 for the B1, which is 0.5 mm).
+   * Raise it if the top of the print is cut off, lower it if the bottom is, 0 sends the image as given.
+   */
+  topOffsetRows?: number;
   /**
    * Copies of the page, 1..255. The printer is sent one complete print job per copy: on a real B1 the
    * copy count inside the page size packet printed a single label, a job per copy is what works.
@@ -123,6 +129,7 @@ export class Printer {
   /** Print one page. `rows` are 1-bit rows of `headDots / 8` bytes (1 = black), see `imageToRows`. */
   async print(rows: readonly Uint8Array[], options: PrintOptions = {}): Promise<void> {
     const { density = this.model.defaultDensity, copies = 1, onProgress, signal } = options;
+    const topOffsetRows = options.topOffsetRows ?? this.model.topOffsetRows;
     const { min, max } = this.model.densityRange;
     if (!Number.isInteger(density) || density < min || density > max) {
       throw new InvalidArgumentError(`Density must be an integer from ${min} to ${max}, got ${density}`);
@@ -130,8 +137,16 @@ export class Printer {
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new InvalidArgumentError(`Copies must be an integer from 1 to ${MAX_COPIES}, got ${copies}`);
     }
+    if (!Number.isInteger(topOffsetRows) || topOffsetRows < 0 || topOffsetRows > MAX_TOP_OFFSET_ROWS) {
+      throw new InvalidArgumentError(
+        `Top offset must be an integer from 0 to ${MAX_TOP_OFFSET_ROWS} rows, got ${topOffsetRows}`,
+      );
+    }
+    if (rows.length === 0) throw new InvalidArgumentError("A page needs at least one row");
+    const rowBytes = this.model.headDots / 8;
+    const pageRows = [...Array.from({ length: topOffsetRows }, () => new Uint8Array(rowBytes)), ...rows];
     // Validates every row and builds all packets before anything is written.
-    const packets = encodeRows(rows, this.model.headDots / 8);
+    const packets = encodeRows(pageRows, rowBytes);
     if (signal?.aborted) throw new AbortedError();
 
     return this.locked(async () => {
@@ -145,7 +160,7 @@ export class Printer {
           // progress of the whole call: copy 1 of 3 at 50% is 16%
           const scaled = onProgress && ((p: PrintProgress) =>
             onProgress({ stage: p.stage, percent: Math.floor((copy * 100 + p.percent) / copies) }));
-          await this.sendPage(packets, rows.length, density, scaled, signal);
+          await this.sendPage(packets, pageRows.length, density, scaled, signal);
         }
       } catch (error) {
         if (error instanceof AbortedError) await this.finishAfterAbort();

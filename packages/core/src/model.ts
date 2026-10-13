@@ -10,6 +10,11 @@ export interface PrinterModel {
   readonly densityRange: { readonly min: number; readonly max: number };
   /** Pause between row packets, in milliseconds. */
   readonly rowGapMs: number;
+  /**
+   * Blank rows sent before the image, because the printer starts printing a little before the label
+   * begins: without them the first rows of the image fall on the gap and are lost.
+   */
+  readonly topOffsetRows: number;
 }
 
 /**
@@ -24,4 +29,6 @@ export const B1: PrinterModel = {
   defaultDensity: 3,
   densityRange: { min: 1, max: 5 },
   rowGapMs: 10,
+  // Measured on one B1 with 50x30 gap labels: the first 4 rows (0.5 mm) were lost at the top.
+  topOffsetRows: 4,
 };

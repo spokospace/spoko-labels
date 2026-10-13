@@ -119,7 +119,7 @@ describe("Printer.info", () => {
 });
 
 describe("Printer.print: sequence", () => {
-  it.each(sequenceVectors)("writes the prototype packet sequence: $name", async ({ density, copies, rows, packets }) => {
+  it.each(sequenceVectors)("writes the prototype packet sequence (plus the B1 top offset): $name", async ({ density, copies, rows, packets }) => {
     const { fake, printer } = setup();
     await settled(printer.print(rows.map(fromHex), { density, copies }));
     const written = fake.written.map((p) => toHex(encodePacket(p.cmd, p.data)));
@@ -133,7 +133,25 @@ describe("Printer.print: sequence", () => {
     const density = fake.written.find((p) => p.cmd === CMD.SET_DENSITY);
     const pageSize = fake.written.find((p) => p.cmd === CMD.SET_PAGE_SIZE);
     expect([...(density?.data ?? [])]).toEqual([B1.defaultDensity]);
-    expect([...(pageSize?.data ?? [])]).toEqual([0, ROWS.length, 0x01, 0x80, 0, 1]);
+    expect([...(pageSize?.data ?? [])]).toEqual([0, ROWS.length + B1.topOffsetRows, 0x01, 0x80, 0, 1]);
+  });
+
+  it("sends blank rows before the image, by default the model's top offset (the B1 loses its first rows otherwise)", async () => {
+    const { fake, printer } = setup();
+    await settled(printer.print([row(0xff)]));
+    const rowPackets = fake.written.filter((p) => p.cmd === CMD.PRINT_EMPTY_ROW || p.cmd === CMD.PRINT_BITMAP_ROW);
+    // one empty packet covering the offset rows (index 0, repeat 4), then the image row at index 4
+    expect(rowPackets.map((p) => p.cmd)).toEqual([CMD.PRINT_EMPTY_ROW, CMD.PRINT_BITMAP_ROW]);
+    expect([...(rowPackets[0]?.data ?? [])]).toEqual([0, 0, B1.topOffsetRows]);
+    expect([...(rowPackets[1]?.data.slice(0, 2) ?? [])]).toEqual([0, B1.topOffsetRows]);
+  });
+
+  it("topOffsetRows: 0 sends the image exactly as given, another value changes the page size", async () => {
+    const { fake, printer } = setup();
+    await settled(printer.print(ROWS, { topOffsetRows: 0 }));
+    await settled(printer.print(ROWS, { topOffsetRows: 10 }));
+    const sizes = fake.written.filter((p) => p.cmd === CMD.SET_PAGE_SIZE).map((p) => (p.data[0] as number) * 256 + (p.data[1] as number));
+    expect(sizes).toEqual([ROWS.length, ROWS.length + 10]);
   });
 
   it("is not confused by unsolicited 0xD3 packets, including right before the PageEnd reply", async () => {
@@ -301,6 +319,9 @@ describe("Printer.print: argument validation", () => {
     ["fractional density", [ROWS, { density: 2.5 }]],
     ["zero copies", [ROWS, { copies: 0 }]],
     ["too many copies", [ROWS, { copies: 256 }]],
+    ["negative top offset", [ROWS, { topOffsetRows: -1 }]],
+    ["top offset above the limit", [ROWS, { topOffsetRows: 81 }]],
+    ["fractional top offset", [ROWS, { topOffsetRows: 1.5 }]],
     ["fractional copies", [ROWS, { copies: 1.5 }]],
     ["no rows", [[]]],
     ["a row of the wrong length", [[row(0), new Uint8Array(47)]]],

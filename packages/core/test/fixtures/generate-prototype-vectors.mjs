@@ -109,8 +109,11 @@ const rowSets = [
 // page size, image packets, page end, status poll, print end). The prototype prints one copy; copies are
 // sent as one complete job each, because a copy count inside the page size packet printed a single label
 // on a real B1.
+const TOP_OFFSET_ROWS = 4;
 const u16 = (n) => [(n >> 8) & 0xff, n & 0xff];
-function printJob(rows, density) {
+function printJob(inputRows, density) {
+  // the B1 top offset found on hardware: blank rows before the image (the prototype sent none)
+  const rows = [...Array.from({ length: TOP_OFFSET_ROWS }, () => row(0)), ...inputRows];
   return [
     ref.packet(0x21, [density]),
     ref.packet(0x23, [1]),
