@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>labels-render demo</title>
+  <!-- No bundler: map the package names to the builds this package's server exposes (see ../serve.mjs). -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@spokospace/labels-render": "/dist/index.js",
+        "@spokospace/labels-core": "/node_modules/@spokospace/labels-core/dist/index.js",
+        "qrcode-generator": "/node_modules/qrcode-generator/dist/qrcode.mjs"
+      }
+    }
+  </script>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 64rem; margin: 0 auto; padding: 1rem; line-height: 1.4; }
+    h1 { font-size: 1.3rem; }
+    h2 { font-size: 1rem; margin: 0 0 .5rem; }
+    section { border: 1px solid #8884; border-radius: 8px; padding: .75rem 1rem; margin: 1rem 0; }
+    button, select, input, textarea { font: inherit; padding: .35rem .6rem; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .4rem 0; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    @media (max-width: 52rem) { .grid { grid-template-columns: minmax(0, 1fr); } }
+    .hint { opacity: .75; font-size: .9rem; }
+    .notice { border: 1px solid #d9822b; background: #d9822b22; border-radius: 8px; padding: .6rem 1rem; margin: 1rem 0; }
+    .stage { position: relative; display: inline-block; background: #fff; border: 1px solid #8886; max-width: 100%; overflow: auto; }
+    .stage canvas { display: block; }
+    #image { image-rendering: pixelated; }
+    #overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+    .legend span { display: inline-block; width: .9rem; height: .9rem; vertical-align: -.15rem; margin-right: .25rem; border: 1px solid #8886; }
+    #json { width: 100%; height: 22rem; font: .8rem ui-monospace, monospace; box-sizing: border-box; }
+    #jsonerror { color: #c62828; font-weight: 600; }
+    #fields label { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: .5rem; align-items: center; margin: .3rem 0; }
+    #fields input { width: 100%; box-sizing: border-box; }
+    #warnings { margin: .3rem 0; padding-left: 1.2rem; }
+    #warnings li code, .hint code { font: .85em ui-monospace, monospace; background: #8882; padding: 0 .25rem; border-radius: 3px; }
+    #status { font-weight: 600; }
+    progress { width: 12rem; }
+    footer { margin: 2rem 0 1rem; font-size: .85rem; opacity: .8; }
+  </style>
+</head>
+<body>
+  <h1>labels-render demo</h1>
+  <p class="hint">Pick a made-up template, edit its data or its JSON, check the preview and print it on a NIIMBOT B1 (50x30 mm labels). Use Chrome or Edge, and close the NIIMBOT phone app first.</p>
+  <div id="unsupported" class="notice" hidden>This browser has no Web Bluetooth: the preview works, printing does not. Use Chrome or Edge on a computer or Android (Brave needs <code>brave://flags/#brave-web-bluetooth-api</code>).</div>
+
+  <section>
+    <h2>1. Template and data</h2>
+    <div class="row">
+      <label>Template <select id="template"></select></label>
+      <button id="reset" title="Discard edits to the JSON and the data">Reset</button>
+    </div>
+    <div class="grid">
+      <div>
+        <div id="fields"></div>
+        <p class="hint" id="nofields" hidden>This template has no data fields.</p>
+      </div>
+      <div>
+        <details>
+          <summary>Template JSON (editable)</summary>
+          <textarea id="json" spellcheck="false"></textarea>
+          <p id="jsonerror"></p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Preview</h2>
+    <div class="row">
+      <label>Zoom <select id="zoom"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+      <label><input type="checkbox" id="showoverlay" checked> show label shape, safe area and print head</label>
+    </div>
+    <div class="stage"><canvas id="image"></canvas><canvas id="overlay"></canvas></div>
+    <p class="hint legend">
+      Every square is one printed dot (8 dots per mm). The image is exactly what is sent to the printer.
+      <span style="background:#e5393566"></span>outside the 48 mm print head (not printed)
+      <span style="background:#7777"></span>outside the label shape (rounded corners)
+      <span style="border:2px dashed #1e88e5"></span>safe area (when the template has a safe margin)
+    </p>
+    <p id="size" class="hint"></p>
+    <h2>Warnings</h2>
+    <ul id="warnings"></ul>
+  </section>
+
+  <section>
+    <h2>3. Print</h2>
+    <div class="row">
+      <button id="connect">Connect printer</button>
+      <button id="disconnect" disabled>Disconnect</button>
+      <span id="status">Not connected</span>
+    </div>
+    <div class="row">
+      <label>Density <select id="density"></select></label>
+      <label>Copies <input id="copies" type="number" min="1" max="255" value="1" step="1" size="3"></label>
+      <button id="print" disabled>Print</button>
+      <progress id="progress" max="100" value="0" hidden></progress>
+    </div>
+    <p class="hint">Connect opens the browser's Bluetooth chooser: pick the printer (its name starts with B1) and click Pair. Printing uses the default calibration of <code>@spokospace/labels-core</code> (image moved 0.5 mm down).</p>
+  </section>
+
+  <footer>
+    Demo of <code>@spokospace/labels-render</code> and <code>@spokospace/labels-core</code>. Templates and data are made up.
+    Labels are rendered with <strong>HarmonyOS Sans</strong> (© Huawei Device Co., Ltd., used under the HarmonyOS Sans Fonts License Agreement) and <strong>Viga</strong> (SIL Open Font License 1.1).
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

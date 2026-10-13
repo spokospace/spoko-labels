@@ -5,7 +5,7 @@
 //   open http://localhost:8080/examples/hardware-check/
 import { createReadStream, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -13,9 +13,15 @@ const port = Number(process.env.PORT ?? 8080);
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 
 createServer((req, res) => {
-  const url = new URL(req.url ?? "/", "http://localhost");
-  let path = normalize(join(root, decodeURIComponent(url.pathname)));
-  if (!path.startsWith(root)) {
+  let path;
+  try {
+    path = normalize(join(root, decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname)));
+  } catch {
+    // A malformed escape such as "%E0%A4%A" would otherwise throw and stop the server.
+    res.writeHead(400).end("Bad request");
+    return;
+  }
+  if (path !== root && !path.startsWith(root + sep)) {
     res.writeHead(403).end();
     return;
   }
@@ -27,7 +33,9 @@ createServer((req, res) => {
     return;
   }
   res.writeHead(200, { "Content-Type": types[extname(path)] ?? "application/octet-stream", "Cache-Control": "no-store" });
-  createReadStream(path).pipe(res);
+  createReadStream(path)
+    .on("error", () => res.destroy())
+    .pipe(res);
 }).listen(port, "127.0.0.1", () => {
   console.log(`Hardware-check page: http://localhost:${port}/examples/hardware-check/`);
 });

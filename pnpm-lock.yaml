@@ -38,6 +38,9 @@ importers:
       '@napi-rs/canvas':
         specifier: 1.0.11
         version: 1.0.11
+      '@spokospace/labels-core':
+        specifier: workspace:*
+        version: link:../core
       '@types/node':
         specifier: 22.20.5
         version: 22.20.5
