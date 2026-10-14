@@ -16,8 +16,10 @@
       <p class="tagline" data-i18n="tagline"></p>
     </div>
     <div class="tools">
-      <!-- Phase 3: the printer status chip and the help button go here. -->
-      <span id="printer-slot"></span>
+      <!-- main.ts puts <spoko-printer-status> here and sets its lang attribute on a language switch. -->
+      <span id="printer-slot" class="printer-slot"></span>
+      <button type="button" id="help-button" class="button small" data-i18n="help"></button>
+      <button type="button" id="settings-button" class="button small" data-i18n="settings"></button>
       <div class="lang" role="group" data-i18n-label="language">
         <button type="button" data-lang="pl" lang="pl">PL</button>
         <button type="button" data-lang="en" lang="en">EN</button>
@@ -26,9 +28,11 @@
   </header>
 
   <div id="banners" class="banners" role="status" hidden></div>
+  <!-- What the printer chip and the print dialog reported, with a link to the help. -->
+  <p id="printer-banner" class="banner printer-banner" role="alert" hidden></p>
 
   <main class="layout">
-    <section class="panel" aria-labelledby="templates-heading">
+    <section class="panel templates-panel" aria-labelledby="templates-heading">
       <h2 id="templates-heading" data-i18n="templatesHeading"></h2>
       <fieldset class="templates">
         <legend class="visually-hidden" data-i18n="templateListLabel"></legend>
@@ -57,6 +61,11 @@
       </div>
       <h3 data-i18n="warningsHeading"></h3>
       <ul id="warnings" class="warnings"></ul>
+      <!-- Sticky with the preview on a desktop, fixed to the bottom of the screen on a phone. -->
+      <div class="print-bar">
+        <button type="button" id="print-button" class="button primary"></button>
+        <p id="print-hint" class="hint" hidden></p>
+      </div>
     </section>
 
     <section id="data" class="panel data" aria-labelledby="data-heading">

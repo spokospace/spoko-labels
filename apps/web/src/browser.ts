@@ -1,9 +1,7 @@
+import { helpButton, withCode, type HelpSection } from "./help.js";
 import { t, type MessageKey } from "./i18n/index.js";
 
 // What the page can tell about the browser on load, before anyone clicks Connect.
-
-/** Where Brave keeps its Web Bluetooth switch (checked on Brave 1.97). */
-export const BRAVE_BLUETOOTH_FLAG = "brave://flags/#brave-web-bluetooth-api";
 
 export type BrowserIssue = "insecure" | "brave-bluetooth" | "no-bluetooth";
 
@@ -31,22 +29,24 @@ const BANNER_TEXT: Record<BrowserIssue, MessageKey> = {
   "no-bluetooth": "bannerNoBluetooth",
 };
 
-/** One banner: the message as text, with the Brave flag as a `<code>` element. */
-function banner(issue: BrowserIssue): HTMLElement {
+/** The help section each banner links to. */
+export const BANNER_HELP: Record<BrowserIssue, HelpSection> = {
+  insecure: "browser",
+  "brave-bluetooth": "brave",
+  "no-bluetooth": "browser",
+};
+
+/** One banner: the message as text, with the Brave flag as a `<code>` element, and a link to the help. */
+function banner(issue: BrowserIssue, onHelp: ((section: HelpSection) => void) | undefined): HTMLElement {
   const el = document.createElement("p");
   el.className = "banner";
   el.dataset.issue = issue;
-  const [before, after] = t(BANNER_TEXT[issue]).split("{flag}");
-  el.append(before ?? "");
-  if (after !== undefined) {
-    const code = document.createElement("code");
-    code.textContent = BRAVE_BLUETOOTH_FLAG;
-    el.append(code, after);
-  }
+  el.append(...withCode(t(BANNER_TEXT[issue])));
+  if (onHelp) el.append(" ", helpButton(BANNER_HELP[issue], onHelp));
   return el;
 }
 
-export function showBanners(container: HTMLElement, issues: readonly BrowserIssue[]): void {
-  container.replaceChildren(...issues.map(banner));
+export function showBanners(container: HTMLElement, issues: readonly BrowserIssue[], onHelp?: (section: HelpSection) => void): void {
+  container.replaceChildren(...issues.map((issue) => banner(issue, onHelp)));
   container.hidden = issues.length === 0;
 }

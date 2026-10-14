@@ -7,6 +7,8 @@ export const STORAGE_KEYS = {
   /** The API URL without its query and fragment (A7). */
   apiUrl: "spoko-labels:api-url",
   apiPath: "spoko-labels:api-path",
+  /** The calibration, `{"x":0,"y":0.5}` in mm (A13). */
+  offsetMm: "spoko-labels:offset-mm",
 } as const;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;

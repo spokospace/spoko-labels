@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { BRAVE_BLUETOOTH_FLAG, browserIssues, showBanners } from "../src/browser.js";
+import { browserIssues, showBanners } from "../src/browser.js";
+import { BRAVE_BLUETOOTH_FLAG } from "../src/help.js";
 import { setLang } from "../src/i18n/index.js";
 
 describe("browser detection", () => {

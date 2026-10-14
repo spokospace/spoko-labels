@@ -120,7 +120,7 @@ One page, one column on a phone and two on a desktop:
 - **Detection on load.**
   - No `navigator.bluetooth`: a banner. In Brave (`navigator.brave`) the banner points to the flag; elsewhere it names the supported browsers.
   - Not a secure context: a banner (only possible on a misconfigured host).
-- **Settings panel.** Calibration x and y in mm, within the ranges `Printer.print()` accepts (`x` −8 to 8 mm, `y` 0 to 10 mm). Those limits are not exported, so the app repeats them, and a test pins them against a print that `labels-core` rejects. There is a "Reset to default" button and a link to the help. Saved in `localStorage`; a saved value outside the limits, or not a number, falls back to the default on load.
+- **Settings panel.** Calibration x and y in mm, within the ranges `Printer.print()` accepts (`x` −8 to 8 mm, `y` 0 to 10 mm). `labels-core` exports them as `OFFSET_LIMITS_MM`, and the app reads them from there; the default is core's `B1.offsetMm`. There is a "Reset to default" button and a link to the help. Saved in `localStorage`; a saved value outside the limits, or not a number, falls back to the default on load.
 
 ### Deep links (A15, confirmed)
 - **Parsing.** The hash without its leading `#` is parsed with `URLSearchParams`. Unknown parameters are ignored, so a later version can add some. If a parameter appears twice, the first one counts.
@@ -147,7 +147,7 @@ One page, one column on a phone and two on a desktop:
 - The `feature` of an `unsupported-style` warning is a plain `string` in `labels-niimbot`. The app types the names it knows as a union (`value`, `rotate`, `dashed`, `reverse`, `level`, `underline`, `italic`, `word-spacing`, `align`, `vertical-align`, `adaptive`, `auto-height`, as emitted today) with a `Record` per language, and shows the raw name in a generic sentence for any other.
 - A test checks that both languages have non-empty text for every key and code.
 - `<html lang>` follows the chosen language, so the embed dialog uses the same one.
-- **Switching language.** The embed chip reads its language (its `lang` attribute, else `<html lang>`) only when it is attached to the page or the session state changes; it has no `observedAttributes`. So on a switch the app sets `<html lang>` and then remounts the chip: it replaces it with a new `<spoko-printer-status>` element. Attaching it runs `connectedCallback`, which redraws the text. The session and the connection are not touched. A possible embed follow-up: observe `lang` in the chip, so hosts need no remount.
+- **Switching language.** The embed chip reads its language from its `lang` attribute, else `<html lang>`, and observes `lang`. On a switch the app sets `<html lang>` (for the dialog) and the chip's `lang` attribute; the chip redraws at once. It is not remounted, so no session `refresh()` is sent, and the connection is not touched.
 
 ### Delivery
 - **Build.** `pnpm --filter @spokospace/labels-web build` runs `vite build` to `apps/web/dist/`. It runs inside the root `pnpm build`, so it is part of the validation gate.

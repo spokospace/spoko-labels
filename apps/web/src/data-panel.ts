@@ -1,10 +1,11 @@
 import { MAX_LABELS } from "@spokospace/labels-embed";
 import type { RenderData } from "@spokospace/labels-render";
 import { loadApi, TIMEOUT_MS, urlToStore, type ApiError, type ApiErrorCode, type ApiResult } from "./data/api.js";
-import { autoMapping, fieldKey, mapInput, templateFields, type Field, type Mapping } from "./data/mapping.js";
+import { autoMapping, fieldKey, mapInput, templateFields, type Field, type MappedInput, type Mapping } from "./data/mapping.js";
 import { search, searchIndex } from "./data/search.js";
 import { cell, columnLetter, makeRow, makeTable, MAX_BYTES, MAX_COLUMNS, MAX_ROWS, unionColumns, type DataTable, type Row } from "./data/table.js";
 import { readXlsx, type XlsxErrorCode, type XlsxResult } from "./data/xlsx.js";
+import { el } from "./dom.js";
 import { getLang, t, type Lang, type MessageKey } from "./i18n/index.js";
 import { readStored, STORAGE_KEYS, writeStored } from "./storage.js";
 import type { BuiltinTemplate } from "./templates/builtin.js";
@@ -62,8 +63,11 @@ type Status = { kind: "idle" } | { kind: "loading"; message: MessageKey; cancell
 
 export interface DataPanelOptions {
   template: BuiltinTemplate;
-  /** Called whenever the previewed row or the picks change. */
-  onChange: () => void;
+  /**
+   * Called once per change of what the preview shows or Print prints: "preview" for the source, the picks or
+   * the previewed row (the preview redraws), "selection" for a checkbox or "select all shown".
+   */
+  onChange: (change: "preview" | "selection") => void;
   /** Accept http://localhost API URLs (vite dev). */
   dev?: boolean;
   readFile?: (file: Blob) => Promise<XlsxResult>;
@@ -75,6 +79,13 @@ export interface DataPanel {
   previewData(): RenderData;
   /** Which row the preview shows, in words. */
   previewText(): string;
+  /**
+   * What Print prints: the selected rows in source order, or the previewed row when none is selected (the
+   * template's sample row before any data is loaded), mapped onto the template. Null when there is no row.
+   */
+  printInput(): MappedInput | null;
+  /** Whether printInput() has a row, without mapping anything. */
+  hasPrintableRow(): boolean;
   setTemplate(template: BuiltinTemplate): void;
   /** Redraws every text (after a language switch); sample data switches to the new language. */
   refresh(): void;
@@ -89,15 +100,6 @@ export interface DataPanel {
   useSample(): void;
   openFile(file: Blob & { name?: string }): Promise<void>;
   loadUrl(url: string, path: string): Promise<void>;
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, i18n?: MessageKey): HTMLElementTagNameMap[K] {
-  const node: HTMLElement = Object.assign(document.createElement(tag), props);
-  if (i18n) {
-    node.dataset.i18n = i18n;
-    node.textContent = t(i18n);
-  }
-  return node as HTMLElementTagNameMap[K];
 }
 
 /** The template's sample rows, in the app's language. */
@@ -253,7 +255,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
         select.addEventListener("change", () => {
           const column = select.value === "" ? null : (columns[Number(select.value)] ?? null);
           mapping.set(key, column);
-          options.onChange();
+          options.onChange("preview");
         });
         const row = el("div", { className: "pick" });
         row.append(label, select);
@@ -353,7 +355,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
     previewIndex = 0;
     pageEnd = PAGE_SIZE;
     drawAll();
-    options.onChange();
+    options.onChange("preview");
   }
 
   function setPreview(i: number, focus: boolean): void {
@@ -369,7 +371,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       else tr.removeAttribute("aria-current");
       if (current && focus) tr.focus();
     }
-    options.onChange();
+    options.onChange("preview");
   }
 
   function toggle(i: number, on = !selected.has(i)): void {
@@ -378,6 +380,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
     const tr = tbody.querySelector<HTMLTableRowElement>(`tr[data-index="${i}"]`);
     if (tr) showSelected(tr, on);
     drawSelection();
+    options.onChange("selection");
   }
 
   /** The row's checkbox and its aria-selected, kept in step. */
@@ -464,6 +467,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
     }
     for (const tr of tbody.querySelectorAll<HTMLTableRowElement>("tr[data-index]")) showSelected(tr, selectAll.checked);
     drawSelection();
+    options.onChange("selection");
   });
   moreButton.addEventListener("click", () => {
     const from = pageEnd;
@@ -523,6 +527,19 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       const input = mapInput(fields, mapping, source.table.columns, [row]);
       return { row: input.rows[0] ?? {}, ...(input.columns && { columns: input.columns }) };
     },
+    printInput(): MappedInput | null {
+      if (!source) {
+        const sample = template.sampleRows[getLang()][0];
+        return sample ? { rows: [sample] } : null;
+      }
+      const indices = selected.size > 0 ? [...selected].sort((a, b) => a - b) : previewIndex >= 0 ? [previewIndex] : [];
+      const { rows: all, columns } = source.table;
+      const rows = indices.flatMap((i): Row[] => (all[i] ? [all[i]] : []));
+      return rows.length > 0 ? mapInput(fields, mapping, columns, rows) : null;
+    },
+    hasPrintableRow(): boolean {
+      return source ? selected.size > 0 || previewIndex >= 0 : template.sampleRows[getLang()].length > 0;
+    },
     previewText(): string {
       if (!source) return t("previewSampleRow");
       return previewIndex < 0 ? t("previewNoRow") : t("previewRowOf", { n: previewIndex + 1, total: source.table.rows.length });
@@ -535,7 +552,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       if (source) mapping = autoMapping(fields, source.table.columns);
       drawSource();
       drawMapping();
-      options.onChange();
+      options.onChange("preview");
     },
     refresh(): void {
       // Sample data is written in the app's language, so a language switch swaps its rows in place. Every language

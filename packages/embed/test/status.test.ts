@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defineElements } from "../src/index.js";
 import { PrinterSession } from "../src/session.js";
 import { batteryPercent, type SpokoPrinterStatus } from "../src/status.js";
@@ -25,6 +25,20 @@ describe("batteryPercent", () => {
 });
 
 describe("<spoko-printer-status>", () => {
+  it("redraws when its lang attribute changes, without asking the session again", () => {
+    const session = new PrinterSession(harness().deps);
+    const refresh = vi.spyOn(session, "refresh");
+    const { el, text } = chip(session);
+    expect(text()).toBe("Connect printer");
+    expect(refresh).toHaveBeenCalledTimes(1);
+    el.setAttribute("lang", "pl");
+    expect(text()).toBe("Połącz drukarkę");
+    el.setAttribute("lang", "en");
+    expect(text()).toBe("Connect printer");
+    expect(refresh).toHaveBeenCalledTimes(1);
+    el.remove();
+  });
+
   it("connects on click and shows the printer, then offers Disconnect", async () => {
     const session = new PrinterSession(harness().deps);
     const { el, button, text } = chip(session);

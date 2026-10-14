@@ -25,9 +25,11 @@ const POLL_BUDGET_MS = 30_000;
 const ABORT_PRINT_END_TIMEOUT_MS = 1000;
 /** Every copy is a separate print job, so the number is kept to a practical size. */
 const MAX_COPIES = 255;
-/** Calibration limits in millimetres: down (never up) by at most this much, sideways by at most this much. */
-const MAX_OFFSET_Y_MM = 10;
-const MAX_OFFSET_X_MM = 8;
+/**
+ * The calibration `print()` accepts, in millimetres: `offsetMm.x` from `-x` to `x` (sideways), `offsetMm.y`
+ * from 0 to `y` (down, never up).
+ */
+export const OFFSET_LIMITS_MM: { readonly x: number; readonly y: number } = Object.freeze({ x: 8, y: 10 });
 /** Gap labels; the only label type supported for the B1. */
 const LABEL_TYPE_GAP = 1;
 const PERCENT_DONE = 100;
@@ -166,11 +168,11 @@ export class Printer {
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new InvalidArgumentError(`Copies must be an integer from 1 to ${MAX_COPIES}, got ${copies}`);
     }
-    if (!Number.isFinite(offsetY) || offsetY < 0 || offsetY > MAX_OFFSET_Y_MM) {
-      throw new InvalidArgumentError(`Offset y must be from 0 to ${MAX_OFFSET_Y_MM} mm, got ${offsetY}`);
+    if (!Number.isFinite(offsetY) || offsetY < 0 || offsetY > OFFSET_LIMITS_MM.y) {
+      throw new InvalidArgumentError(`Offset y must be from 0 to ${OFFSET_LIMITS_MM.y} mm, got ${offsetY}`);
     }
-    if (!Number.isFinite(offsetX) || Math.abs(offsetX) > MAX_OFFSET_X_MM) {
-      throw new InvalidArgumentError(`Offset x must be from -${MAX_OFFSET_X_MM} to ${MAX_OFFSET_X_MM} mm, got ${offsetX}`);
+    if (!Number.isFinite(offsetX) || Math.abs(offsetX) > OFFSET_LIMITS_MM.x) {
+      throw new InvalidArgumentError(`Offset x must be from -${OFFSET_LIMITS_MM.x} to ${OFFSET_LIMITS_MM.x} mm, got ${offsetX}`);
     }
     if (rows.length === 0) throw new InvalidArgumentError("A page needs at least one row");
     const rowBytes = this.model.headDots / 8;

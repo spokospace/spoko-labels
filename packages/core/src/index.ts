@@ -6,7 +6,7 @@ export { imageToRows, type ImageLike } from "./image.js";
 export { B1, type PrinterModel } from "./model.js";
 export type { Transport } from "./transport.js";
 export { WebBluetoothTransport } from "./web-bluetooth.js";
-export { Printer, type PrinterInfo, type PrintOptions, type PrintProgress } from "./printer.js";
+export { OFFSET_LIMITS_MM, Printer, type PrinterInfo, type PrintOptions, type PrintProgress } from "./printer.js";
 export {
   AbortedError,
   BluetoothUnsupportedError,

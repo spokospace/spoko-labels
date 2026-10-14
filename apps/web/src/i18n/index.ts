@@ -69,6 +69,11 @@ export function t(key: MessageKey, params?: Params, lang: Lang = current): strin
   return fill(MESSAGES[lang][key], params);
 }
 
+/** A number with the language's decimal separator ("0,5" in Polish), without grouping. */
+export function formatNumber(value: number, lang: Lang = current): string {
+  return new Intl.NumberFormat(lang, { useGrouping: false, maximumFractionDigits: 3 }).format(value);
+}
+
 /** A labels-core error code or an embed outcome code in words; anything unknown is "something went wrong". */
 export function errorText(code: string | undefined, lang: Lang = current): string {
   const errors = CODES[lang].errors;

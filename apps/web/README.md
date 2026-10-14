@@ -1,10 +1,10 @@
 # @spokospace/labels-web
 
-The public web app: pick a template, load data from an xlsx file or a JSON API, see exactly what will print, and (in a later phase) print on a NIIMBOT B1 from the browser. Built with Vite and plain TypeScript, no UI framework. Private: it exports no code.
+The public web app: pick a template, load data from an xlsx file or a JSON API, see exactly what will print, and print it on a NIIMBOT B1 from the browser. Built with Vite and plain TypeScript, no UI framework. Private: it exports no code.
 
 Live: **[spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. It is deployed by hand, so it can be behind `main`; the footer shows the commit it was built from.
 
-> **Status: Phases 1 and 2 of `.ai/specs/2026-10-14-labels-web-app.md`.** The app shell, Polish and English, the built-in templates, the preview and the data (sample rows, xlsx files, a JSON API, column mapping, search and row selection) are in. Printing, the NIIMBOT import and deep links follow in later phases.
+> **Status: Phases 1 to 3 of `.ai/specs/2026-10-14-labels-web-app.md`.** The app shell, Polish and English, the built-in templates, the preview, the data (sample rows, xlsx files, a JSON API, column mapping, search and row selection) and printing (the printer chip, the print dialog, the calibration settings and the printer help) are in. The Phase 3 hardware check on a B1 is the maintainer's. The NIIMBOT import and deep links follow in later phases.
 
 ## Running it
 
@@ -29,8 +29,12 @@ Nothing has to be built first: `vite.config.ts` resolves the four workspace pack
   - `mapping.ts`: the column pickers' logic. Fields bound by name get row keys of that name; fields bound by position (NIIMBOT imports) get a row key of their own per position (`"\u0000pos-0"`, …), listed in `columns`, so they never collide with a bind name or a source column; a field with no pick has no row key, so render reports `missing-column` and it prints empty.
   - `search.ts`: search over every column, ignoring case and diacritics.
   - `table.ts`: the shared row shape. Rows are built with `Object.fromEntries` and read with `Object.hasOwn`, so a column named `__proto__` is an ordinary column.
-- `src/data-panel.ts`: the Data panel: the source buttons, the URL form, the pickers, the search and the row table (checkboxes, "select all shown", the count and the 200-label limit, arrows and space on the keyboard, a list on phones). The data stays in memory; nothing loaded is stored.
-- `src/browser.ts`: the banners for a browser without Web Bluetooth (with Brave's flag) and for a page that is not HTTPS.
+- `src/data-panel.ts`: the Data panel: the source buttons, the URL form, the pickers, the search and the row table (checkboxes, "select all shown", the count and the 200-label limit, arrows and space on the keyboard, a list on phones), and the rows Print prints. The data stays in memory; nothing loaded is stored.
+- `src/browser.ts`: the banners for a browser without Web Bluetooth (with Brave's flag) and for a page that is not HTTPS, each with a link to the help.
+- `src/printing.ts`: printing through the public `labels-embed` API. `main.ts` calls `defineElements()` once, puts `<spoko-printer-status>` in the header (a language switch sets its `lang` attribute, which the chip observes) and calls `printerSession.tryReconnect()` on load. The Print button says "Print selected (N)", or prints the previewed row (the sample row before any data is loaded) when nothing is selected; it is disabled above 200 selected rows and without Web Bluetooth. It calls `printLabels()` with the mapped rows, the template, its column order (templates bound by position) and the calibration; copies and density are set in embed's dialog. The chip and the dialog live in embed's shadow DOM, so the app shows what they report in a banner of its own, with a link to the help (a browser without Web Bluetooth gets `browser.ts`'s banner instead): a session `statechange` to `disconnected` with an error (not `chooser-cancelled`) or to `busy-elsewhere` (linked to the other-tab help), and a print whose outcome has `error.code`. On a desktop the preview column is sticky with the Print button at its bottom; on a phone the Print button is fixed to the bottom of the screen.
+- `src/calibration.ts`, `src/settings-panel.ts`: the printer settings: the calibration (`offsetMm`) x from −8 to 8 mm and y from 0 to 10 mm, from core's `OFFSET_LIMITS_MM`, the ranges `Printer.print()` accepts; "Reset to default" (core's `B1.offsetMm`, 0 / 0.5 mm); shown with the language's decimal separator; stored in `localStorage`. A stored value that is not two numbers within the limits gives the default; an invalid entry is marked and ignored.
+- `src/help.ts`: the printer help: browser support, Brave (`brave://flags/#brave-web-bluetooth-api`, and the optional `#enable-web-bluetooth-new-permissions-backend` that Chrome and Edge have too; checked on Brave 1.97), the phone app and the connection, the printer in use in another tab, calibration and density. Every `labels-core` error code and embed outcome code maps to a section or to none (one typed `Record`, so a new code fails `pnpm typecheck`).
+- `src/dialog.ts`, `src/dom.ts`: the panels' modal `<dialog>`, and the small element helper the panels share.
 - `public/_headers`: the Cloudflare Pages headers (Content Security Policy, `Permissions-Policy: bluetooth=(self)` and others).
 - `scripts/deploy.mjs`: the deploy, below.
 

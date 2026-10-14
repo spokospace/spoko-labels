@@ -1,12 +1,17 @@
 import "./styles.css";
+import { defineElements, printerSession } from "@spokospace/labels-embed";
 import { browserEnvironment, bundledFonts, loadFonts, type FontRegistry } from "@spokospace/labels-render";
 import { browserIssues, showBanners } from "./browser.js";
 import { mountDataPanel } from "./data-panel.js";
+import { mountHelpPanel, type HelpSection } from "./help.js";
 import { applyTranslations, getLang, initLang, LANGS, onLangChange, setLang, t, type Lang } from "./i18n/index.js";
 import { buildPreview, showPreview, type PreviewElements } from "./preview.js";
+import { mountChip, mountPrintControls, type PrintControls } from "./printing.js";
+import { mountSettingsPanel } from "./settings-panel.js";
 import { BUILTIN_TEMPLATES, builtinTemplate, DEFAULT_TEMPLATE_ID, type BuiltinTemplate } from "./templates/builtin.js";
 
-// Start-up and wiring: the language, the browser banners, the built-in templates, the preview and the data.
+// Start-up and wiring: the language, the browser banners, the built-in templates, the preview, the data, and the
+// printer (embed's chip and print dialog, the settings and the help).
 
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -71,26 +76,60 @@ function selectTemplate(id: string): void {
   dataPanel.setTemplate(current);
 }
 
+const openHelp = (section?: HelpSection): void => help.open(section);
+const help = mountHelpPanel(document.body, { openSettings: () => settings.open() });
+const settings = mountSettingsPanel(document.body, { openHelp });
+byId("help-button").addEventListener("click", () => help.open());
+byId("settings-button").addEventListener("click", () => settings.open());
+// Created after the data panel, which it reads; the data panel's callback refreshes it.
+let printControls: PrintControls | null = null;
+
 function showLang(lang: Lang): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
     button.setAttribute("aria-pressed", String(button.dataset.lang === lang));
   }
   applyTranslations(document);
   document.title = t("appTitle");
-  showBanners(byId("banners"), browserIssues(navigator, globalThis.isSecureContext !== false));
+  showBanners(byId("banners"), browserIssues(navigator, globalThis.isSecureContext !== false), openHelp);
   renderTemplateList();
   dataPanel.refresh();
+  help.refresh();
+  settings.refresh();
+  printControls?.translate();
   showFontStatus();
   draw();
 }
 
 initLang();
-const dataPanel = mountDataPanel(byId("data"), { template: current, onChange: () => draw(), dev: import.meta.env.DEV });
+// The embed elements, once (A2). The app imports the package entry, never the bundle.
+defineElements();
+const chip = mountChip(byId("printer-slot"));
+const dataPanel = mountDataPanel(byId("data"), {
+  template: current,
+  onChange: (change) => {
+    if (change === "preview") draw();
+    printControls?.refresh();
+  },
+  dev: import.meta.env.DEV,
+});
+printControls = mountPrintControls({
+  button: byId("print-button"),
+  hint: byId("print-hint"),
+  banner: byId("printer-banner"),
+  data: dataPanel,
+  template: () => current,
+  offset: () => settings.offset(),
+  openHelp,
+  session: printerSession,
+});
 showLang(getLang());
 onLangChange((lang) => {
+  // The chip observes its lang attribute and redraws; the session is not touched.
+  chip.setAttribute("lang", lang);
   showLang(lang);
-  // Phase 3: remount <spoko-printer-status> here; the chip reads <html lang> only when it is attached.
 });
+// A printer picked before reconnects without the chooser where the browser allows it; otherwise the chip offers Connect.
+void printerSession.tryReconnect();
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
   button.addEventListener("click", () => {
     const lang = LANGS.find((l) => l === button.dataset.lang);
