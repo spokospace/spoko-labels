@@ -7,6 +7,8 @@
 
 Print labels on NIIMBOT label printers straight from the browser — no driver, no desktop app, no phone. Over Web Bluetooth.
 
+**Try it: [spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. Pick a template, load the sample data, an xlsx file or a JSON API, and see exactly what will print. Your data stays in the browser. Printing from the web app is coming next.
+
 > Work in progress. The printer layer works today; templates, import, the embeddable dialog and the web app are being built.
 
 ## What works today
@@ -36,7 +38,7 @@ Development and testing happen mainly on a **NIIMBOT B1** (203 dpi, 384-dot prin
 | [`@spokospace/labels-render`](packages/render/README.md) | label template engine (available) |
 | [`@spokospace/labels-niimbot`](packages/niimbot/README.md) | import templates from the NIIMBOT desktop app (available: reading the app's database, conversion, the free fonts and an example page; checked on a B1) |
 | [`@spokospace/labels-embed`](packages/embed/README.md) | print from other web apps: shared printer connection, status chip and print dialog (available; hardware check pending) |
-| `apps/web` | the public web app (in progress: templates and preview; see [its README](apps/web/README.md)) |
+| `apps/web` | the public web app, live at [spoko-labels.pages.dev](https://spoko-labels.pages.dev) (in progress: templates, preview and data loading; see [its README](apps/web/README.md)) |
 
 ## Development
 
