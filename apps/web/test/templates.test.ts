@@ -1,6 +1,6 @@
 import { render, validateTemplate } from "@spokospace/labels-render";
 import { describe, expect, it } from "vitest";
-import { MESSAGES } from "../src/i18n/index.js";
+import { LANGS, MESSAGES } from "../src/i18n/index.js";
 import { HEAD_MM } from "../src/preview.js";
 import { BUILTIN_TEMPLATES, builtinTemplate, DEFAULT_TEMPLATE_ID } from "../src/templates/builtin.js";
 import { nodeEnvironment, nodeFonts } from "./node-environment.js";
@@ -35,12 +35,16 @@ describe("built-in templates", () => {
         expect(turned ? { width: height, height: width } : { width, height }).toEqual({ width: 50, height: 30 });
       });
 
-      it("renders every sample row without warnings", async () => {
+      it("has sample rows in every language, with the same columns, rendering without warnings", async () => {
         const fonts = await nodeFonts();
-        expect(b.sampleRows.length).toBeGreaterThan(0);
-        for (const row of b.sampleRows) {
-          const { warnings } = render(b.template, { row }, { environment: nodeEnvironment, fonts, printableWidth: HEAD_MM });
-          expect(warnings, JSON.stringify(row)).toEqual([]);
+        const columns = Object.keys(b.sampleRows.en[0] ?? {});
+        for (const lang of LANGS) {
+          expect(b.sampleRows[lang].length, lang).toBeGreaterThan(0);
+          for (const row of b.sampleRows[lang]) {
+            expect(Object.keys(row), lang).toEqual(columns);
+            const { warnings } = render(b.template, { row }, { environment: nodeEnvironment, fonts, printableWidth: HEAD_MM });
+            expect(warnings, JSON.stringify(row)).toEqual([]);
+          }
         }
       });
     });
