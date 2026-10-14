@@ -11,11 +11,13 @@ const CSS = `${THEME}
   button:focus-visible { outline: 2px solid var(--_accent); outline-offset: 2px; }
   .icon { width: 1.1em; height: 1.1em; flex: none; }
   .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 18em; }
-  /* Icon and dot only, on narrow screens (phones) or when the host asks; the text stays for screen readers and in the tooltip.
-     A viewport query, not a container query: size containment would stop the chip sizing to its content. */
-  :host([compact="always"]) .label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+  /* Icon and dot only, on narrow screens (phones) or when the host asks, and only while the dot says it all (disconnected,
+     connected): states that need words (no Bluetooth, another tab, printing 3/10) keep them, as touch has no tooltip.
+     The text stays for screen readers. A viewport query, not a container query: size containment would stop the chip
+     sizing to its content. */
+  :host([compact="always"]) .collapsible { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
   @media (max-width: 40em) {
-    :host(:not([compact="never"])) .label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+    :host(:not([compact="never"])) .collapsible { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
   }
   .dot { width: .6em; height: .6em; border-radius: 50%; background: color-mix(in srgb, var(--_fg) 40%, transparent); }
   :host([data-state="connected"]) .dot, :host([data-state="printing"]) .dot { background: #16a34a; }
@@ -31,10 +33,21 @@ const CSS = `${THEME}
   @keyframes pulse { to { opacity: .3; } }
 `;
 
-/** A plain printer outline, drawn for this package. */
-const PRINTER_ICON =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-  '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>';
+const SVG = "http://www.w3.org/2000/svg";
+
+/** A plain printer outline, drawn for this package. Built node by node: no `innerHTML`, so hosts enforcing Trusted Types are fine. */
+function printerIcon(doc: Document): SVGSVGElement {
+  const svg = doc.createElementNS(SVG, "svg");
+  const attrs = { class: "icon", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2",
+    "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" };
+  for (const [name, value] of Object.entries(attrs)) svg.setAttribute(name, value);
+  for (const d of ["M7 9V3h10v6", "M3 9h18v8H3z", "M7 14h10v7H7z"]) {
+    const path = doc.createElementNS(SVG, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
 
 /** NIIMBOT printers report charge as a level 0–4 (quarters); anything above 4 is read as a percentage already. */
 export function batteryPercent(level: number): number {
@@ -81,11 +94,9 @@ export class SpokoPrinterStatus extends HTMLElement {
     const doc = root.ownerDocument;
     const dot = el(doc, "span", { className: "dot" });
     dot.setAttribute("aria-hidden", "true");
-    const icon = el(doc, "span", { className: "icon", innerHTML: PRINTER_ICON });
-    icon.setAttribute("aria-hidden", "true");
     this.label = el(doc, "span", { className: "label", partName: "label" });
     this.label.setAttribute("aria-live", "polite");
-    this.button = el(doc, "button", { type: "button", partName: "button" }, icon, dot, this.label);
+    this.button = el(doc, "button", { type: "button", partName: "button" }, printerIcon(doc), dot, this.label);
     this.disconnectButton = el(doc, "button", { type: "button" });
     this.menu = el(doc, "div", { className: "menu", hidden: true }, this.disconnectButton);
     this.error = el(doc, "div", { className: "error", hidden: true });
@@ -126,7 +137,10 @@ export class SpokoPrinterStatus extends HTMLElement {
     this.dataset["state"] = state.kind;
     const text = statusText(state, lang);
     this.label.textContent = text;
-    this.button.title = text;
+    // Only the states the chip may shrink to a dot; the others keep their words on screen.
+    const collapsible = state.kind === "disconnected" || state.kind === "connected";
+    this.label.classList.toggle("collapsible", collapsible);
+    this.button.title = collapsible ? text : "";
     this.button.disabled = state.kind !== "disconnected" && state.kind !== "connected";
     this.disconnectButton.textContent = t(lang, "disconnect");
     if (state.kind !== "connected") {

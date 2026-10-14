@@ -33,9 +33,12 @@ describe("<spoko-printer-status>", () => {
     button.click();
     await delay(5);
     expect(text()).toBe("Printer: B1-TEST · battery ~75%");
-    // Phones show only the icon and the dot, so the full state stays in the tooltip.
+    // Phones shrink the connected chip to the icon and the dot: the text stays readable (label part, live region, tooltip).
+    const label = el.shadowRoot?.querySelector("[part=label]") as HTMLElement;
+    expect(label.classList.contains("collapsible")).toBe(true);
+    expect(label.getAttribute("aria-live")).toBe("polite");
     expect(button.title).toBe("Printer: B1-TEST · battery ~75%");
-    expect(button.querySelector(".icon")?.getAttribute("aria-hidden")).toBe("true");
+    expect(button.querySelector("svg.icon")?.getAttribute("aria-hidden")).toBe("true");
     button.click();
     const menu = el.shadowRoot?.querySelector(".menu") as HTMLElement;
     expect(menu.hidden).toBe(false);
@@ -50,6 +53,9 @@ describe("<spoko-printer-status>", () => {
     const session = new PrinterSession(harness(undefined, { isSupported: () => false }).deps);
     const { el, button, text } = chip(session, "pl");
     expect(text()).toBe("Brak Bluetooth");
+    // A state that needs words never shrinks to the dot (touch screens have no tooltip).
+    expect(el.shadowRoot?.querySelector("[part=label]")?.classList.contains("collapsible")).toBe(false);
+    expect(button.title).toBe("");
     expect(button.disabled).toBe(true);
     expect(el.shadowRoot?.querySelector("[aria-live=polite]")).not.toBeNull();
     el.remove();
