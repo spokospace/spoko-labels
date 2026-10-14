@@ -34,6 +34,9 @@ export const DEFAULTS = {
   reverse: false,
   bold: false,
   level: "L",
+  /** Where a QR symbol sits in its box: whole-dot modules usually leave it a little smaller than the box. */
+  qrAlign: "center",
+  qrVerticalAlign: "middle",
 } as const;
 
 export type Shape = { kind: "rectangle" } | { kind: "rounded"; radius: number } | { kind: "circle" };
@@ -90,6 +93,10 @@ export interface QrElement extends BoxBase {
   content: Content;
   /** Error-correction level. */
   level?: QrLevel;
+  /** Where the symbol sits horizontally when it is smaller than the box; default `"center"`. */
+  align?: HorizontalAlign;
+  /** Where the symbol sits vertically when it is smaller than the box; default `"middle"`. */
+  verticalAlign?: VerticalAlign;
 }
 
 /** A filled rectangle: a horizontal line is a wide, thin box. */
@@ -148,6 +155,8 @@ export interface NormalizedQrElement extends BoxBase {
   type: "qr";
   content: Content;
   level: QrLevel;
+  align: HorizontalAlign;
+  verticalAlign: VerticalAlign;
 }
 
 export type NormalizedElement = NormalizedTextElement | NormalizedQrElement | LineElement;

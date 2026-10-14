@@ -1,5 +1,5 @@
 import type { HorizontalAlign, TextFit, VerticalAlign } from "../schema/types.js";
-import type { DotRect } from "./units.js";
+import { alignIn, type DotRect } from "./units.js";
 
 /** Measures a string at one pixel size (the caller sets the font). */
 export type Measure = (text: string) => number;
@@ -176,17 +176,11 @@ export function layoutText(input: TextLayoutInput): TextLayout {
     }
   }
 
-  const top =
-    input.verticalAlign === "top"
-      ? box.y
-      : Math.round(input.verticalAlign === "middle" ? box.y + (box.height - b.height) / 2 : box.y + box.height - b.height);
+  const top = alignIn(box.y, box.height, b.height, input.verticalAlign);
   const ascentPx = Math.ceil(input.ascent * px);
   const lines: PlacedLine[] = b.lines.map((text, i) => {
     const width = b.widths[i] ?? 0;
-    const x =
-      input.align === "left"
-        ? box.x
-        : Math.round(input.align === "center" ? box.x + (box.width - width) / 2 : box.x + box.width - width);
+    const x = alignIn(box.x, box.width, width, input.align);
     const baseline = top + ascentPx + i * (b.lineHeight + input.lineSpacing);
     return { text, x, baseline, width, spacing: b.spacings[i] ?? 0 };
   });

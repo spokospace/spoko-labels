@@ -147,6 +147,25 @@ describe("render", () => {
     ]);
   });
 
+  it("puts the QR symbol against the box edges its alignment names", () => {
+    // The box is 14 mm = 112 dots; "BX-0012" is 21 modules of 5 dots = 105, so 7 dots are left over.
+    const extent = (extra: Record<string, unknown>) => {
+      const { image } = render(template([qr(extra)]), { row }, options());
+      let right = -1;
+      let bottom = -1;
+      for (let i = 0; i < image.data.length; i += 4) {
+        if (image.data[i] !== 0) continue;
+        const dot = i / 4;
+        right = Math.max(right, dot % image.width);
+        bottom = Math.max(bottom, Math.floor(dot / image.width));
+      }
+      return [right, bottom];
+    };
+    // Box: x 34 mm, y 12 mm, 14 mm square, so its last dot is 48 * 8 - 1 across and 26 * 8 - 1 down.
+    expect(extent({ align: "right", verticalAlign: "bottom" })).toEqual([383, 207]);
+    expect(extent({})).toEqual([383 - 3, 207 - 3]);
+  });
+
   it("reports QR problems", () => {
     const tooLong = render(template([qr({ content: { text: "x".repeat(3000) } })]), {}, options());
     expect(tooLong.warnings).toEqual([{ code: "qr-too-long", path: "/elements/0" }]);

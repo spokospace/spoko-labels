@@ -110,7 +110,7 @@ function drawQr(
 ): DotRect[] {
   const content = resolveContent(element.content, data, "qr");
   if (content.missing) warn("missing-column", `${path}/content`);
-  const qr = layoutQr(content.value, element.level, box);
+  const qr = layoutQr(content.value, element.level, box, element);
   if (qr.kind === "empty") {
     warn("qr-empty", path);
     return [];
