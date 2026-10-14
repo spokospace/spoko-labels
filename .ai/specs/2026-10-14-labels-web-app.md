@@ -152,8 +152,8 @@ One page, one column on a phone and two on a desktop:
 ### Delivery
 - **Build.** `pnpm --filter @spokospace/labels-web build` runs `vite build` to `apps/web/dist/`. It runs inside the root `pnpm build`, so it is part of the validation gate.
 - **Fonts.** Font files are copied as hashed assets by Vite, through the `new URL(…, import.meta.url)` references in `labels-render` and `labels-niimbot`.
-  - Vite does not copy the license files, since nothing imports them. A small Vite plugin in `vite.config.ts` (`writeBundle` hook) copies `LICENSE-HarmonyOS-Sans.txt` and every `OFL-*.txt` from `packages/render/fonts/` and `packages/niimbot/fonts/` into `dist/assets/`, unchanged and unhashed, next to the fonts.
-  - A test builds the app into a temporary folder (Vite's `build()` API, as embed's `test/bundle.test.ts` runs its bundler) and checks `dist/assets/`: every font file the code references exists, `LICENSE-HarmonyOS-Sans.txt` contains "HarmonyOS Sans", and there is an `OFL-<family>.txt` for each OFL family (Viga, Inconsolata, BalooPaaji, MarkaziText, Cookie).
+  - Vite does not copy the license files, since nothing imports them. A small Vite plugin in `vite.config.ts` (`writeBundle` hook) copies `LICENSE-HarmonyOS-Sans.txt` and every `OFL-*.txt` from `packages/render/fonts/` and `packages/niimbot/fonts/` into `dist/licenses/`, unchanged and unhashed (outside `/assets/*`, so they do not get the immutable cache).
+  - A test builds the app into a temporary folder (Vite's `build()` API, as embed's `test/bundle.test.ts` runs its bundler) and checks `dist/`: every font file the code references exists in `assets/`, `licenses/LICENSE-HarmonyOS-Sans.txt` contains "HarmonyOS Sans", and there is an `OFL-<family>.txt` for each OFL family (Viga, Inconsolata, BalooPaaji, MarkaziText, Cookie).
 - **Headers.** `apps/web/public/_headers` (Cloudflare Pages) sets:
   - `Content-Security-Policy`: `default-src 'self'`; `connect-src 'self' https:` (the user's API); `img-src 'self' data: blob:`; `frame-ancestors 'none'`; no `unsafe-inline` scripts;
   - `X-Content-Type-Options: nosniff`;
@@ -281,7 +281,7 @@ Prototype: none. Mockups were skipped in this run; see the PR.
 3. Built-in templates and sample rows. Test: each one passes `validateTemplate()` with no issues, and renders without warnings for its sample rows.
 4. Preview: render, the overlays and the warnings list. Test: the overlay geometry for rectangle, rounded and circle shapes and for a `printRotation` 90 template, using `@napi-rs/canvas` in Node, as `labels-render`'s tests do (a pinned dev dependency of the app).
 5. Browser banners (no Bluetooth, Brave, insecure). Test: the detection logic on fake `navigator` objects.
-6. `_headers`, the version in the footer, the font-license plugin, the `deploy:pages` script with its git checks, and the README with the manual deploy steps (`pnpm --filter @spokospace/labels-web run deploy:pages`). Test: the build test on `dist/assets/` (fonts and license files), and the deploy script's refusal on a dirty tree and on `HEAD` ≠ `origin/main`, with `git` stubbed.
+6. `_headers`, the version in the footer, the font-license plugin, the `deploy:pages` script with its git checks, and the README with the manual deploy steps (`pnpm --filter @spokospace/labels-web run deploy:pages`). Test: the build test on `dist/` (fonts in `assets/`, license files in `licenses/`), and the deploy script's refusal on a dirty tree and on `HEAD` ≠ `origin/main`, with `git` stubbed.
 
 ### Phase 2: data
 7. `xlsx.ts`: header handling, cell conversion (`String(n)`, UTC dates), the limits. Test: a small made-up fixture with duplicate or empty headers, dates and numbers, and a `__proto__` header.
