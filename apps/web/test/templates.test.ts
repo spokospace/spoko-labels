@@ -35,11 +35,12 @@ describe("built-in templates", () => {
         expect(turned ? { width: height, height: width } : { width, height }).toEqual({ width: 50, height: 30 });
       });
 
-      it("has sample rows in every language, with the same columns, rendering without warnings", async () => {
+      it("has sample rows in every language, with the same columns and count, rendering without warnings", async () => {
         const fonts = await nodeFonts();
         const columns = Object.keys(b.sampleRows.en[0] ?? {});
+        expect(b.sampleRows.en.length).toBeGreaterThan(0);
         for (const lang of LANGS) {
-          expect(b.sampleRows[lang].length, lang).toBeGreaterThan(0);
+          expect(b.sampleRows[lang].length, lang).toBe(b.sampleRows.en.length);
           for (const row of b.sampleRows[lang]) {
             expect(Object.keys(row), lang).toEqual(columns);
             const { warnings } = render(b.template, { row }, { environment: nodeEnvironment, fonts, printableWidth: HEAD_MM });

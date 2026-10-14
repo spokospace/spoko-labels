@@ -386,10 +386,22 @@ describe("the data panel", () => {
     panel.refresh();
     expect(panel.previewData()).toEqual({ row: tool.sampleRows.pl[0] });
     panel.useSample();
+    // Tool picks the ID column (index 1), and the second row is ticked.
+    const pick = container.querySelector<HTMLSelectElement>('select[data-field="name:Tool"]') as HTMLSelectElement;
+    pick.value = "1";
+    pick.dispatchEvent(new Event("change"));
+    (bodyRows()[1]?.querySelector("input") as HTMLInputElement).click();
+    const mapping = [...panel.state.mapping.values()];
+    const selected = [...panel.state.selected];
     setLang("en");
     panel.refresh();
     expect(panel.state.source?.table.rows).toEqual(tool.sampleRows.en);
     expect(bodyRows()[0]?.textContent).toContain("Example cordless drill");
+    // The picks and the selection survive the switch.
+    expect([...panel.state.mapping.values()]).toEqual(mapping);
+    expect(mapping[0]).toBe("ID");
+    expect([...panel.state.selected]).toEqual(selected);
+    expect(selected).toEqual([1]);
     await panel.openFile(new Blob([]));
     setLang("pl");
     panel.refresh();

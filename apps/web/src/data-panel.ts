@@ -538,8 +538,13 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       options.onChange();
     },
     refresh(): void {
-      // Sample data is written in the app's language, so a language switch swaps it (the selection starts over).
-      if (source?.kind === "sample" && source.lang !== getLang()) return useSample();
+      // Sample data is written in the app's language, so a language switch swaps its rows in place. Every language
+      // has the same columns and number of rows, so the picks, the selection and the previewed row stay.
+      if (source?.kind === "sample" && source.lang !== getLang()) {
+        source = sampleSource(template);
+        index = searchIndex(source.table);
+        shown = search(index, searchInput.value);
+      }
       drawAll();
     },
     get state() {
