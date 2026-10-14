@@ -25,6 +25,7 @@ export type { IssueCode, TemplateIssue } from "./schema/issues.js";
 export { validateTemplate, type ValidateOptions, type ValidationResult } from "./schema/validate.js";
 export type { RenderData } from "./binding.js";
 export { render, type RenderOptions, type RenderResult, type RenderWarning } from "./render.js";
+export { turn, type RgbaImage } from "./rotate.js";
 export { TemplateError } from "./errors.js";
 export { loadFonts, type FontRegistry } from "./fonts/registry.js";
 export { bundledFonts } from "./fonts/bundled.js";

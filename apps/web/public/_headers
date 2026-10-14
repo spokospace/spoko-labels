@@ -1,0 +1,12 @@
+# Cloudflare Pages response headers. Applies to the deployed site only, not to `vite dev`.
+# connect-src allows any https: origin for the JSON API URL a user types; scripts, styles and fonts come
+# from this origin only (no inline scripts). The app starts no workers.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: bluetooth=(self)
+  Referrer-Policy: no-referrer
+
+# Hashed file names: a new build gets new names, so these never change.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

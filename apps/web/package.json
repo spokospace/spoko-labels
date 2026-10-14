@@ -1,0 +1,27 @@
+{
+  "name": "@spokospace/labels-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The spoko-labels web app: pick a template, load data and print labels on a NIIMBOT printer from the browser.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "deploy:pages": "node scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "@spokospace/labels-core": "workspace:*",
+    "@spokospace/labels-embed": "workspace:*",
+    "@spokospace/labels-niimbot": "workspace:*",
+    "@spokospace/labels-render": "workspace:*"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.0.11",
+    "@types/node": "22.20.5",
+    "happy-dom": "21.0.1",
+    "vite": "8.3.4"
+  }
+}

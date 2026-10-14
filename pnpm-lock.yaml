@@ -27,6 +27,34 @@ importers:
         specifier: 5.0.3
         version: 5.0.3(@types/node@22.20.5)(happy-dom@21.0.1)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2))
 
+  apps/web:
+    dependencies:
+      '@spokospace/labels-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@spokospace/labels-embed':
+        specifier: workspace:*
+        version: link:../../packages/embed
+      '@spokospace/labels-niimbot':
+        specifier: workspace:*
+        version: link:../../packages/niimbot
+      '@spokospace/labels-render':
+        specifier: workspace:*
+        version: link:../../packages/render
+    devDependencies:
+      '@napi-rs/canvas':
+        specifier: 1.0.11
+        version: 1.0.11
+      '@types/node':
+        specifier: 22.20.5
+        version: 22.20.5
+      happy-dom:
+        specifier: 21.0.1
+        version: 21.0.1
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4(@types/node@22.20.5)(esbuild@0.28.2)
+
   packages/core: {}
 
   packages/embed:
