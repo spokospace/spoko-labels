@@ -33,6 +33,9 @@ describe("<spoko-printer-status>", () => {
     button.click();
     await delay(5);
     expect(text()).toBe("Printer: B1-TEST · battery ~75%");
+    // Phones show only the icon and the dot, so the full state stays in the tooltip.
+    expect(button.title).toBe("Printer: B1-TEST · battery ~75%");
+    expect(button.querySelector(".icon")?.getAttribute("aria-hidden")).toBe("true");
     button.click();
     const menu = el.shadowRoot?.querySelector(".menu") as HTMLElement;
     expect(menu.hidden).toBe(false);

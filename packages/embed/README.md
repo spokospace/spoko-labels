@@ -82,7 +82,7 @@ The result comes back as a `spoko-labels:printed` event on `window` whose `detai
 
 ## The status chip
 
-`<spoko-printer-status>` shows the state and connects on click; when connected, its menu offers Disconnect. Theme it with CSS custom properties: `--spoko-labels-accent`, `--spoko-labels-fg`, `--spoko-labels-bg`, `--spoko-labels-radius`, and `::part(button)`. The dialog uses the same properties, and `::part(dialog)`.
+`<spoko-printer-status>` shows the state and connects on click; when connected, its menu offers Disconnect. Theme it with CSS custom properties: `--spoko-labels-accent`, `--spoko-labels-fg`, `--spoko-labels-bg`, `--spoko-labels-radius`, `::part(button)` and `::part(label)`. On screens narrower than 40em the chip shows only a printer icon and the state dot; the text stays in the tooltip and for screen readers. Set `compact="always"` to keep it that small everywhere, or `compact="never"` to always show the text. The dialog uses the same properties, and `::part(dialog)`.
 
 ## Single-page panels (Filament, Livewire)
 
