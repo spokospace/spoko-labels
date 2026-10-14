@@ -1,6 +1,6 @@
 import qrcode from "qrcode-generator";
-import type { QrLevel } from "../schema/types.js";
-import type { DotRect } from "./units.js";
+import type { NormalizedQrElement, QrLevel } from "../schema/types.js";
+import { alignIn, type DotRect } from "./units.js";
 
 export type QrLayout =
   | { kind: "empty" }
@@ -12,7 +12,7 @@ export type QrLayout =
       isDark: (row: number, col: number) => boolean;
       /** Dots per module. */
       moduleSize: number;
-      /** The symbol, in dots, centered in the box (it overflows the box when `tooSmall`). */
+      /** The symbol, in dots, placed in the box by `align` (it overflows the box when `tooSmall`). */
       rect: DotRect;
       /** The box is narrower than one dot per module. */
       tooSmall: boolean;
@@ -30,8 +30,11 @@ function utf8AsByteString(text: string): string {
   return out;
 }
 
-/** Encode `text` and place the symbol in `box`: whole dots per module, centered, no quiet zone added. */
-export function layoutQr(text: string, level: QrLevel, box: DotRect): QrLayout {
+/** Where the symbol sits in its box; whole-dot modules usually leave it a few dots smaller. */
+export type QrAlign = Pick<NormalizedQrElement, "align" | "verticalAlign">;
+
+/** Encode `text` and place the symbol in `box`: whole dots per module, placed by `at`, no quiet zone added. */
+export function layoutQr(text: string, level: QrLevel, box: DotRect, at: QrAlign): QrLayout {
   if (text.length === 0) return { kind: "empty" };
   const qr = qrcode(0, level);
   try {
@@ -51,8 +54,8 @@ export function layoutQr(text: string, level: QrLevel, box: DotRect): QrLayout {
     isDark: (row, col) => qr.isDark(row, col),
     moduleSize,
     rect: {
-      x: box.x + Math.round((box.width - size) / 2),
-      y: box.y + Math.round((box.height - size) / 2),
+      x: alignIn(box.x, box.width, size, at.align),
+      y: alignIn(box.y, box.height, size, at.verticalAlign),
       width: size,
       height: size,
     },

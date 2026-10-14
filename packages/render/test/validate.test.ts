@@ -60,7 +60,17 @@ describe("validateTemplate: valid input", () => {
           minSize: 0.75,
           reverse: false,
         },
-        { type: "qr", x: 34, y: 12, width: 14, height: 14, content: { bind: "Code" }, level: "L" },
+        {
+          type: "qr",
+          x: 34,
+          y: 12,
+          width: 14,
+          height: 14,
+          content: { bind: "Code" },
+          level: "L",
+          align: "center",
+          verticalAlign: "middle",
+        },
         { type: "line", x: 2, y: 10, width: 46, height: 0.4 },
       ],
     });
@@ -104,8 +114,16 @@ describe("validateTemplate: valid input", () => {
       minSize: 1,
       reverse: true,
     });
-    expect(t?.elements[1]).toMatchObject({ content: { bindIndex: 0 }, level: "H" });
+    expect(t?.elements[1]).toMatchObject({ content: { bindIndex: 0 }, level: "H", align: "center", verticalAlign: "middle" });
     expect(validateTemplate(template({ shape: { kind: "circle" } })).template?.shape).toEqual({ kind: "circle" });
+  });
+
+  it("keeps a QR element's alignment and rejects an unknown one", () => {
+    const placed = validateTemplate(template({ elements: [qr({ align: "right", verticalAlign: "bottom" })] }));
+    expect(placed.template?.elements[0]).toMatchObject({ align: "right", verticalAlign: "bottom" });
+    expect(placed.issues).toEqual([]);
+    const wrong = validateTemplate(template({ elements: [qr({ verticalAlign: "down" })] }));
+    expect(wrong.issues.map((i) => [i.code, i.path])).toEqual([["out-of-range", "/elements/0/verticalAlign"]]);
   });
 
   it("clamps minSize to the font size", () => {

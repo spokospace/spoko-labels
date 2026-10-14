@@ -98,7 +98,7 @@ Every element has `type`, `x`, `y` (−300 to 300), `width`, `height` (above 0, 
 | `minSize` | `0.75` | The smallest em size shrink may reach, mm (0.75 mm is 6 dots). Above `font.size` it is treated as `font.size`. |
 | `reverse` | `false` | Fill the box black and draw the text white. |
 
-**`qr`** elements take `level`: `"L"` (default), `"M"`, `"Q"` or `"H"`. **`line`** elements are filled rectangles: a horizontal line is a wide, thin box.
+**`qr`** elements take `level`: `"L"` (default), `"M"`, `"Q"` or `"H"`. Whole-dot modules usually leave the symbol a little smaller than its box; `align` (`"left"`, `"center"` default, `"right"`) and `verticalAlign` (`"top"`, `"middle"` default, `"bottom"`) say where it sits, for example flush with the bottom of the box. **`line`** elements are filled rectangles: a horizontal line is a wide, thin box.
 
 ## Validating
 
@@ -132,7 +132,7 @@ How elements are drawn:
 
 - **Text** uses the font's own metrics: line height is `ceil(ascent × px) + ceil(descent × px)`. With `fit: "shrink"`, the size is the largest whole pixel size from `minSize` to `font.size` at which the text fits its box (one dot of overhang allowed); with `wrap`, the text rewraps at every size tried. Text that still does not fit is drawn and reported as `text-overflow`, never cut silently.
 - **Fonts**: the family is chosen per element, for the whole text, by glyph coverage: `font.family`, then each `fallback`, then every loaded family in order; the first that has every character wins. So Polish text in Viga (which lacks ą, ć, ę, ś, ź and ż) is drawn in HarmonyOS Sans with no warning. A missing bold face uses the regular one (`missing-font`); there is no synthetic bold.
-- **QR codes** are encoded as UTF-8, in the smallest symbol that fits, with whole dots per module, centered in the box. No quiet zone is added: leave a margin around the box.
+- **QR codes** are encoded as UTF-8, in the smallest symbol that fits, with whole dots per module, placed in the box by `align` / `verticalAlign` (centered by default). No quiet zone is added: leave a margin around the box.
 - **Lines** fill their box, at least one dot thick.
 
 ### Fonts and environments

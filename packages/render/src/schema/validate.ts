@@ -46,7 +46,7 @@ const KEYS = {
   template: ["version", "name", "size", "shape", "safeMargin", "printRotation", "elements"],
   size: ["width", "height"],
   line: BOX_KEYS,
-  qr: [...BOX_KEYS, "content", "level"],
+  qr: [...BOX_KEYS, "content", "level", "align", "verticalAlign"],
   text: [...BOX_KEYS, "content", "font", "letterSpacing", "lineSpacing", "align", "verticalAlign", "wrap", "fit", "minSize", "reverse"],
   font: ["family", "size", "bold", "fallback"],
 };
@@ -281,7 +281,9 @@ function readElement(r: Reader): NormalizedElement | undefined {
   const content = readContent(r);
   if (type === "qr") {
     const level = r.oneOf("level", ["L", "M", "Q", "H"] as const, DEFAULTS.level);
-    return r.ok && content ? { type, ...box, content, level } : undefined;
+    const align = r.oneOf("align", ["left", "center", "right"] as const, DEFAULTS.qrAlign);
+    const verticalAlign = r.oneOf("verticalAlign", ["top", "middle", "bottom"] as const, DEFAULTS.qrVerticalAlign);
+    return r.ok && content ? { type, ...box, content, level, align, verticalAlign } : undefined;
   }
   const font = readFont(r);
   const fields = {
