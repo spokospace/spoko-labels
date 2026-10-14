@@ -50,7 +50,7 @@ One time: log in to Cloudflare with the same pinned wrangler the script uses.
 pnpm dlx wrangler@4.151.0 login
 ```
 
-The Pages project `spoko-labels` already exists. To create it again (a fork, a new account), pass `--force` once: wrangler 4.151 otherwise tries to create a Workers project and fails.
+The Pages project `spoko-labels` already exists. To create it again (a new account, or a fork; a fork with another project name also changes `PROJECT` in `scripts/deploy.mjs`), pass `--force` once: wrangler 4.151 otherwise tries to create a Workers project and fails.
 
 ```bash
 pnpm dlx wrangler@4.151.0 pages project create spoko-labels --production-branch main --force

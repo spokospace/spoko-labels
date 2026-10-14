@@ -9,12 +9,14 @@ Print labels on NIIMBOT label printers straight from the browser — no driver, 
 
 **Try it: [spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. Pick a template, load the sample data, an xlsx file or a JSON API, and see exactly what will print. Your data stays in the browser. Printing from the web app is coming next.
 
-> Work in progress. The printer layer works today; templates, import, the embeddable dialog and the web app are being built.
+> Work in progress. The packages below work today; the web app is being built phase by phase.
 
 ## What works today
 
 - **[`@spokospace/labels-core`](packages/core/README.md)**: connect to a NIIMBOT B1 from a click, read its battery and firmware, and print any black-and-white image with a chosen density, number of copies and calibration offset; a print can be aborted. Checked on a real B1 with 50×30 mm labels.
 - **A hardware-check page** for trying it on your own printer: `pnpm --filter @spokospace/labels-core example`, then open `http://localhost:8080/examples/hardware-check/` in Chrome or Edge (see the [package README](packages/core/README.md#hardware-check-page)).
+
+- **[The web app](apps/web/README.md)**, live at [spoko-labels.pages.dev](https://spoko-labels.pages.dev): built-in templates, an exact preview, and data from sample rows, an xlsx file or a JSON API, with column mapping, search and row selection.
 
 Not published to npm yet.
 
