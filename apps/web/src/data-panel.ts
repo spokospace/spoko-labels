@@ -3,7 +3,7 @@ import type { RenderData } from "@spokospace/labels-render";
 import { loadApi, TIMEOUT_MS, urlToStore, type ApiError, type ApiErrorCode, type ApiResult } from "./data/api.js";
 import { autoMapping, fieldKey, mapInput, templateFields, type Field, type Mapping } from "./data/mapping.js";
 import { search, searchIndex } from "./data/search.js";
-import { cell, columnLetter, makeTable, MAX_BYTES, MAX_ROWS, unionColumns, type DataTable, type Row } from "./data/table.js";
+import { cell, columnLetter, makeRow, makeTable, MAX_BYTES, MAX_COLUMNS, MAX_ROWS, unionColumns, type DataTable, type Row } from "./data/table.js";
 import { readXlsx, type XlsxErrorCode, type XlsxResult } from "./data/xlsx.js";
 import { t, type MessageKey } from "./i18n/index.js";
 import { readStored, STORAGE_KEYS, writeStored } from "./storage.js";
@@ -22,6 +22,7 @@ const XLSX_ERRORS: Record<XlsxErrorCode, MessageKey> = {
   "too-large": "xlsxTooLarge",
   "not-xlsx": "xlsxNotXlsx",
   "no-rows": "xlsxNoRows",
+  "load-failed": "xlsxLoadFailed",
 };
 
 const API_ERRORS: Record<ApiErrorCode, MessageKey> = {
@@ -181,6 +182,9 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   limitLine.setAttribute("role", "alert");
 
   const table = el("table", { className: "rows" });
+  // A grid: arrows move between rows and space selects one, as a listbox-like table does.
+  table.setAttribute("role", "grid");
+  table.setAttribute("aria-multiselectable", "true");
   table.setAttribute("aria-labelledby", "rows-caption");
   const caption = el("caption", { className: "visually-hidden", id: "rows-caption" }, "rowsCaption");
   const thead = el("thead");
@@ -217,7 +221,12 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
     body.hidden = source === null;
     reloadButton.hidden = source?.kind !== "api";
     if (!source) return;
-    sourceLine.textContent = sourceText(source) + (source.table.truncated ? ` ${t("rowsTruncated", { max: MAX_ROWS })}` : "");
+    const { truncated, columnsTruncated } = source.table;
+    sourceLine.textContent = [
+      sourceText(source),
+      ...(truncated ? [t("rowsTruncated", { max: MAX_ROWS })] : []),
+      ...(columnsTruncated ? [t("columnsTruncated", { max: MAX_COLUMNS })] : []),
+    ].join(" ");
   }
 
   function drawMapping(): void {
@@ -263,6 +272,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
     const tr = el("tr", { tabIndex: i === previewIndex ? 0 : -1 });
     tr.dataset.index = String(i);
     if (i === previewIndex) tr.setAttribute("aria-current", "true");
+    tr.setAttribute("aria-selected", String(selected.has(i)));
     const box = el("input", { type: "checkbox", checked: selected.has(i), tabIndex: -1 });
     box.setAttribute("aria-label", t("selectRow", { n: i + 1 }));
     const check = el("td", { className: "check" });
@@ -307,7 +317,8 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
     const n = selected.size;
     countLine.textContent = n === 0 ? t("selectedNone") : t("selectedCount", { n });
     limitLine.hidden = n <= MAX_SELECTED;
-    limitLine.textContent = t("selectionLimit", { max: MAX_SELECTED, n });
+    // An alert speaks when its text changes, so it has text only while it is shown.
+    limitLine.textContent = limitLine.hidden ? "" : t("selectionLimit", { max: MAX_SELECTED, n });
     const shownSelected = shown.filter((i) => selected.has(i)).length;
     selectAll.checked = shown.length > 0 && shownSelected === shown.length;
     selectAll.indeterminate = shownSelected > 0 && shownSelected < shown.length;
@@ -361,9 +372,16 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   function toggle(i: number, on = !selected.has(i)): void {
     if (on) selected.add(i);
     else selected.delete(i);
-    const box = tbody.querySelector<HTMLInputElement>(`tr[data-index="${i}"] input`);
-    if (box) box.checked = on;
+    const tr = tbody.querySelector<HTMLTableRowElement>(`tr[data-index="${i}"]`);
+    if (tr) showSelected(tr, on);
     drawSelection();
+  }
+
+  /** The row's checkbox and its aria-selected, kept in step. */
+  function showSelected(tr: HTMLTableRowElement, on: boolean): void {
+    tr.setAttribute("aria-selected", String(on));
+    const box = tr.querySelector("input");
+    if (box) box.checked = on;
   }
 
   /** Starts a load, stopping any other; a result whose token is no longer current is ignored. */
@@ -432,6 +450,8 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   searchInput.addEventListener("input", () => {
     shown = search(index, searchInput.value);
     pageEnd = PAGE_SIZE;
+    // The preview stays on a row the search still shows; otherwise it moves to the first match, or to none.
+    if (!shown.includes(previewIndex)) setPreview(shown[0] ?? -1, false);
     drawRows();
   });
   selectAll.addEventListener("change", () => {
@@ -439,7 +459,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       if (selectAll.checked) selected.add(i);
       else selected.delete(i);
     }
-    for (const box of tbody.querySelectorAll<HTMLInputElement>("tr[data-index] input")) box.checked = selectAll.checked;
+    for (const tr of tbody.querySelectorAll<HTMLTableRowElement>("tr[data-index]")) showSelected(tr, selectAll.checked);
     drawSelection();
   });
   moreButton.addEventListener("click", () => {
@@ -494,13 +514,15 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
 
   return {
     previewData(): RenderData {
-      const row = source?.table.rows[previewIndex];
-      if (!source || !row) return { row: template.sampleRows[0] ?? {} };
+      if (!source) return { row: template.sampleRows[0] ?? {} };
+      // No row when the search matches none: the template with its fields empty.
+      const row = source.table.rows[previewIndex] ?? makeRow([]);
       const input = mapInput(fields, mapping, source.table.columns, [row]);
       return { row: input.rows[0] ?? {}, ...(input.columns && { columns: input.columns }) };
     },
     previewText(): string {
-      return source ? t("previewRowOf", { n: previewIndex + 1, total: source.table.rows.length }) : t("previewSampleRow");
+      if (!source) return t("previewSampleRow");
+      return previewIndex < 0 ? t("previewNoRow") : t("previewRowOf", { n: previewIndex + 1, total: source.table.rows.length });
     },
     setTemplate(next: BuiltinTemplate): void {
       template = next;

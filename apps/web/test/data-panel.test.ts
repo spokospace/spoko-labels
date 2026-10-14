@@ -315,6 +315,70 @@ describe("the data panel", () => {
     });
   });
 
+  it("is a grid whose rows say whether they are selected", async () => {
+    const panel = mount({ readFile: async () => ({ ok: true, table: tableOf(3) }) });
+    await panel.openFile(new Blob([]));
+    expect(container.querySelector("table")?.getAttribute("role")).toBe("grid");
+    expect(bodyRows().map((r) => r.getAttribute("aria-selected"))).toEqual(["false", "false", "false"]);
+    key(bodyRows()[0] as Element, " ");
+    (bodyRows()[2]?.querySelector("input") as HTMLInputElement).click();
+    expect(bodyRows().map((r) => r.getAttribute("aria-selected"))).toEqual(["true", "false", "true"]);
+    container.querySelector<HTMLInputElement>("#select-all-shown")?.click();
+    expect(bodyRows().map((r) => r.getAttribute("aria-selected"))).toEqual(["true", "true", "true"]);
+    container.querySelector<HTMLInputElement>("#select-all-shown")?.click();
+    expect(bodyRows().map((r) => r.getAttribute("aria-selected"))).toEqual(["false", "false", "false"]);
+  });
+
+  it("moves the preview to the first match when the search hides the previewed row, or to none", async () => {
+    const panel = mount({ readFile: async () => ({ ok: true, table: tableOf(5) }) });
+    await panel.openFile(new Blob([]));
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]') as HTMLInputElement;
+    const type = (text: string) => {
+      search.value = text;
+      search.dispatchEvent(new Event("input"));
+    };
+    type("t-0004");
+    expect(panel.state.previewIndex).toBe(3);
+    expect(panel.previewData().row).toMatchObject({ ID: "T-0004" });
+    type("t-000");
+    // Row 4 is still shown, so the preview stays.
+    expect(panel.state.previewIndex).toBe(3);
+    type("no such row");
+    expect(panel.state.previewIndex).toBe(-1);
+    expect(panel.previewText()).toBe("No row matches the search; the preview shows the template empty.");
+    expect(panel.previewData().row).toEqual({ Tool: "", ID: "", Place: "", URL: "" });
+  });
+
+  it("applies only the newest load when two resolve out of order", async () => {
+    let finishFile: (result: XlsxResult) => void = () => {};
+    const panel = mount({
+      readFile: () => new Promise<XlsxResult>((resolve) => (finishFile = resolve)),
+      loadUrl: async () => ({ ok: false, error: { code: "not-json" } }),
+    });
+    // A slow file, then a URL that fails at once: the file's late success must not replace the error.
+    const slow = panel.openFile(new Blob([]));
+    await panel.loadUrl("https://example.com/", "");
+    finishFile({ ok: true, table: tableOf(2) });
+    await slow;
+    expect(panel.state.source).toBeNull();
+    expect(status()).toBe("The response is not JSON.");
+
+    // A slow URL, then a file that loads: the URL's late success is ignored too.
+    let finishUrl: (result: ApiResult) => void = () => {};
+    const panel2 = mountDataPanel(container, {
+      template: tool,
+      onChange,
+      readFile: async () => ({ ok: true, table: tableOf(3) }),
+      loadUrl: () => new Promise<ApiResult>((resolve) => (finishUrl = resolve)),
+    });
+    const slowUrl = panel2.loadUrl("https://example.com/", "");
+    await panel2.openFile(new Blob([]));
+    finishUrl({ ok: true, table: tableOf(7) });
+    await slowUrl;
+    expect(panel2.state.source?.kind).toBe("xlsx");
+    expect(panel2.state.source?.table.rows).toHaveLength(3);
+  });
+
   it("redraws its texts in the other language", async () => {
     const panel = mount({ readFile: async () => ({ ok: true, table: tableOf(2) }) });
     await panel.openFile(new Blob([]));

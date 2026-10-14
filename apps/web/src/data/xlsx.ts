@@ -3,7 +3,8 @@ import { makeTable, MAX_BYTES, uniqueNames, type DataTable } from "./table.js";
 // An xlsx file in the browser: the first sheet, its first row as the column names, every cell as text (A3).
 // read-excel-file (and fflate) are loaded only when a file is opened.
 
-export type XlsxErrorCode = "too-large" | "not-xlsx" | "no-rows";
+/** "load-failed": the reader itself could not be downloaded (offline, or a new deploy removed the old chunk). */
+export type XlsxErrorCode = "too-large" | "not-xlsx" | "no-rows" | "load-failed";
 
 export type XlsxResult = { ok: true; table: DataTable } | { ok: false; error: XlsxErrorCode };
 
@@ -30,9 +31,15 @@ export async function readXlsx(
   options: { emptyName?: (letter: string) => string; load?: () => Promise<SheetReader>; maxUnpacked?: number } = {},
 ): Promise<XlsxResult> {
   if (file.size > MAX_BYTES) return { ok: false, error: "too-large" };
+  let modules: [typeof import("fflate"), SheetReader];
+  try {
+    modules = await Promise.all([import("fflate"), (options.load ?? loadReader)()]);
+  } catch {
+    return { ok: false, error: "load-failed" };
+  }
+  const [fflate, reader] = modules;
   let sheet: unknown[][];
   try {
-    const [fflate, reader] = await Promise.all([import("fflate"), (options.load ?? loadReader)()]);
     const stored = storedZip(fflate, new Uint8Array(await file.arrayBuffer()), options.maxUnpacked ?? MAX_UNPACKED_BYTES);
     if (!stored) return { ok: false, error: "too-large" };
     sheet = await reader.readSheet(stored);
@@ -42,8 +49,8 @@ export async function readXlsx(
   return tableFromSheet(sheet, options.emptyName ?? defaultEmptyName);
 }
 
-/** The unpacked size a file may have: a 10 MB file of plain text cells unpacks to well under this. */
-export const MAX_UNPACKED_BYTES = 256 * 1024 * 1024;
+/** The unpacked size a file may have. It is held about three times over while reading, so it stays phone-sized. */
+export const MAX_UNPACKED_BYTES = 100 * 1024 * 1024;
 /** Compressed bytes fed to the inflater per step, which bounds what one step can unpack (~1000:1 at most). */
 const FEED_BYTES = 16 * 1024;
 

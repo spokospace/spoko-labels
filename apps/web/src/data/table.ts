@@ -11,10 +11,14 @@ export interface DataTable {
   rows: readonly Row[];
   /** The source had more rows than `MAX_ROWS`; only the first ones were kept. */
   truncated: boolean;
+  /** The source had more columns than `MAX_COLUMNS`; only the first ones were kept. */
+  columnsTruncated?: boolean;
 }
 
 /** At most this many rows are loaded from a file or an API (A14). */
 export const MAX_ROWS = 10_000;
+/** At most this many columns are kept: 10,000 rows of thousands of sparse keys would not fit a phone. */
+export const MAX_COLUMNS = 500;
 /** The size limit for an xlsx file and for an API response (A14). */
 export const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -29,21 +33,33 @@ export function makeRow(entries: Iterable<readonly [string, string]>): Row {
 }
 
 /**
- * A table of at most `MAX_ROWS` rows, with `truncated` set when items were left out. `cellOf` gives each cell's
- * text, by column name and position.
+ * A table of at most `MAX_ROWS` rows and `MAX_COLUMNS` columns, with `truncated` / `columnsTruncated` set when
+ * some were left out. `cellOf` gives each cell's text, by column name and position. Rows are sparse: an empty
+ * cell is not stored, and `cell()` reads it as "".
  */
 export function makeTable<T>(columns: readonly string[], items: readonly T[], cellOf: (item: T, column: string, index: number) => string): DataTable {
-  return {
-    columns,
-    rows: items.slice(0, MAX_ROWS).map((item) => makeRow(columns.map((column, i) => [column, cellOf(item, column, i)]))),
-    truncated: items.length > MAX_ROWS,
-  };
+  const kept = columns.slice(0, MAX_COLUMNS);
+  const rows = items.slice(0, MAX_ROWS).map((item) =>
+    makeRow(kept.flatMap((column, i) => {
+      const text = cellOf(item, column, i);
+      return text === "" ? [] : [[column, text] as const];
+    })),
+  );
+  return { columns: kept, rows, truncated: items.length > MAX_ROWS, ...(columns.length > MAX_COLUMNS && { columnsTruncated: true }) };
 }
 
-/** The keys of the first `limit` objects, in order of first appearance. */
-export function unionColumns(items: readonly object[], limit = MAX_ROWS): string[] {
+/**
+ * The keys of the first `MAX_ROWS` objects, in order of first appearance; it stops one past `MAX_COLUMNS`, so
+ * makeTable can tell that columns were cut without collecting them all.
+ */
+export function unionColumns(items: readonly object[]): string[] {
   const columns = new Set<string>();
-  for (const item of items.slice(0, limit)) for (const key of Object.keys(item)) columns.add(key);
+  for (const item of items.slice(0, MAX_ROWS)) {
+    for (const key of Object.keys(item)) {
+      columns.add(key);
+      if (columns.size > MAX_COLUMNS) return [...columns];
+    }
+  }
   return [...columns];
 }
 

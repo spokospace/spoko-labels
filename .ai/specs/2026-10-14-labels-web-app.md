@@ -100,8 +100,8 @@ One page, one column on a phone and two on a desktop:
 - **Sample data.** Each built-in template has its own sample rows, so the demo works without a file.
 - **Mapping.** The app builds the input from the pickers. The source data is not changed. `render()` and `printLabels` receive the same input:
   - **Templates that bind by name** (`bind`): `rows` are keyed by the template's bind names, each holding the picked column's value. No `columns`.
-  - **Templates that bind by position** (`bindIndex`, NIIMBOT imports): `rows` are keyed by the source column names, and `columns` lists the picked column names in template position order (position 0 first). An unpicked position gets a placeholder name that no row has, so render reports `missing-column`.
-  - A template that uses both gets both.
+  - **Templates that bind by position** (`bindIndex`, NIIMBOT imports): each position gets a row key of its own, `"\u0000pos-N"` (position 0 first), and `columns` lists those keys. They never collide with a bind name or a source column name, so a template that uses both gets both.
+  - A field with no picked column, named or positional, has no key in the rows, so render reports `missing-column` and the field prints empty.
 - **Building rows.** Column names come from files, APIs and links, so a name can be `__proto__` or `constructor`. Each row is built with `Object.fromEntries` (or on `Object.create(null)`), never by assigning keys to `{}`. A `__proto__` column is then an ordinary key, kept like any other. The same rule holds for the column union of an API or `#add` source.
 - **Text only.** Everything loaded is shown as text, never as HTML: cell values, column names, template names, names from a NIIMBOT import, JSON template contents, and the id in the unknown-template notice. The app sets `textContent` or builds nodes; it never sets `innerHTML` from loaded data.
 

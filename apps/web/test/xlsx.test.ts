@@ -34,7 +34,6 @@ describe("readXlsx", () => {
       ["__proto__"]: "proto value",
       Price: "19.99",
       Added: "2026-01-31",
-      "Column G": "",
     });
     expect(rows[1]?.Added).toBe("1999-12-01");
     expect(rows[1]?.Price).toBe("7");
@@ -73,6 +72,13 @@ describe("readXlsx", () => {
       }
     }
     expect(headers).toBeGreaterThan(0);
+  });
+
+  it("words a reader that could not be loaded (offline), apart from a bad file", async () => {
+    const load = async (): Promise<SheetReader> => {
+      throw new TypeError("Failed to fetch dynamically imported module");
+    };
+    expect(await readXlsx(file(makeXlsx([["A"], ["1"]])), { load })).toEqual({ ok: false, error: "load-failed" });
   });
 
   it("does not read a file over 10 MB", async () => {

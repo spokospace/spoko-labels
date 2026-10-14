@@ -143,10 +143,8 @@ const fail = (code: ApiErrorCode): ApiResult => ({ ok: false, error: { code } })
  * be missing or wrong, so only the bytes actually read count.
  */
 async function readCapped(response: Response, maxBytes: number): Promise<Uint8Array | null> {
-  if (!response.body) {
-    const buffer = new Uint8Array(await response.arrayBuffer());
-    return buffer.byteLength > maxBytes ? null : buffer;
-  }
+  // A response without a body (204, HEAD-like) is empty; arrayBuffer() would not be capped.
+  if (!response.body) return new Uint8Array(0);
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;

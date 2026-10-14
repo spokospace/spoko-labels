@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkUrl, loadApi, tableFromJson, urlToStore } from "../src/data/api.js";
+import { cell, MAX_COLUMNS } from "../src/data/table.js";
 
 // A mocked fetch; every URL and payload is made up (example.com, example.test).
 
@@ -25,7 +26,7 @@ describe("loadApi", () => {
       table: {
         columns: ["id", "name", "extra"],
         rows: [
-          { id: "1", name: "Śrubka testowa", extra: "" },
+          { id: "1", name: "Śrubka testowa" },
           { id: "2", name: "Demo", extra: "true" },
         ],
         truncated: false,
@@ -36,7 +37,7 @@ describe("loadApi", () => {
   it("finds the array at a dot path and writes nested values as JSON text", async () => {
     const body = { data: { items: [{ id: "A-1", tags: ["x", "y"], owner: { name: "Anna Demo" }, note: null }] }, page: 1 };
     const result = await loadApi("https://example.com/api", { fetch: fetchReturning(json(body)), path: " data.items " });
-    expect(result.ok && result.table.rows).toEqual([{ id: "A-1", tags: '["x","y"]', owner: '{"name":"Anna Demo"}', note: "" }]);
+    expect(result.ok && result.table.rows).toEqual([{ id: "A-1", tags: '["x","y"]', owner: '{"name":"Anna Demo"}' }]);
   });
 
   it("keeps a key named __proto__ as an ordinary column", async () => {
@@ -48,6 +49,13 @@ describe("loadApi", () => {
     expect(row["__proto__"]).toBe('{"polluted":"yes"}');
     expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it("reads a response without a body as empty, never through an uncapped arrayBuffer()", async () => {
+    const response = new Response(null, { status: 200 });
+    const arrayBuffer = vi.spyOn(response, "arrayBuffer");
+    expect(await loadApi("https://example.com/", { fetch: fetchReturning(response) })).toEqual({ ok: false, error: { code: "not-json" } });
+    expect(arrayBuffer).not.toHaveBeenCalled();
   });
 
   it("words a CORS block (fetch throws a TypeError)", async () => {
@@ -161,8 +169,21 @@ describe("urlToStore", () => {
 });
 
 describe("tableFromJson", () => {
+  it(`keeps at most ${MAX_COLUMNS} columns, says so, and stores no empty cells`, () => {
+    // Made up: every item has a key of its own, so the union grows with the rows.
+    const items = Array.from({ length: 2000 }, (_, i) => ({ id: String(i), [`k${i}`]: "x" }));
+    const result = tableFromJson(items, "");
+    expect(result.ok && result.table.columns.length).toBe(MAX_COLUMNS);
+    expect(result.ok && result.table.columnsTruncated).toBe(true);
+    // Row 5 holds its id and its own key, not 498 empty cells.
+    expect(result.ok && Object.keys(result.table.rows[5] ?? {})).toEqual(["id", "k5"]);
+    expect(result.ok && cell(result.table.rows[5] ?? {}, "k4")).toBe("");
+    expect(result.ok && result.table.rows[1999]).toEqual({ id: "1999" });
+  });
+
+
   it("indexes arrays in a path and skips items that are not objects", () => {
     const result = tableFromJson({ pages: [{ rows: [{ a: 1 }, "x", [1], { b: false }] }] }, "pages.0.rows");
-    expect(result.ok && result.table).toEqual({ columns: ["a", "b"], rows: [{ a: "1", b: "" }, { a: "", b: "false" }], truncated: false });
+    expect(result.ok && result.table).toEqual({ columns: ["a", "b"], rows: [{ a: "1" }, { b: "false" }], truncated: false });
   });
 });
