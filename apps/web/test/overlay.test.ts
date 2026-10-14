@@ -117,7 +117,7 @@ describe("preview model", () => {
   it("shows an upright template in its design orientation", async () => {
     const upright = builtinTemplate("upright");
     if (!upright) throw new Error("no upright template");
-    const row = upright.sampleRows[0] ?? {};
+    const row = upright.sampleRows.en[0] ?? {};
     const model = buildPreview(upright.template, { row }, nodeEnvironment, await nodeFonts());
     expect(model.ok).toBe(true);
     if (!model.ok) return;
@@ -130,7 +130,7 @@ describe("preview model", () => {
   it("lists the label's texts and QR contents as the canvas's text alternative", () => {
     const tool = builtinTemplate("tool");
     const normalized = validateTemplate(tool?.template).template as NormalizedTemplate;
-    const row = tool?.sampleRows[0] ?? {};
+    const row = tool?.sampleRows.en[0] ?? {};
     expect(labelTexts(normalized, { row })).toEqual([
       { kind: "text", value: row.Tool },
       { kind: "text", value: row.ID },

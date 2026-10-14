@@ -54,18 +54,18 @@ describe("the data panel", () => {
     const panel = mount();
     expect(status()).toContain("No data yet");
     expect(container.querySelector<HTMLElement>(".data-body")?.hidden).toBe(true);
-    expect(panel.previewData()).toEqual({ row: tool.sampleRows[0] });
+    expect(panel.previewData()).toEqual({ row: tool.sampleRows.en[0] });
     expect(panel.previewText()).toContain("sample row");
   });
 
   it("uses the template's sample rows as a source, with the fields matched", () => {
     const panel = mount();
     button("Use sample data").click();
-    expect(bodyRows()).toHaveLength(tool.sampleRows.length);
+    expect(bodyRows()).toHaveLength(tool.sampleRows.en.length);
     expect(container.querySelector(".source-line")?.textContent).toContain("Tool with QR code");
     const picks = [...container.querySelectorAll<HTMLSelectElement>(".mapping select")];
     expect(picks.map((s) => s.selectedOptions[0]?.textContent)).toEqual(["Tool", "ID", "Place", "URL"]);
-    expect(panel.previewData()).toEqual({ row: tool.sampleRows[0] });
+    expect(panel.previewData()).toEqual({ row: tool.sampleRows.en[0] });
     expect(onChange).toHaveBeenCalled();
   });
 
@@ -73,7 +73,7 @@ describe("the data panel", () => {
     const panel = mount({ readFile: async () => ({ ok: true, table: tableOf(3) }) });
     panel.useSample();
     panel.setTemplate(product);
-    expect(panel.state.source?.table.rows).toEqual(product.sampleRows);
+    expect(panel.state.source?.table.rows).toEqual(product.sampleRows.en);
     await panel.openFile(new Blob([]));
     panel.setTemplate(product);
     // The file's columns do not match the product template's fields.
@@ -377,6 +377,35 @@ describe("the data panel", () => {
     await slowUrl;
     expect(panel2.state.source?.kind).toBe("xlsx");
     expect(panel2.state.source?.table.rows).toHaveLength(3);
+  });
+
+  it("switches sample data to the other language, and leaves other sources alone", async () => {
+    const panel = mount({ readFile: async () => ({ ok: true, table: tableOf(2) }) });
+    expect(panel.previewData()).toEqual({ row: tool.sampleRows.en[0] });
+    setLang("pl");
+    panel.refresh();
+    expect(panel.previewData()).toEqual({ row: tool.sampleRows.pl[0] });
+    panel.useSample();
+    // Tool picks the ID column (index 1), and the second row is ticked.
+    const pick = container.querySelector<HTMLSelectElement>('select[data-field="name:Tool"]') as HTMLSelectElement;
+    pick.value = "1";
+    pick.dispatchEvent(new Event("change"));
+    (bodyRows()[1]?.querySelector("input") as HTMLInputElement).click();
+    const mapping = [...panel.state.mapping.values()];
+    const selected = [...panel.state.selected];
+    setLang("en");
+    panel.refresh();
+    expect(panel.state.source?.table.rows).toEqual(tool.sampleRows.en);
+    expect(bodyRows()[0]?.textContent).toContain("Example cordless drill");
+    // The picks and the selection survive the switch.
+    expect([...panel.state.mapping.values()]).toEqual(mapping);
+    expect(mapping[0]).toBe("ID");
+    expect([...panel.state.selected]).toEqual(selected);
+    expect(selected).toEqual([1]);
+    await panel.openFile(new Blob([]));
+    setLang("pl");
+    panel.refresh();
+    expect(panel.state.source?.kind).toBe("xlsx");
   });
 
   it("redraws its texts in the other language", async () => {

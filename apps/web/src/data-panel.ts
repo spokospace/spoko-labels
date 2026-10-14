@@ -5,7 +5,7 @@ import { autoMapping, fieldKey, mapInput, templateFields, type Field, type Mappi
 import { search, searchIndex } from "./data/search.js";
 import { cell, columnLetter, makeRow, makeTable, MAX_BYTES, MAX_COLUMNS, MAX_ROWS, unionColumns, type DataTable, type Row } from "./data/table.js";
 import { readXlsx, type XlsxErrorCode, type XlsxResult } from "./data/xlsx.js";
-import { t, type MessageKey } from "./i18n/index.js";
+import { getLang, t, type Lang, type MessageKey } from "./i18n/index.js";
 import { readStored, STORAGE_KEYS, writeStored } from "./storage.js";
 import type { BuiltinTemplate } from "./templates/builtin.js";
 
@@ -54,7 +54,7 @@ export function xlsxErrorText(code: XlsxErrorCode): string {
 }
 
 export type Source =
-  | { kind: "sample"; table: DataTable }
+  | { kind: "sample"; table: DataTable; lang: Lang }
   | { kind: "xlsx"; table: DataTable; name: string }
   | { kind: "api"; table: DataTable; url: string; path: string };
 
@@ -76,7 +76,7 @@ export interface DataPanel {
   /** Which row the preview shows, in words. */
   previewText(): string;
   setTemplate(template: BuiltinTemplate): void;
-  /** Redraws every text (after a language switch). */
+  /** Redraws every text (after a language switch); sample data switches to the new language. */
   refresh(): void;
   /** For tests and Phase 3: the current state. */
   readonly state: {
@@ -100,8 +100,11 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
   return node as HTMLElementTagNameMap[K];
 }
 
-function sampleTable(template: BuiltinTemplate): DataTable {
-  return makeTable(unionColumns(template.sampleRows), template.sampleRows, cell);
+/** The template's sample rows, in the app's language. */
+function sampleSource(template: BuiltinTemplate): Source {
+  const lang = getLang();
+  const rows = template.sampleRows[lang];
+  return { kind: "sample", table: makeTable(unionColumns(rows), rows, cell), lang };
 }
 
 /** The app's xlsx reader: empty headers are named in the current language. */
@@ -421,7 +424,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   }
 
   function useSample(): void {
-    setSource({ kind: "sample", table: sampleTable(template) });
+    setSource(sampleSource(template));
   }
 
   // --- events --------------------------------------------------------------------------------------------
@@ -514,7 +517,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
 
   return {
     previewData(): RenderData {
-      if (!source) return { row: template.sampleRows[0] ?? {} };
+      if (!source) return { row: template.sampleRows[getLang()][0] ?? {} };
       // No row when the search matches none: the template with its fields empty.
       const row = source.table.rows[previewIndex] ?? makeRow([]);
       const input = mapInput(fields, mapping, source.table.columns, [row]);
@@ -528,13 +531,22 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       template = next;
       fields = templateFields(next.template);
       // Sample data belongs to its template, so it follows the template; other sources stay.
-      if (source?.kind === "sample") return setSource({ kind: "sample", table: sampleTable(next) });
+      if (source?.kind === "sample") return setSource(sampleSource(next));
       if (source) mapping = autoMapping(fields, source.table.columns);
       drawSource();
       drawMapping();
       options.onChange();
     },
-    refresh: drawAll,
+    refresh(): void {
+      // Sample data is written in the app's language, so a language switch swaps its rows in place. Every language
+      // has the same columns and number of rows, so the picks, the selection and the previewed row stay.
+      if (source?.kind === "sample" && source.lang !== getLang()) {
+        source = sampleSource(template);
+        index = searchIndex(source.table);
+        shown = search(index, searchInput.value);
+      }
+      drawAll();
+    },
     get state() {
       return { source, selected, shown, previewIndex, mapping };
     },
