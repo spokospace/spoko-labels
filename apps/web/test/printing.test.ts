@@ -27,7 +27,7 @@ const byPosition: BuiltinTemplate = {
       { type: "qr", x: 30, y: 12, width: 15, height: 15, content: { bindIndex: 2 } },
     ],
   },
-  sampleRows: [],
+  sampleRows: { en: [], pl: [] },
 };
 
 function tableOf(n: number): DataTable {
@@ -164,7 +164,15 @@ describe("the print request", () => {
     expect(printButton().disabled).toBe(false);
     printButton().click();
     await vi.waitFor(() => expect(print).toHaveBeenCalled());
-    expect(print.mock.calls[0]?.[0].rows).toEqual([tool.sampleRows[0]]);
+    expect(print.mock.calls[0]?.[0].rows).toEqual([tool.sampleRows.en[0]]);
+  });
+
+  it("prints the sample row in the app's language", async () => {
+    setLang("pl");
+    await setUp({ rows: 0 });
+    printButton().click();
+    await vi.waitFor(() => expect(print).toHaveBeenCalled());
+    expect(print.mock.calls[0]?.[0].rows).toEqual([tool.sampleRows.pl[0]]);
   });
 });
 
