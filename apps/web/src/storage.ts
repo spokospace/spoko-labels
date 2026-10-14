@@ -4,6 +4,9 @@
 /** Every key the app stores, in one place. */
 export const STORAGE_KEYS = {
   lang: "spoko-labels:lang",
+  /** The API URL without its query and fragment (A7). */
+  apiUrl: "spoko-labels:api-url",
+  apiPath: "spoko-labels:api-path",
 } as const;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;

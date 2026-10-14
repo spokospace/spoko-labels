@@ -38,10 +38,7 @@
 
     <section class="panel preview" aria-labelledby="preview-heading">
       <h2 id="preview-heading" data-i18n="previewHeading"></h2>
-      <label class="field">
-        <span data-i18n="sampleRow"></span>
-        <select id="sample-row"></select>
-      </label>
+      <p id="preview-row" class="hint"></p>
       <p id="font-status" class="hint" aria-live="polite"></p>
       <div id="stage" class="stage" hidden>
         <canvas id="image" role="img" aria-describedby="preview-texts"></canvas>
@@ -60,6 +57,11 @@
       </div>
       <h3 data-i18n="warningsHeading"></h3>
       <ul id="warnings" class="warnings"></ul>
+    </section>
+
+    <section id="data" class="panel data" aria-labelledby="data-heading">
+      <h2 id="data-heading" data-i18n="dataHeading"></h2>
+      <!-- data-panel.ts builds the controls here. -->
     </section>
   </main>
 
