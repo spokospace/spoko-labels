@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="spoko-labels-commit" content="__APP_COMMIT__">
+  <title>spoko labels</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+  <!-- Text comes from the i18n dictionary (data-i18n); main.ts fills it in before anything is shown. -->
+  <header class="top">
+    <div class="brand">
+      <h1 data-i18n="appTitle">spoko labels</h1>
+      <p class="tagline" data-i18n="tagline"></p>
+    </div>
+    <div class="tools">
+      <!-- Phase 3: the printer status chip and the help button go here. -->
+      <span id="printer-slot"></span>
+      <div class="lang" role="group" data-i18n-label="language">
+        <button type="button" data-lang="pl" lang="pl">PL</button>
+        <button type="button" data-lang="en" lang="en">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="banners" class="banners" role="status" hidden></div>
+
+  <main class="layout">
+    <section class="panel" aria-labelledby="templates-heading">
+      <h2 id="templates-heading" data-i18n="templatesHeading"></h2>
+      <fieldset class="templates">
+        <legend class="visually-hidden" data-i18n="templateListLabel"></legend>
+        <div id="template-list"></div>
+      </fieldset>
+    </section>
+
+    <section class="panel preview" aria-labelledby="preview-heading">
+      <h2 id="preview-heading" data-i18n="previewHeading"></h2>
+      <label class="field">
+        <span data-i18n="sampleRow"></span>
+        <select id="sample-row"></select>
+      </label>
+      <p id="font-status" class="hint" aria-live="polite"></p>
+      <div id="stage" class="stage" hidden>
+        <canvas id="image" role="img" aria-describedby="preview-texts"></canvas>
+        <canvas id="overlay" aria-hidden="true"></canvas>
+      </div>
+      <p id="preview-size" class="hint"></p>
+      <p id="preview-turned" class="hint" hidden></p>
+      <ul class="legend hint">
+        <li><span class="swatch head"></span><span data-i18n="legendHead"></span></li>
+        <li><span class="swatch shape"></span><span data-i18n="legendShape"></span></li>
+        <li><span class="swatch safe"></span><span data-i18n="legendSafe"></span></li>
+      </ul>
+      <div class="visually-hidden">
+        <p data-i18n="previewTexts"></p>
+        <ul id="preview-texts"></ul>
+      </div>
+      <h3 data-i18n="warningsHeading"></h3>
+      <ul id="warnings" class="warnings"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><a href="/licenses/LICENSE-HarmonyOS-Sans.txt" data-i18n="footerFont">Font: HarmonyOS Sans © Huawei Device Co., Ltd.</a> <span data-i18n="footerMadeUp"></span></p>
+    <p>
+      <a href="https://github.com/spokospace/spoko-labels" data-i18n="footerSource"></a>
+      · <span data-i18n="footerVersion"></span> <span id="version">__APP_VERSION__</span>
+    </p>
+  </footer>
+</body>
+</html>

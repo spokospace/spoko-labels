@@ -123,8 +123,8 @@ The package also exports `TEMPLATE_VERSION` (`1`), `DEFAULTS` (the values filled
 
 `render(template, { row, columns }, { environment, fonts, printableWidth? })` returns `{ image, printRotation, warnings }`:
 
-- `image`: `{ width, height, data }`, RGBA, every pixel black or white, at 8 dots per mm. It is the printed image: already turned by the template's `printRotation`, so a 30 × 50 mm template with 270 gives 400 × 240 dots.
-- `printRotation`: the template's turn (0 when absent), so a preview can turn the image back to the design.
+- `image`: an `RgbaImage` (`{ width, height, data }`, exported as a type), RGBA, every pixel black or white, at 8 dots per mm. It is the printed image: already turned by the template's `printRotation`, so a 30 × 50 mm template with 270 gives 400 × 240 dots.
+- `printRotation`: the template's turn (0 when absent), so a preview can turn the image back to the design with `turn(image, (360 - printRotation) % 360)`. `turn(image, degrees)` turns an `RgbaImage` clockwise by 0, 90, 180 or 270 degrees and returns a new `RgbaImage` (the same object at 0).
 - `warnings`: `{ code, path }`. Every validation issue of the template is included (an element with an error is skipped and the rest renders), plus what rendering found: missing columns and fonts, text that does not fit, QR problems, and drawn content (overflowing text, an oversized QR code) outside the safe or printable area.
 - A template-level error (bad `version`, `name`, `size`, `shape`, `safeMargin`, `printRotation`, `elements`) throws `TemplateError`, whose `issues` are the validation issues.
 
