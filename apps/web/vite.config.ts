@@ -18,18 +18,24 @@ const alias = Object.fromEntries(PACKAGES.map((name) => [`@spokospace/labels-${n
 export const FONT_DIRS = [join(packagesDir, "render/fonts"), join(packagesDir, "niimbot/fonts")];
 const LICENSE_FILE = /^(LICENSE|OFL)-.*\.txt$/;
 
-interface AppVersion {
-  /** The full commit hash, which scripts/deploy.mjs compares with HEAD. */
+export interface AppVersion {
+  /** The full commit hash, with "-dirty" when the tree had changes; scripts/deploy.mjs compares it with HEAD. */
   commit: string;
   /** "<short commit> <commit date>", shown in the footer so a deploy can be checked against the merged commit. */
   label: string;
 }
 
-function appVersion(): AppVersion {
+const runGit = (args: string[]): string => execFileSync("git", args, { cwd: appDir, encoding: "utf8" });
+
+/**
+ * The commit the build comes from. A build of a tree with uncommitted or untracked files is marked "-dirty":
+ * it is not that commit, and the deploy script refuses it.
+ */
+export function appVersion(git: (args: string[]) => string = runGit): AppVersion {
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%H %h %cs"], { cwd: appDir, encoding: "utf8" });
-    const [commit, short, date] = out.trim().split(" ");
-    if (commit && short && date) return { commit, label: `${short} ${date}` };
+    const [commit, short, date] = git(["log", "-1", "--format=%H %h %cs"]).trim().split(" ");
+    const dirty = git(["status", "--porcelain"]).trim() !== "" ? "-dirty" : "";
+    if (commit && short && date) return { commit: commit + dirty, label: `${short}${dirty} ${date}` };
   } catch {
     // Not a git checkout: build anyway, unversioned.
   }
@@ -37,19 +43,20 @@ function appVersion(): AppVersion {
 }
 
 /**
- * Copies the font licenses into dist/assets/, next to the fonts, unchanged and unhashed. Vite copies the font
- * files themselves (they are referenced from code) but not the licenses, which nothing imports. The HarmonyOS
- * Sans agreement and the SIL OFL both ask for the license to travel with the font.
+ * Copies the font licenses into dist/licenses/, unchanged and unhashed. Vite copies the font files themselves
+ * (they are referenced from code) but not the licenses, which nothing imports. The HarmonyOS Sans agreement and
+ * the SIL OFL both ask for the license to travel with the font. They are not put in assets/: that folder is
+ * cached for a year as immutable, which suits hashed names only.
  */
 function fontLicenses(): Plugin {
   return {
     name: "spoko-labels:font-licenses",
     apply: "build",
     writeBundle(options) {
-      const assets = join(options.dir ?? join(appDir, "dist"), "assets");
-      mkdirSync(assets, { recursive: true });
+      const licenses = join(options.dir ?? join(appDir, "dist"), "licenses");
+      mkdirSync(licenses, { recursive: true });
       for (const dir of FONT_DIRS) {
-        for (const file of readdirSync(dir)) if (LICENSE_FILE.test(file)) copyFileSync(join(dir, file), join(assets, file));
+        for (const file of readdirSync(dir)) if (LICENSE_FILE.test(file)) copyFileSync(join(dir, file), join(licenses, file));
       }
     },
   };

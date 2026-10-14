@@ -41,9 +41,9 @@ export function initLang(): Lang {
  * listeners, which redraw their text.
  */
 export function setLang(lang: Lang): void {
+  if (lang === current) return;
   writeStored(STORAGE_KEYS.lang, lang);
   if (typeof document !== "undefined") document.documentElement.lang = lang;
-  if (lang === current) return;
   current = lang;
   for (const listener of listeners) listener(lang);
 }

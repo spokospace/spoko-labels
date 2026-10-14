@@ -29,7 +29,7 @@ Everything the user loads or a template holds is shown as text (`textContent`, b
 
 ## Fonts
 
-Labels are drawn with HarmonyOS Sans (© Huawei Device Co., Ltd., HarmonyOS Sans Fonts License Agreement) and SIL OFL fonts. The footer shows "Font: HarmonyOS Sans © Huawei Device Co., Ltd.", as the agreement asks. The build copies `LICENSE-HarmonyOS-Sans.txt` and every `OFL-*.txt` into `dist/assets/`, next to the font files (a test checks it).
+Labels are drawn with HarmonyOS Sans (© Huawei Device Co., Ltd., HarmonyOS Sans Fonts License Agreement) and SIL OFL fonts. The footer shows "Font: HarmonyOS Sans © Huawei Device Co., Ltd.", as the agreement asks. The build copies `LICENSE-HarmonyOS-Sans.txt` and every `OFL-*.txt` unchanged into `dist/licenses/` (a test checks it); the footer's font notice links to the HarmonyOS Sans license. They are not in `dist/assets/`, which is cached for a year as immutable and suits hashed file names only.
 
 ## Deploying (Cloudflare Pages, by hand)
 
@@ -52,7 +52,7 @@ pnpm --filter @spokospace/labels-web run deploy:pages
 The script is `deploy:pages`, not `deploy`: `pnpm --filter … deploy` would run pnpm's own `deploy` command. It runs `pnpm dlx wrangler@4.151.0 pages deploy dist --project-name spoko-labels --branch main`, and refuses, with a message, when:
 - the working tree has uncommitted or untracked files;
 - `HEAD` is not `origin/main` (after `git fetch origin main`);
-- `dist/` is missing or was built from another commit.
+- `dist/` is missing, was built from another commit, or was built from a tree with uncommitted changes (its commit is marked `-dirty`).
 
 The custom domain is set in the Cloudflare dashboard, not here.
 
