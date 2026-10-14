@@ -7,12 +7,15 @@
 
 Print labels on NIIMBOT label printers straight from the browser — no driver, no desktop app, no phone. Over Web Bluetooth.
 
-> Work in progress. The printer layer works today; templates, import, the embeddable dialog and the web app are being built.
+**Try it: [spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. Pick a template, load the sample data, an xlsx file or a JSON API, see exactly what will print, and print it on a NIIMBOT B1 from Chrome or Edge. Your data stays in the browser.
+
+> Work in progress. The packages below work today; the web app is being built phase by phase.
 
 ## What works today
 
 - **[`@spokospace/labels-core`](packages/core/README.md)**: connect to a NIIMBOT B1 from a click, read its battery and firmware, and print any black-and-white image with a chosen density, number of copies and calibration offset; a print can be aborted. Checked on a real B1 with 50×30 mm labels.
 - **A hardware-check page** for trying it on your own printer: `pnpm --filter @spokospace/labels-core example`, then open `http://localhost:8080/examples/hardware-check/` in Chrome or Edge (see the [package README](packages/core/README.md#hardware-check-page)).
+- **[The web app](apps/web/README.md)**, live at [spoko-labels.pages.dev](https://spoko-labels.pages.dev): built-in templates, an exact preview, and data from sample rows, an xlsx file or a JSON API, with column mapping, search and row selection, and printing with the printer chip, the print dialog and calibration.
 
 Not published to npm yet.
 
@@ -36,7 +39,7 @@ Development and testing happen mainly on a **NIIMBOT B1** (203 dpi, 384-dot prin
 | [`@spokospace/labels-render`](packages/render/README.md) | label template engine (available) |
 | [`@spokospace/labels-niimbot`](packages/niimbot/README.md) | import templates from the NIIMBOT desktop app (available: reading the app's database, conversion, the free fonts and an example page; checked on a B1) |
 | [`@spokospace/labels-embed`](packages/embed/README.md) | print from other web apps: shared printer connection, status chip and print dialog (available; hardware check pending) |
-| `apps/web` | the public web app (in progress: templates and preview; see [its README](apps/web/README.md)) |
+| `apps/web` | the public web app, live at [spoko-labels.pages.dev](https://spoko-labels.pages.dev) (in progress: templates, preview, data loading and printing; see [its README](apps/web/README.md)) |
 
 ## Development
 

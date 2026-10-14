@@ -2,6 +2,8 @@
 
 The public web app: pick a template, load data from an xlsx file or a JSON API, see exactly what will print, and print it on a NIIMBOT B1 from the browser. Built with Vite and plain TypeScript, no UI framework. Private: it exports no code.
 
+Live: **[spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. It is deployed by hand, so it can be behind `main`; the footer shows the commit it was built from.
+
 > **Status: Phases 1 to 3 of `.ai/specs/2026-10-14-labels-web-app.md`.** The app shell, Polish and English, the built-in templates, the preview, the data (sample rows, xlsx files, a JSON API, column mapping, search and row selection) and printing (the printer chip, the print dialog, the calibration settings and the printer help) are in. The Phase 3 hardware check on a B1 is the maintainer's. The NIIMBOT import and deep links follow in later phases.
 
 ## Running it
@@ -50,6 +52,12 @@ One time: log in to Cloudflare with the same pinned wrangler the script uses.
 
 ```bash
 pnpm dlx wrangler@4.151.0 login
+```
+
+The Pages project `spoko-labels` already exists. To create it again (a new account, or a fork; a fork with another project name also changes `PROJECT` in `scripts/deploy.mjs`), pass `--force` once: wrangler 4.151 otherwise tries to create a Workers project and fails.
+
+```bash
+pnpm dlx wrangler@4.151.0 pages project create spoko-labels --production-branch main --force
 ```
 
 Each deploy, from an up-to-date checkout of `main`:
