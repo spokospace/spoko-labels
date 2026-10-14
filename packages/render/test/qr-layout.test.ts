@@ -75,6 +75,16 @@ describe("layoutQr", () => {
     expect(at("right", "middle")).toEqual([10 + 16, 20 + 18]);
   });
 
+  it("overflows on the side away from the alignment when the box is too small", () => {
+    const at = (align: "left" | "right", verticalAlign: "top" | "bottom") => {
+      const l = layoutQr("BX-0012", "L", box(15), { align, verticalAlign });
+      if (l.kind !== "ok") throw new Error(l.kind);
+      return l.rect;
+    };
+    expect(at("right", "bottom")).toEqual({ x: 10 - 6, y: 20 - 6, width: 21, height: 21 });
+    expect(at("left", "top")).toEqual({ x: 10, y: 20, width: 21, height: 21 });
+  });
+
   it("is exactly at the limit when the box equals the module count", () => {
     const l = layoutQr("BX-0012", "L", box(21), CENTERED);
     if (l.kind !== "ok") throw new Error(l.kind);

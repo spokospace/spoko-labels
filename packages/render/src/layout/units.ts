@@ -38,7 +38,8 @@ export const dotsToMm = (r: DotRect) => ({
 
 /**
  * Where a run of `size` dots starts inside `room` dots that begin at `start`, for an alignment:
- * at the start (`left`, `top`), centered, or at the end (`right`, `bottom`). Rounded to whole dots.
+ * at the start (`left`, `top`: `start` as given), centered, or at the end (`right`, `bottom`); those two are
+ * rounded to whole dots. Every caller passes whole-dot boxes.
  */
 export function alignIn(start: number, room: number, size: number, at: HorizontalAlign | VerticalAlign): number {
   if (at === "left" || at === "top") return start;
