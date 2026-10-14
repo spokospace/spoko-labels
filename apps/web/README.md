@@ -4,7 +4,7 @@ The public web app: pick a template, load data from an xlsx file or a JSON API, 
 
 Live: **[spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. It is deployed by hand, so it can be behind `main`; the footer shows the commit it was built from.
 
-<img alt="The web app with a connected B1, the template list, the data sources and the preview of a product label" src="../../art/web-app.png" width="800">
+<img alt="The web app with a connected printer, the template list, the data sources and the preview of a product label" src="../../art/web-app.png" width="800">
 
 > **Status: Phases 1 to 3 of `.ai/specs/2026-10-14-labels-web-app.md`.** The app shell, Polish and English, the built-in templates, the preview, the data (sample rows, xlsx files, a JSON API, column mapping, search and row selection) and printing (the printer chip, the print dialog, the calibration settings and the printer help) are in. The Phase 3 hardware check on a B1 is the maintainer's. The NIIMBOT import and deep links follow in later phases.
 

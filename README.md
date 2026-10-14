@@ -9,7 +9,7 @@ Print labels on NIIMBOT label printers straight from the browser — no driver, 
 
 **Try it: [spoko-labels.pages.dev](https://spoko-labels.pages.dev)**. Pick a template, load the sample data, an xlsx file or a JSON API, see exactly what will print, and print it on a NIIMBOT B1 from Chrome or Edge. Your data stays in the browser.
 
-<img alt="The spoko labels web app: a connected B1 in the header, the built-in templates, the data sources and an exact preview of a product label with a Print button" src="art/web-app.png" width="800">
+<img alt="The spoko labels web app: a connected printer in the header, the built-in templates, the data sources and an exact preview of a product label with a "Print this label" button" src="art/web-app.png" width="800">
 
 > Work in progress. The packages below work today; the web app is being built phase by phase.
 
