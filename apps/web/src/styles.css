@@ -29,11 +29,13 @@
 }
 
 * { box-sizing: border-box; }
+/* Classes that set display must not show what the hidden attribute hides. */
+[hidden] { display: none !important; }
 body { margin: 0 auto; max-width: 72rem; padding: 0 1rem; background: var(--bg); color: var(--fg); }
 h1 { font-size: 1.35rem; margin: 0; }
 h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
 h3 { font-size: .95rem; margin: 1rem 0 .25rem; }
-button, select { font: inherit; }
+button, select, input { font: inherit; }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
@@ -85,3 +87,58 @@ code { font: .85em ui-monospace, "Cascadia Mono", monospace; overflow-wrap: anyw
 .footer { margin: 2rem 0 1.5rem; color: var(--muted); font-size: .85rem; }
 .footer p { margin: .25rem 0; }
 .footer a { color: inherit; }
+
+/* Data: the sources, the column pickers, the search and the row table. */
+.data { grid-column: 1 / -1; }
+.button { border: 1px solid var(--border); background: var(--panel); color: var(--fg); border-radius: 8px; padding: .4rem .85rem; cursor: pointer; }
+.button:hover { border-color: var(--accent); }
+.button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.button.small { padding: .2rem .6rem; font-size: .9rem; }
+.button:disabled { opacity: .6; cursor: default; }
+.button:focus-visible, .data input:focus-visible, .data select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sources { display: flex; flex-wrap: wrap; gap: .5rem; }
+.api-form { display: grid; gap: .3rem; margin-top: .75rem; max-width: 40rem; }
+.api-form input { padding: .35rem .5rem; width: 100%; }
+.api-form .hint { margin: 0 0 .4rem; }
+.status { margin: .75rem 0; min-height: 1.45em; }
+.status.error { padding: .65rem 1rem; border: 1px solid var(--warn-border); background: var(--warn-bg); border-radius: var(--radius); }
+.status.loading::before {
+  content: ""; display: inline-block; width: .9em; height: .9em; margin-right: .5rem; vertical-align: -.1em;
+  border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .status.loading::before { animation-duration: 3s; } }
+.source-bar { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+.source-bar .hint { margin: 0; overflow-wrap: anywhere; }
+.mapping { border: 1px solid var(--border); border-radius: 8px; margin: .75rem 0; padding: .5rem .75rem .75rem; }
+.mapping legend { padding: 0 .25rem; font-weight: 600; font-size: .9rem; }
+.mapping-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .5rem 1rem; }
+.pick { display: grid; gap: .15rem; }
+.pick label { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+.pick select { padding: .3rem .4rem; width: 100%; }
+.data .field input[type="search"] { padding: .35rem .5rem; flex: 1 1 14rem; max-width: 28rem; }
+.selection-bar { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; align-items: center; margin-bottom: .5rem; }
+.select-all { display: inline-flex; gap: .4rem; align-items: center; cursor: pointer; }
+.count { color: var(--muted); }
+.table-wrap { overflow: auto; max-height: 28rem; border: 1px solid var(--border); border-radius: 8px; }
+.rows { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.rows th, .rows td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+.rows thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.rows .check { width: 2rem; }
+.rows tbody tr { cursor: pointer; }
+.rows tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.rows tbody tr[aria-current="true"] { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.rows tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rows td.empty { color: var(--muted); cursor: default; }
+.more { margin: .5rem 0 .25rem; }
+
+/* On a phone the table becomes a list: one card per row, each value under its column name. */
+@media (max-width: 40rem) {
+  .rows thead { display: none; }
+  .rows, .rows tbody, .rows tr, .rows td { display: block; width: 100%; }
+  .rows tbody tr { position: relative; padding: .5rem .5rem .5rem 2.5rem; border-bottom: 1px solid var(--border); }
+  .rows td { border: 0; padding: .1rem 0; }
+  .rows td.check { position: absolute; left: .6rem; top: .55rem; width: auto; padding: 0; }
+  .rows td[data-label]::before { content: attr(data-label); display: block; font-size: .75rem; color: var(--muted); }
+  .rows td.empty { padding: .5rem; }
+}
