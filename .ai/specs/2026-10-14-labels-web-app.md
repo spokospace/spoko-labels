@@ -1,6 +1,6 @@
 # Web app and demo (`apps/web`)
 
-> Status: draft design for #12, written by `om-auto-write-spec`. D1–D8 come from the maintainer. A1–A16 are autonomous defaults, open for override before merge. A15 (the deep-link format) needs the maintainer's confirmation, because it becomes a protected surface.
+> Status: draft design for #12, written by `om-auto-write-spec`. D1–D8 come from the maintainer. A1–A16 are autonomous defaults, open for override before merge. The maintainer confirmed A15 (the deep-link format) in chat on 2026-10-14.
 
 ## 📝 TLDR
 Anyone with a NIIMBOT B1 should be able to open a web page and print labels from their own data, with nothing to install.
@@ -54,7 +54,7 @@ Everything the user loads stays in the browser. The app reuses `labels-core`, `l
 | A12 | Language | Polish when `navigator.language` starts with `pl`, otherwise English. A switch in the header changes it and is remembered. | Matches the user base. | reversible |
 | A13 | Calibration and density | Calibration (`offsetMm` x and y, in mm) is set in a Printer settings panel with the B1 default (0 / 0.5 mm). It is remembered and passed to `printLabels`. Density is set in the dialog, which remembers it. | Reuses the dialog. Calibration belongs to the printer and roll, not to a print. | reversible |
 | A14 | Size limits | xlsx files up to 10 MB, API responses up to 10 MB, at most 10,000 rows, the NIIMBOT database up to 64 MB (as `extractTemplates` allows). | Keeps a phone responsive. Real files are far smaller. | reversible |
-| A15 | The deep-link format (`#add=…`) | `#template=<id>` selects a template. `#add=<base64url of a JSON object or an array of objects>` adds rows to the selection. Both open the app with a preview and never print by themselves. | `BACKWARD_COMPATIBILITY.md` already protects web-app deep links. Links from the earlier prototype may exist in use, and their format is not in this repository. | ⚠ NEEDS HUMAN CONFIRMATION |
+| A15 | The deep-link format (`#add=…`) | `#template=<id>` selects a template. `#add=<base64url of a JSON object or an array of objects>` adds rows to the selection. Both open the app with a preview and never print by themselves. | `BACKWARD_COMPATIBILITY.md` already protects web-app deep links. The earlier prototype (`niimbot-b1-bt`) has no deep links, so there is no older format to accept. | Confirmed by the maintainer, 2026-10-14 |
 | A16 | Deploy target | Cloudflare Pages project `spoko-labels`, deployed with a pinned `wrangler` run through `pnpm dlx`. The custom domain is set by the maintainer in the Cloudflare dashboard. | Nothing to install in the workspace. The domain is an account choice, not a code change. | reversible |
 
 Deferred (not in this spec): CSV files, a visual template editor, other printer models and label sizes, reading the roll's RFID to pick a template, offline use (PWA), copies per row, API authentication.
@@ -118,7 +118,7 @@ One page, one column on a phone and two on a desktop:
   - Not a secure context: a banner (only possible on a misconfigured host).
 - **Settings panel.** Calibration x and y in mm, within the ranges `Printer.print()` accepts (`x` −8 to 8 mm, `y` 0 to 10 mm). Those limits are not exported, so the app repeats them, and a test pins them against a print that `labels-core` rejects. There is a "Reset to default" button and a link to the help. Saved in `localStorage`; a saved value outside the limits, or not a number, falls back to the default on load.
 
-### Deep links (gated on A15)
+### Deep links (A15, confirmed)
 - `#template=<id>` selects a built-in template, or an imported one by its saved id. Imported ids are namespaced (`imp-…`), so they never equal a built-in id. An unknown id opens the default template with a notice.
 - `#add=<base64url JSON>` adds one row (an object) or several (an array, at most 200), selected. The link rows become their own data source, "Rows from the link", which replaces the current source the way opening a file does. Its columns are the union of the keys; mapping and search work on it as on any source.
 - A hash longer than 32 kB is not read ("This link is too long").
@@ -182,7 +182,7 @@ Layout of `apps/web`:
 
 ## 📝 API Contracts
 The app exports no code. Its contracts are:
-- **Deep links** (A15, gated). `#template=<id>` and `#add=<base64url JSON>`, combined as `#template=tool&add=…`. When accepted, the "Web app deep links" row in `BACKWARD_COMPATIBILITY.md` lists these parameters. After that, removing or renaming one needs at least one minor release in which the old form still works.
+- **Deep links** (A15, confirmed). `#template=<id>` and `#add=<base64url JSON>`, combined as `#template=tool&add=…`. The "Web app deep links" in `BACKWARD_COMPATIBILITY.md` lists these parameters. After that, removing or renaming one needs at least one minor release in which the old form still works.
 - **The JSON API input** (A4). `GET <url>` returns `T[]`, or an object with `T[]` at the given path, where `T` is a flat object. It is documented in the app's help. It is not a protected surface.
 - **Stored templates.** They are template v1 JSON, already protected by the template format row.
 
@@ -232,7 +232,7 @@ Prototype: none. Mockups were skipped in this run; see the PR.
 | Printing in another tab of the app | The chip shows "in use in another tab" (embed's Web Lock). |
 
 ## 📝 Risks & Impact Review
-- **Deep links become a contract** once published (A15). The format needs the maintainer's word before the first deploy. This is the only hard-to-reverse choice here.
+- **Deep links become a contract** once published (A15, confirmed). This is the only hard-to-reverse choice here.
 - **Data privacy.** Rows stay in memory. The only network requests are the app's own assets and the API URL the user types. There is no analytics or telemetry. The CSP keeps scripts to the app's origin.
 - **Reliance on the Embed API.** The app relies on the Embed API's surface only, so an embed change that breaks the app also breaks the hosts. That is already governed by `BACKWARD_COMPATIBILITY.md`.
 - **Deploys are manual.** A merged PR is not live until the maintainer runs the deploy. The footer's commit hash makes the deployed version visible.
@@ -244,7 +244,7 @@ Prototype: none. Mockups were skipped in this run; see the PR.
 2. **Data.** Sample data, xlsx, JSON API, column mapping, search and selection.
 3. **Printing.** The chip, `printLabels`, the settings panel and the help. The hardware check follows.
 4. **NIIMBOT import and template files.** Import, the template store, and loading and copying JSON.
-5. **Deep links.** Only after A15 is confirmed. It updates `BACKWARD_COMPATIBILITY.md`.
+5. **Deep links.** It updates `BACKWARD_COMPATIBILITY.md`.
 
 ## 📋 Implementation Plan
 ### Phase 1: app shell and templates
@@ -271,9 +271,8 @@ Prototype: none. Mockups were skipped in this run; see the PR.
 15. The import flow: file input, size check, extract, import, the result list with worded warnings and failures, selection and saving. Test: made-up `NiimbotTemplate` input, through the same path as the page.
 16. The template store: save, list, remove, and an id that stays stable. Load, copy and download JSON. Test.
 
-### Phase 5: deep links (after A15 is confirmed)
-17. Find and document the prototype's link format (the maintainer has the prototype). If links in use differ from A15, the format here is changed to accept them before any code is written.
-18. `deeplink.ts`: parse, validate, apply, clear the hash. Tests: valid and broken links, an unknown template id, a hash over 32 kB, more than 200 rows, and that it never prints. Add the parameters to the "Web app deep links" row of `BACKWARD_COMPATIBILITY.md`.
+### Phase 5: deep links
+17. `deeplink.ts`: parse, validate, apply, clear the hash. Tests: valid and broken links, an unknown template id, a hash over 32 kB, more than 200 rows, and that it never prints. Add the parameters to the "Web app deep links" row of `BACKWARD_COMPATIBILITY.md`.
 
 Phases 1–4 form a complete app without Phase 5, and can be deployed without it.
 
