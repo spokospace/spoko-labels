@@ -69,6 +69,8 @@ describe("the settings panel", () => {
     expect(readNumber(" -1.25 ")).toBe(-1.25);
     expect(readNumber("")).toBeNaN();
     expect(readNumber("abc")).toBeNaN();
+    for (const text of ["1e1", "0x1", "Infinity", "+1", ".5", "1.", "1,2,3", "- 1", "1 2"]) expect(readNumber(text)).toBeNaN();
+    expect(readNumber("10")).toBe(10);
   });
 
   it("shows the stored value, uses and stores a valid change, and ignores an invalid one", () => {

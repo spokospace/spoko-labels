@@ -4,11 +4,12 @@ import { panelDialog, showDialog } from "./dialog.js";
 import { el } from "./dom.js";
 import { formatNumber, t, type EmbedCode, type MessageKey } from "./i18n/index.js";
 
-// The help panel ("Printer help"): browser support, Brave's flags, the phone app, calibration and density.
+// The help panel ("Printer help"): browser support, Brave's flags, the phone app, another tab using the printer,
+// calibration and density.
 // It opens from the help button next to the printer chip, from the banners and from print errors, each time
 // at the section that answers them. Built from text nodes; the flags are `<code>` elements.
 
-export const HELP_SECTIONS = ["browser", "brave", "phone", "calibration", "density"] as const;
+export const HELP_SECTIONS = ["browser", "brave", "phone", "tab", "calibration", "density"] as const;
 export type HelpSection = (typeof HELP_SECTIONS)[number];
 
 /** Where Brave keeps its Web Bluetooth switch (checked on Brave 1.97). */
@@ -43,6 +44,7 @@ export const HELP_HEADINGS: Record<HelpSection, MessageKey> = {
   browser: "helpBrowserHeading",
   brave: "helpBraveHeading",
   phone: "helpPhoneHeading",
+  tab: "helpTabHeading",
   calibration: "helpCalibrationHeading",
   density: "helpDensityHeading",
 };
@@ -50,7 +52,8 @@ export const HELP_HEADINGS: Record<HelpSection, MessageKey> = {
 const HELP_TEXT: Record<HelpSection, readonly MessageKey[]> = {
   browser: ["helpBrowser1", "helpBrowser2", "helpBrowser3"],
   brave: ["helpBrave1", "helpBrave2"],
-  phone: ["helpPhone1", "helpPhone2", "helpPhone3"],
+  phone: ["helpPhone1", "helpPhone2"],
+  tab: ["helpTab1"],
   calibration: ["helpCalibration1", "helpCalibration2"],
   density: ["helpDensity1", "helpDensity2"],
 };

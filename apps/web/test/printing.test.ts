@@ -169,6 +169,14 @@ describe("the print request", () => {
 });
 
 describe("the print button", () => {
+  it("calls printLabels synchronously from the click, before the handler returns", async () => {
+    await setUp();
+    printButton().click();
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(printButton().disabled).toBe(true);
+    await vi.waitFor(() => expect(printButton().disabled).toBe(false));
+  });
+
   it("is disabled above the 200-label limit", async () => {
     await setUp({ rows: MAX_SELECTED + 1 });
     const all = document.getElementById("select-all-shown") as HTMLInputElement;
@@ -279,6 +287,7 @@ describe("the printer banner", () => {
     await setUp();
     session.set({ kind: "busy-elsewhere" });
     expect(banner().textContent).toContain("another tab");
+    expect(banner().querySelector<HTMLElement>("button[data-help]")?.dataset.help).toBe("tab");
     session.set({ kind: "disconnected" });
     expect(banner().hidden).toBe(true);
     session.set({ kind: "disconnected", error: "disconnected" });

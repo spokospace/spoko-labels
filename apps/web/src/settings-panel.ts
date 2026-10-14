@@ -27,10 +27,13 @@ export interface SettingsPanelOptions {
 const LABELS: Record<Axis, MessageKey> = { x: "offsetX", y: "offsetY" };
 const HINTS: Record<Axis, MessageKey> = { x: "offsetXHint", y: "offsetYHint" };
 
-/** A typed number: "0,5" counts as 0.5 (a Polish keyboard); an empty field is not a number. */
+/** A plain decimal: an optional minus, digits, and a fraction after a point or a comma. */
+const DECIMAL = /^-?\d+([.,]\d+)?$/;
+
+/** A typed number: "0,5" counts as 0.5 (a Polish keyboard); anything else ("", "1e1", "0x1", " ") is not a number. */
 export function readNumber(text: string): number {
-  const trimmed = text.trim().replace(",", ".");
-  return trimmed === "" ? Number.NaN : Number(trimmed);
+  const trimmed = text.trim();
+  return DECIMAL.test(trimmed) ? Number(trimmed.replace(",", ".")) : Number.NaN;
 }
 
 interface AxisField {

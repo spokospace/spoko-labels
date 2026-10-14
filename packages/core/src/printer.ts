@@ -29,7 +29,7 @@ const MAX_COPIES = 255;
  * The calibration `print()` accepts, in millimetres: `offsetMm.x` from `-x` to `x` (sideways), `offsetMm.y`
  * from 0 to `y` (down, never up).
  */
-export const OFFSET_LIMITS_MM: { readonly x: number; readonly y: number } = { x: 8, y: 10 };
+export const OFFSET_LIMITS_MM: { readonly x: number; readonly y: number } = Object.freeze({ x: 8, y: 10 });
 /** Gap labels; the only label type supported for the B1. */
 const LABEL_TYPE_GAP = 1;
 const PERCENT_DONE = 100;

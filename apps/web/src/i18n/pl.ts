@@ -124,7 +124,9 @@ export const messages: Record<MessageKey, string> = {
   helpPhoneHeading: "Aplikacja w telefonie i połączenie",
   helpPhone1: "Drukarka połączona z telefonem nie pojawia się na liście. Zamknij aplikację NIIMBOT w telefonie albo wyłącz w nim Bluetooth, potem kliknij „Połącz drukarkę” jeszcze raz.",
   helpPhone2: "Jeśli drukarka dalej nie odpowiada, wyłącz ją i włącz, trzymaj ją blisko komputera i sprawdź, czy pokrywa jest zamknięta, a etykiety założone.",
-  helpPhone3: "Z drukarki może naraz korzystać tylko jedna karta tej aplikacji.",
+  helpTabHeading: "Drukarka jest używana w innej karcie",
+  helpTab1:
+    "Z drukarki może naraz korzystać tylko jedna karta tej aplikacji. Zamknij tamtą kartę albo rozłącz w niej drukarkę (kliknij przycisk drukarki, potem Rozłącz); wtedy ta karta może się połączyć.",
   helpCalibrationHeading: "Kalibracja",
   helpCalibration1:
     "Jeśli góra albo dół wydruku jest ucięty, zmień przesunięcie w pionie w ustawieniach drukarki: zwiększ je, gdy ucięta jest góra, zmniejsz, gdy dół. Przesunięcie w poziomie przesuwa wydruk w prawo; wartość ujemna w lewo.",

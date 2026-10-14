@@ -35,7 +35,7 @@ export function noticeForOutcome(outcome: PrintOutcome): PrinterNotice | null {
 }
 
 export function noticeHelp(notice: PrinterNotice): HelpSection | null {
-  return notice.kind === "error" ? ERROR_HELP[notice.code] : "phone";
+  return notice.kind === "error" ? ERROR_HELP[notice.code] : "tab";
 }
 
 function noticeText(notice: PrinterNotice): string {

@@ -398,6 +398,7 @@ describe("Printer.print: argument validation", () => {
 
   it("accepts the exported offset limits and rejects past them", async () => {
     expect(OFFSET_LIMITS_MM).toEqual({ x: 8, y: 10 });
+    expect(Object.isFrozen(OFFSET_LIMITS_MM)).toBe(true);
     const { fake, printer } = setup();
     const { x, y } = OFFSET_LIMITS_MM;
     await settled(printer.print(ROWS, { offsetMm: { x: -x, y } }));

@@ -124,7 +124,9 @@ export const messages = {
   helpPhoneHeading: "The phone app and the connection",
   helpPhone1: "A printer connected to a phone does not show up in the list. Close the NIIMBOT app on the phone, or turn the phone's Bluetooth off, then click “Connect printer” again.",
   helpPhone2: "If the printer still does not answer, turn it off and on, keep it near the computer, and check that the lid is closed and the labels are loaded.",
-  helpPhone3: "Only one tab of this app can use the printer at a time.",
+  helpTabHeading: "The printer is in use in another tab",
+  helpTab1:
+    "Only one tab of this app can use the printer at a time. Close the other tab, or disconnect the printer there (click the printer button, then Disconnect); this tab can then connect.",
   helpCalibrationHeading: "Calibration",
   helpCalibration1:
     "If the top or the bottom of the print is cut off, change the vertical offset in the printer settings: raise it if the top is cut, lower it if the bottom is. The horizontal offset moves the print right; a negative value moves it left.",
