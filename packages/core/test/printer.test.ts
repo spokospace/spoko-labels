@@ -7,6 +7,7 @@ import {
   INFO_KEY,
   InvalidArgumentError,
   NoResponseError,
+  OFFSET_LIMITS_MM,
   Printer,
   PrinterBusyError,
   PrintTimeoutError,
@@ -393,6 +394,17 @@ describe("Printer.print: argument validation", () => {
     const { fake, printer } = setup();
     expect(await rejection(printer.print(...args))).toBeInstanceOf(InvalidArgumentError);
     expect(fake.written).toHaveLength(0);
+  });
+
+  it("accepts the exported offset limits and rejects past them", async () => {
+    expect(OFFSET_LIMITS_MM).toEqual({ x: 8, y: 10 });
+    const { fake, printer } = setup();
+    const { x, y } = OFFSET_LIMITS_MM;
+    await settled(printer.print(ROWS, { offsetMm: { x: -x, y } }));
+    await settled(printer.print(ROWS, { offsetMm: { x, y: 0 } }));
+    expect(fake.cmds.filter((c) => c === CMD.PRINT_START)).toHaveLength(2);
+    expect(await rejection(printer.print(ROWS, { offsetMm: { x: x + 0.01 } }))).toBeInstanceOf(InvalidArgumentError);
+    expect(await rejection(printer.print(ROWS, { offsetMm: { y: y + 0.01 } }))).toBeInstanceOf(InvalidArgumentError);
   });
 
   it("accepts the density limits and the maximum copies", async () => {

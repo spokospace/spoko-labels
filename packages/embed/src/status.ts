@@ -79,6 +79,8 @@ export function statusText(state: SessionState, lang: Lang): string {
  * Disconnect. Its own markup lives in a shadow root, so a Livewire morph of the host component cannot wipe it.
  */
 export class SpokoPrinterStatus extends HTMLElement {
+  /** A `lang` change redraws the text; with no `lang`, `<html lang>` is read when attached or on a state change. */
+  static observedAttributes = ["lang"];
   session: PrinterSession = printerSession;
   private readonly button: HTMLButtonElement;
   private readonly label: HTMLSpanElement;
@@ -118,6 +120,11 @@ export class SpokoPrinterStatus extends HTMLElement {
 
   disconnectedCallback(): void {
     this.session.removeEventListener("statechange", this.onState);
+  }
+
+  /** Redraws in the new language; no printer command is sent. */
+  attributeChangedCallback(): void {
+    if (this.isConnected) this.update();
   }
 
   private clicked(): void {

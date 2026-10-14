@@ -37,6 +37,7 @@ button.addEventListener("click", async () => {
 | `printer.info()` | `{ battery?, serial?, firmware? }`. A value the printer does not answer is left out. `battery` is a small level (3 on a B1), not a percentage. `firmware` is formatted as `"5.26"` (the printer reports two bytes, 5 and 26, which is the integer 1306; this is what the official NIIMBOT app shows); the unformatted integer is in `firmwareRaw`. |
 | `printer.readRfid()` | `{ uid, barcode, serial, total, used, type }` for the loaded roll, or `null` when there is no tag. See [Reading the loaded roll](#reading-the-loaded-roll-rfid). Checked on a B1 with a 50×30 roll. |
 | `printer.print(rows, options?)` | Prints one page. Options: `density` (integer within the model's range), `copies` (1 to 255; each copy is a separate print job), `offsetMm` (`{ x, y }` calibration in millimetres, like the official app; the B1 default is 0.5 mm down, see below), `onProgress({ stage, percent })`, `signal` (`AbortSignal`). |
+| `OFFSET_LIMITS_MM` | The calibration `print()` accepts: `offsetMm.x` from `-x` to `x` (8 mm), `offsetMm.y` from 0 to `y` (10 mm). Anything outside rejects with `invalid-argument`. |
 | `printer.disconnect()`, `printer.connected` | Close the link, check the link. |
 | `WebBluetoothTransport` | `isSupported()`, `request(model?)`, `reconnect(model?, { timeoutMs? })`, `deviceName`. |
 | `imageToRows(image, model?)` | RGBA image to 1-bit rows of `headDots / 8` bytes. |
