@@ -1,6 +1,6 @@
 # @spokospace/labels-niimbot
 
-Import label templates designed in the NIIMBOT desktop app into the [`@spokospace/labels-render`](../render/README.md) template format, so existing designs print with spoko-labels. Everything Niimbot-specific lives here: font codes, `C0` column bindings, the app's misspelled keys and its letter-spacing scale. The render format knows nothing about Niimbot.
+Import label templates designed in the NIIMBOT desktop app into the [`@spokospace/labels-render`](../render/README.md) template format, so existing designs print with spoko labels. Everything Niimbot-specific lives here: font codes, `C0` column bindings, the app's misspelled keys and its letter-spacing scale. The render format knows nothing about Niimbot.
 
 > **Status: pre-release (`0.0.0`).** `extractTemplates()`, `importTemplates()`, their output and `niimbotFonts` are protected contracts (see `BACKWARD_COMPATIBILITY.md`). Not published to npm yet.
 

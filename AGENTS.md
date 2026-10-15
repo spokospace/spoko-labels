@@ -1,6 +1,6 @@
 # AGENTS.md
 
-spoko-labels prints labels on NIIMBOT label printers straight from the browser over Web Bluetooth (BLE). It is a pnpm + TypeScript monorepo: a printer protocol library, a label template engine (text, QR, lines; data bound to columns), an importer for templates designed in the NIIMBOT desktop app, an embeddable "print label" dialog for other web apps, and a public web app that loads data from xlsx files or an API. First hardware target: NIIMBOT B1 (203 dpi, 384-dot head, 50×30 mm labels). MIT licensed; code, docs, issues and PRs are in English.
+spoko labels prints labels on NIIMBOT label printers straight from the browser over Web Bluetooth (BLE). It is a pnpm + TypeScript monorepo: a printer protocol library, a label template engine (text, QR, lines; data bound to columns), an importer for templates designed in the NIIMBOT desktop app, an embeddable "print label" dialog for other web apps, and a public web app that loads data from xlsx files or an API. First hardware target: NIIMBOT B1 (203 dpi, 384-dot head, 50×30 mm labels). MIT licensed; code, docs, issues and PRs are in English.
 
 ## Status
 
