@@ -1,14 +1,14 @@
 import { MAX_LABELS } from "@spokospace/labels-embed";
 import type { RenderData } from "@spokospace/labels-render";
 import { loadApi, TIMEOUT_MS, urlToStore, type ApiError, type ApiErrorCode, type ApiResult } from "./data/api.js";
-import { autoMapping, fieldKey, mapInput, templateFields, type Field, type MappedInput, type Mapping } from "./data/mapping.js";
+import { autoMapping, fieldKey, mapInput, renderData, templateFields, type Field, type MappedInput, type Mapping } from "./data/mapping.js";
 import { search, searchIndex } from "./data/search.js";
 import { cell, columnLetter, makeRow, makeTable, MAX_BYTES, MAX_COLUMNS, MAX_ROWS, unionColumns, type DataTable, type Row } from "./data/table.js";
 import { readXlsx, type XlsxErrorCode, type XlsxResult } from "./data/xlsx.js";
-import { el } from "./dom.js";
+import { el, filePicker, statusLine } from "./dom.js";
 import { getLang, t, type Lang, type MessageKey } from "./i18n/index.js";
 import { readStored, STORAGE_KEYS, writeStored } from "./storage.js";
-import type { BuiltinTemplate } from "./templates/builtin.js";
+import { sampleInput, templateName, type AppTemplate } from "./templates/app-template.js";
 
 // The Data panel: the sources (sample rows, an xlsx file, a JSON API), the column pickers, the search and
 // the row table with its selection. Data lives in memory only; nothing the user loads is stored (A7).
@@ -62,7 +62,7 @@ export type Source =
 type Status = { kind: "idle" } | { kind: "loading"; message: MessageKey; cancellable: boolean } | { kind: "error"; text: string };
 
 export interface DataPanelOptions {
-  template: BuiltinTemplate;
+  template: AppTemplate;
   /**
    * Called once per change of what the preview shows or Print prints: "preview" for the source, the picks or
    * the previewed row (the preview redraws), "selection" for a checkbox or "select all shown".
@@ -86,7 +86,7 @@ export interface DataPanel {
   printInput(): MappedInput | null;
   /** Whether printInput() has a row, without mapping anything. */
   hasPrintableRow(): boolean;
-  setTemplate(template: BuiltinTemplate): void;
+  setTemplate(template: AppTemplate): void;
   /** Redraws every text (after a language switch); sample data switches to the new language. */
   refresh(): void;
   /** For tests and Phase 3: the current state. */
@@ -103,7 +103,7 @@ export interface DataPanel {
 }
 
 /** The template's sample rows, in the app's language. */
-function sampleSource(template: BuiltinTemplate): Source {
+function sampleSource(template: AppTemplate): Source {
   const lang = getLang();
   const rows = template.sampleRows[lang];
   return { kind: "sample", table: makeTable(unionColumns(rows), rows, cell), lang };
@@ -156,9 +156,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   urlInput.value = readStored(STORAGE_KEYS.apiUrl) ?? "";
   pathInput.value = readStored(STORAGE_KEYS.apiPath) ?? "";
 
-  const statusLine = el("p", { className: "status" });
-  statusLine.setAttribute("role", "status");
-  statusLine.setAttribute("aria-live", "polite");
+  const statusEl = statusLine();
 
   const body = el("div", { className: "data-body", hidden: true });
   const sourceLine = el("p", { className: "hint source-line" });
@@ -201,23 +199,23 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   const moreButton = el("button", { type: "button", className: "button small", hidden: true });
 
   body.append(sourceBar, mappingBox, searchField, selectionBar, limitLine, tableWrap, moreLine, moreButton);
-  container.append(sources, form, statusLine, body);
+  container.append(sources, form, statusEl, body);
 
   // --- drawing -------------------------------------------------------------------------------------------
 
   function showStatus(): void {
-    statusLine.classList.toggle("loading", status.kind === "loading");
-    statusLine.classList.toggle("error", status.kind === "error");
+    statusEl.classList.toggle("loading", status.kind === "loading");
+    statusEl.classList.toggle("error", status.kind === "error");
     cancelButton.hidden = !(status.kind === "loading" && status.cancellable);
     loadButton.disabled = status.kind === "loading";
-    if (status.kind === "loading") statusLine.textContent = t(status.message);
-    else if (status.kind === "error") statusLine.textContent = status.text;
-    else statusLine.textContent = source ? "" : t("noData");
+    if (status.kind === "loading") statusEl.textContent = t(status.message);
+    else if (status.kind === "error") statusEl.textContent = status.text;
+    else statusEl.textContent = source ? "" : t("noData");
   }
 
   function sourceText(s: Source): string {
     const n = s.table.rows.length;
-    if (s.kind === "sample") return t("sourceSample", { template: t(template.name), n });
+    if (s.kind === "sample") return t("sourceSample", { template: templateName(template), n });
     if (s.kind === "xlsx") return t("sourceFile", { name: s.name, n });
     return t("sourceApi", { url: urlToStore(s.url) ?? s.url, n });
   }
@@ -433,12 +431,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
   // --- events --------------------------------------------------------------------------------------------
 
   sampleButton.addEventListener("click", useSample);
-  fileButton.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files?.[0];
-    fileInput.value = "";
-    if (file) void openFile(file);
-  });
+  filePicker(fileButton, fileInput, (file) => void openFile(file));
   urlButton.addEventListener("click", () => {
     form.hidden = !form.hidden;
     urlButton.setAttribute("aria-expanded", String(!form.hidden));
@@ -521,17 +514,14 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
 
   return {
     previewData(): RenderData {
-      if (!source) return { row: template.sampleRows[getLang()][0] ?? {} };
-      // No row when the search matches none: the template with its fields empty.
+      // Before any data is loaded, the template's sample row; with no row (the search matches none), the
+      // template with its fields empty.
+      if (!source) return renderData(sampleInput(template));
       const row = source.table.rows[previewIndex] ?? makeRow([]);
-      const input = mapInput(fields, mapping, source.table.columns, [row]);
-      return { row: input.rows[0] ?? {}, ...(input.columns && { columns: input.columns }) };
+      return renderData(mapInput(fields, mapping, source.table.columns, [row]));
     },
     printInput(): MappedInput | null {
-      if (!source) {
-        const sample = template.sampleRows[getLang()][0];
-        return sample ? { rows: [sample] } : null;
-      }
+      if (!source) return sampleInput(template);
       const indices = selected.size > 0 ? [...selected].sort((a, b) => a - b) : previewIndex >= 0 ? [previewIndex] : [];
       const { rows: all, columns } = source.table;
       const rows = indices.flatMap((i): Row[] => (all[i] ? [all[i]] : []));
@@ -544,7 +534,7 @@ export function mountDataPanel(container: HTMLElement, options: DataPanelOptions
       if (!source) return t("previewSampleRow");
       return previewIndex < 0 ? t("previewNoRow") : t("previewRowOf", { n: previewIndex + 1, total: source.table.rows.length });
     },
-    setTemplate(next: BuiltinTemplate): void {
+    setTemplate(next: AppTemplate): void {
       template = next;
       fields = templateFields(next.template);
       // Sample data belongs to its template, so it follows the template; other sources stay.

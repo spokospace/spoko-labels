@@ -93,6 +93,13 @@ function item(text: string): HTMLLIElement {
   return li;
 }
 
+/** Puts a rendered label onto a canvas, one canvas pixel per printed dot. */
+export function drawImage(canvas: HTMLCanvasElement, image: RgbaImage): void {
+  canvas.width = image.width;
+  canvas.height = image.height;
+  canvas.getContext("2d")?.putImageData(new ImageData(image.data as Uint8ClampedArray<ArrayBuffer>, image.width, image.height), 0, 0);
+}
+
 /** Shows a preview model. Everything from the template or the data is set as text. */
 export function showPreview(els: PreviewElements, model: PreviewModel | null, data: RenderData): void {
   els.warnings.replaceChildren(...(model?.warnings ?? []).map((w) => item(warningText(w))));
@@ -109,9 +116,7 @@ export function showPreview(els: PreviewElements, model: PreviewModel | null, da
   els.stage.hidden = false;
   els.stage.style.aspectRatio = `${image.width} / ${image.height}`;
   els.stage.style.maxWidth = `${image.width * 2}px`;
-  els.image.width = image.width;
-  els.image.height = image.height;
-  els.image.getContext("2d")?.putImageData(new ImageData(image.data as Uint8ClampedArray<ArrayBuffer>, image.width, image.height), 0, 0);
+  drawImage(els.image, image);
   els.image.setAttribute("aria-label", t("previewAlt", { width: label.size.width, height: label.size.height }));
 
   const scale = DOTS_PER_MM * OVERLAY_PX_PER_DOT;

@@ -189,7 +189,7 @@ apps/web (new)
  │                                    └── labels-core: Printer, WebBluetoothTransport, B1 ── BLE ── B1
  └─ i18n, help, settings, deep links
 ```
-Takeaway: the app is a consumer of the four packages' public entry points. No package changes and no new export are needed; the one value core does not export (the calibration limits) is repeated in the app and pinned by a test.
+Takeaway: the app is a consumer of the four packages' public entry points. No package changes and no new export are needed; the one value core does not export (the calibration limits) is repeated in the app and pinned by a test. (Phase 3 exported the limits from core as `OFFSET_LIMITS_MM` instead; Phase 4 exported `MAX_FILE_BYTES` from `labels-niimbot`, so the app refuses a file over the limit without reading it.)
 
 Layout of `apps/web`:
 - `index.html`, `vite.config.ts`, `package.json` (`@spokospace/labels-web`, `private: true`).

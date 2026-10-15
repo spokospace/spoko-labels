@@ -6,7 +6,7 @@ import { MAX_SELECTED, type DataPanel } from "./data-panel.js";
 import { el } from "./dom.js";
 import { ERROR_HELP, helpButton, type HelpSection } from "./help.js";
 import { errorText, getLang, t, type EmbedCode, type Lang, type MessageKey } from "./i18n/index.js";
-import type { BuiltinTemplate } from "./templates/builtin.js";
+import type { AppTemplate } from "./templates/app-template.js";
 
 // Printing through labels-embed (A2): the Print button, the request it builds, and the banner that links a
 // printer failure to the help. The chip and the dialog (embed's shadow DOM) cannot hold the app's links, so the
@@ -45,7 +45,7 @@ function noticeText(notice: PrinterNotice): string {
 }
 
 /** The request for `printLabels`: the mapped rows, the template, its column order and the calibration. */
-export function buildPrintRequest(template: BuiltinTemplate, input: MappedInput, offsetMm: Offset, lang: Lang = getLang()): PrintRequest {
+export function buildPrintRequest(template: AppTemplate, input: MappedInput, offsetMm: Offset, lang: Lang = getLang()): PrintRequest {
   return { template: template.template, rows: input.rows, ...(input.columns && { columns: input.columns }), offsetMm, lang };
 }
 
@@ -67,7 +67,7 @@ export interface PrintControlsOptions {
   /** Where the printer banner goes. */
   banner: HTMLElement;
   data: Pick<DataPanel, "printInput" | "hasPrintableRow" | "state">;
-  template: () => BuiltinTemplate;
+  template: () => AppTemplate;
   offset: () => Offset;
   openHelp: (section: HelpSection) => void;
   session: SessionLike;

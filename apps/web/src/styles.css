@@ -84,10 +84,29 @@ code { font: .85em ui-monospace, "Cascadia Mono", monospace; overflow-wrap: anyw
 
 .templates { border: 0; margin: 0; padding: 0; }
 #template-list { display: grid; gap: .5rem; }
-.template-option { display: flex; gap: .6rem; align-items: flex-start; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.template-option { display: flex; gap: .6rem; align-items: center; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 8px; }
 .template-option:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.template-option label { display: flex; gap: .6rem; align-items: flex-start; flex: 1; min-width: 0; cursor: pointer; }
 .template-option input { margin-top: .25rem; }
+.template-option span { min-width: 0; flex: 1; }
+.template-option strong, .template-option small { overflow-wrap: anywhere; }
 .template-option small { display: block; color: var(--muted); }
+.template-option .remove { align-self: center; }
+.template-group { margin: .75rem 0 .25rem; }
+.template-broken { display: flex; gap: .6rem; align-items: center; justify-content: space-between; padding: .6rem .75rem; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); }
+.template-actions { margin-top: .75rem; }
+
+/* The NIIMBOT import dialog: the file, then the templates found, each with a thumbnail and its notes. */
+.import-list { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .5rem; }
+.import-item { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: .6rem; align-items: start; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 8px; }
+.import-item:has(input:checked) { border-color: var(--accent); }
+.import-item input { margin-top: .25rem; }
+.import-thumb { width: 8rem; background: #fff; border: 1px solid var(--border); }
+.import-thumb canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.import-item strong, .import-item small { overflow-wrap: anywhere; }
+.import-item small { display: block; color: var(--muted); }
+.import-notes { margin: .25rem 0 0; padding-left: 1.1rem; font-size: .85rem; color: var(--muted); }
+.import-buttons { margin-top: 1rem; }
 
 .field { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .75rem; }
 .field select { padding: .3rem .5rem; max-width: 100%; }
