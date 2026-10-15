@@ -21,8 +21,7 @@ describe("the bundle entry", () => {
     const dialog = document.querySelector("spoko-print-dialog");
     expect(dialog).not.toBeNull();
     // happy-dom has no Bluetooth: the session is unsupported; closing resolves as cancelled.
-    const close = [...(dialog?.shadowRoot?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Close");
-    close?.click();
+    dialog?.shadowRoot?.querySelector<HTMLButtonElement>(".close")?.click();
     expect(await printed).toEqual({ printed: 0, cancelled: true });
   });
 

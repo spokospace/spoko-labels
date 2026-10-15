@@ -54,7 +54,9 @@ const CSS = `${THEME}
     width: min(36rem, calc(100vw - 2rem)); box-sizing: border-box; }
   dialog::backdrop { background: rgb(0 0 0 / .45); }
   @media (max-width: 600px) { dialog { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border-radius: 0; } }
-  h2 { font-size: 1.1rem; margin: 0 0 .75rem; }
+  .head { display: flex; align-items: flex-start; gap: .5rem; margin: 0 0 .75rem; }
+  h2 { font-size: 1.1rem; margin: 0; flex: 1; }
+  .close { flex: none; margin: -.35rem -.6rem 0 0; padding: 0 .5rem; border: 0; background: transparent; font-size: 1.6rem; line-height: 1.3; }
   .stage { background: #fff; border: 1px solid color-mix(in srgb, var(--_fg) 30%, transparent); display: inline-block; max-width: 100%; }
   canvas { display: block; image-rendering: pixelated; max-width: 100%; height: auto; }
   .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
@@ -151,6 +153,7 @@ export class SpokoPrintDialog extends HTMLElement {
   private connectButton!: HTMLButtonElement;
   private printButton!: HTMLButtonElement;
   private cancelButton!: HTMLButtonElement;
+  private closeButton!: HTMLButtonElement;
 
   constructor() {
     super();
@@ -206,7 +209,10 @@ export class SpokoPrintDialog extends HTMLElement {
     this.status.setAttribute("aria-live", "polite");
     this.connectButton = el(doc, "button", { type: "button", className: "primary", textContent: L("connect") });
     this.printButton = el(doc, "button", { type: "button", className: "primary", textContent: L("print") });
-    this.cancelButton = el(doc, "button", { type: "button", textContent: L("close") });
+    this.cancelButton = el(doc, "button", { type: "button", textContent: L("cancel") });
+    // Where a modal is closed: the corner. While a batch prints, Cancel below the progress is the one way out.
+    this.closeButton = el(doc, "button", { type: "button", className: "close", textContent: "×" });
+    this.closeButton.setAttribute("aria-label", L("close"));
     this.hint = el(doc, "p", { className: "hint", textContent: L("chooserHint") });
     this.message = el(doc, "p");
     this.message.setAttribute("aria-live", "polite");
@@ -215,7 +221,7 @@ export class SpokoPrintDialog extends HTMLElement {
       doc,
       "dialog",
       { partName: "dialog" },
-      el(doc, "h2", { textContent: this.request.title ?? L("print") }),
+      el(doc, "div", { className: "head" }, el(doc, "h2", { textContent: this.request.title ?? L("print") }), this.closeButton),
       pager,
       el(doc, "div", { className: "stage" }, this.canvas),
       el(doc, "p", { className: "hint", textContent: L("warnings") }),
@@ -234,12 +240,13 @@ export class SpokoPrintDialog extends HTMLElement {
     // Straight from the click: the chooser needs the user gesture.
     this.connectButton.addEventListener("click", () => void this.session.connect());
     this.printButton.addEventListener("click", () => void this.print());
-    this.cancelButton.addEventListener("click", () => this.cancelOrClose());
+    this.cancelButton.addEventListener("click", () => this.abort?.abort());
+    this.closeButton.addEventListener("click", () => this.close());
     this.densitySelect.addEventListener("change", () => saveDensity(Number(this.densitySelect.value)));
     // Escape: close, but never while printing.
     this.dialog.addEventListener("cancel", (event) => {
       event.preventDefault();
-      if (!this.batch) this.close();
+      this.close();
     });
     // Browsers may still close it (a second Escape cannot always be refused): reopen it while printing, so
     // Cancel and the progress stay reachable; otherwise finish.
@@ -361,11 +368,6 @@ export class SpokoPrintDialog extends HTMLElement {
     this.updateState();
   }
 
-  private cancelOrClose(): void {
-    if (this.abort) this.abort.abort();
-    else this.close();
-  }
-
   private say(text: string, error = false): void {
     this.message.textContent = text;
     this.message.className = error ? "error" : "";
@@ -382,13 +384,20 @@ export class SpokoPrintDialog extends HTMLElement {
     this.hint.hidden = connected || state.kind === "unsupported";
     this.printButton.hidden = !connected;
     this.printButton.disabled = printing || state.kind !== "connected" || !this.fonts || !this.template;
-    this.cancelButton.textContent = t(this.uiLang, printing ? "cancel" : "close");
+    this.cancelButton.hidden = !printing;
+    this.closeButton.disabled = !this.canClose;
     if (state.kind === "disconnected" && state.error && state.error !== "chooser-cancelled" && !printing) {
       this.say(errorText(this.uiLang, state.error), true);
     }
   }
 
+  /** A running batch keeps the dialog open: Cancel ends it, then the dialog can go. */
+  private get canClose(): boolean {
+    return this.batch === null;
+  }
+
   private close(): void {
+    if (!this.canClose) return;
     if (this.dialog.open) this.dialog.close();
     this.finish();
   }
