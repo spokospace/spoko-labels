@@ -1,9 +1,9 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="art/cover-dark.jpg">
-  <img alt="spoko-labels: print labels on NIIMBOT printers straight from the browser over Web Bluetooth" src="art/cover-light.jpg">
+  <img alt="spoko labels: print labels on NIIMBOT printers straight from the browser over Web Bluetooth" src="art/cover-light.jpg">
 </picture>
 
-# spoko-labels
+# spoko labels
 
 Print labels on NIIMBOT label printers straight from the browser — no driver, no desktop app, no phone. Over Web Bluetooth.
 
