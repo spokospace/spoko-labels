@@ -36,8 +36,13 @@
       <h2 id="templates-heading" data-i18n="templatesHeading"></h2>
       <fieldset class="templates">
         <legend class="visually-hidden" data-i18n="templateListLabel"></legend>
+        <!-- main.ts lists the built-in templates, then the ones imported from the NIIMBOT app. -->
         <div id="template-list"></div>
       </fieldset>
+      <div class="template-actions sources">
+        <button type="button" id="import-button" class="button" data-i18n="importNiimbot"></button>
+      </div>
+      <p id="templates-notice" class="hint" role="status" hidden></p>
     </section>
 
     <section class="panel preview" aria-labelledby="preview-heading">

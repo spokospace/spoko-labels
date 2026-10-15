@@ -1,17 +1,22 @@
 import "./styles.css";
 import { defineElements, printerSession } from "@spokospace/labels-embed";
-import { browserEnvironment, bundledFonts, loadFonts, type FontRegistry } from "@spokospace/labels-render";
+import { browserEnvironment, loadFonts, type FontRegistry } from "@spokospace/labels-render";
 import { browserIssues, showBanners } from "./browser.js";
 import { mountDataPanel } from "./data-panel.js";
+import { el } from "./dom.js";
+import { ALL_FONTS, BASE_FONTS } from "./fonts.js";
 import { mountHelpPanel, type HelpSection } from "./help.js";
 import { applyTranslations, getLang, initLang, LANGS, onLangChange, setLang, t, type Lang } from "./i18n/index.js";
+import { mountImportPanel } from "./niimbot-import.js";
 import { buildPreview, showPreview, type PreviewElements } from "./preview.js";
 import { mountChip, mountPrintControls, type PrintControls } from "./printing.js";
 import { mountSettingsPanel } from "./settings-panel.js";
-import { BUILTIN_TEMPLATES, builtinTemplate, DEFAULT_TEMPLATE_ID, type BuiltinTemplate } from "./templates/builtin.js";
+import { templateName, templateSizeText, type AppTemplate } from "./templates/app-template.js";
+import { BUILTIN_TEMPLATES, builtinTemplate, DEFAULT_TEMPLATE_ID } from "./templates/builtin.js";
+import { templateStore, type BrokenTemplate, type StoredTemplate } from "./templates/imported.js";
 
-// Start-up and wiring: the language, the browser banners, the built-in templates, the preview, the data, and the
-// printer (embed's chip and print dialog, the settings and the help).
+// Start-up and wiring: the language, the browser banners, the templates (built-in and imported from the
+// NIIMBOT app), the preview, the data, and the printer (embed's chip and print dialog, the settings and the help).
 
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -22,7 +27,8 @@ function byId<T extends HTMLElement>(id: string): T {
 const environment = browserEnvironment();
 let fonts: FontRegistry | null = null;
 let fontsFailed = false;
-let current: BuiltinTemplate = builtinTemplate(DEFAULT_TEMPLATE_ID) ?? (BUILTIN_TEMPLATES[0] as BuiltinTemplate);
+const imported = templateStore();
+let current: AppTemplate = builtinTemplate(DEFAULT_TEMPLATE_ID) ?? (BUILTIN_TEMPLATES[0] as AppTemplate);
 
 const preview: PreviewElements = {
   stage: byId("stage"),
@@ -34,29 +40,52 @@ const preview: PreviewElements = {
   turned: byId("preview-turned"),
 };
 
+/** A built-in template, or an imported one by its stored id. */
+const findTemplate = (id: string): AppTemplate | undefined => builtinTemplate(id) ?? imported.find(id);
+
+function removeButton(entry: StoredTemplate | BrokenTemplate): HTMLButtonElement {
+  const button = el("button", { type: "button", className: "button small remove" }, "removeTemplate");
+  button.setAttribute("aria-label", t("removeTemplateLabel", { name: entry.name }));
+  button.addEventListener("click", () => removeImported(entry.id));
+  return button;
+}
+
+/** One radio in the list; an imported template gets its import date and Remove. */
+function templateOption(template: AppTemplate, stored?: StoredTemplate): HTMLLabelElement {
+  const option = el("label", { className: "template-option" });
+  const input = el("input", { type: "radio", name: "template", value: template.id, checked: template.id === current.id });
+  input.addEventListener("change", () => selectTemplate(template.id));
+  const text = el("span");
+  text.append(el("strong", { textContent: templateName(template) }), el("small", { textContent: templateSizeText(template.template) }));
+  if (stored) text.append(el("small", { textContent: t("importedOn", { date: stored.importedAt }) }));
+  option.append(input, text);
+  if (stored) option.append(removeButton(stored));
+  return option;
+}
+
+/** A stored template that no longer validates: its name, what is wrong, and Remove. */
+function brokenRow(entry: BrokenTemplate): HTMLElement {
+  const row = el("div", { className: "template-broken" });
+  const text = el("span");
+  text.append(el("strong", { textContent: entry.name }), el("small", { textContent: t("templateBroken") }));
+  row.append(text, removeButton(entry));
+  return row;
+}
+
 function renderTemplateList(): void {
-  const list = byId("template-list");
-  list.replaceChildren(
-    ...BUILTIN_TEMPLATES.map((b) => {
-      const option = document.createElement("label");
-      option.className = "template-option";
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = "template";
-      input.value = b.id;
-      input.checked = b.id === current.id;
-      input.addEventListener("change", () => selectTemplate(b.id));
-      const text = document.createElement("span");
-      const name = document.createElement("strong");
-      name.textContent = t(b.name);
-      const size = document.createElement("small");
-      const { width, height } = b.template.size;
-      size.textContent = t(b.template.printRotation ? "templateSizeTurned" : "templateSize", { width, height });
-      text.append(name, size);
-      option.append(input, text);
-      return option;
-    }),
-  );
+  const nodes: HTMLElement[] = BUILTIN_TEMPLATES.map((b) => templateOption(b));
+  if (imported.templates.length > 0 || imported.broken.length > 0) {
+    nodes.push(el("h3", { className: "template-group" }, "importedHeading"));
+    nodes.push(...imported.templates.flatMap((s) => {
+      const app = imported.find(s.id);
+      return app ? [templateOption(app, s)] : [];
+    }));
+    nodes.push(...imported.broken.map(brokenRow));
+  }
+  byId("template-list").replaceChildren(...nodes);
+  const notice = byId("templates-notice");
+  notice.hidden = imported.saved;
+  notice.textContent = imported.saved ? "" : t("templatesNotSaved");
 }
 
 /** Renders the current template and row; the only place the preview is built. */
@@ -71,16 +100,37 @@ function showFontStatus(): void {
 }
 
 function selectTemplate(id: string): void {
-  current = builtinTemplate(id) ?? current;
+  current = findTemplate(id) ?? current;
   // Redraws the preview through onChange.
+  dataPanel.setTemplate(current);
+}
+
+function addImported(stored: StoredTemplate[]): void {
+  imported.add(stored);
+  loadAllFonts();
+  const first = stored[0];
+  if (first) current = imported.find(first.id) ?? current;
+  renderTemplateList();
+  dataPanel.setTemplate(current);
+}
+
+function removeImported(id: string): void {
+  imported.remove(id);
+  if (current.id === id) current = builtinTemplate(DEFAULT_TEMPLATE_ID) ?? current;
+  renderTemplateList();
   dataPanel.setTemplate(current);
 }
 
 const openHelp = (section?: HelpSection): void => help.open(section);
 const help = mountHelpPanel(document.body, { openSettings: () => settings.open() });
 const settings = mountSettingsPanel(document.body, { openHelp });
+const importPanel = mountImportPanel(document.body, { environment, fonts: () => fonts, onAdd: addImported });
 byId("help-button").addEventListener("click", () => help.open());
 byId("settings-button").addEventListener("click", () => settings.open());
+byId("import-button").addEventListener("click", () => {
+  loadAllFonts();
+  importPanel.open();
+});
 // Created after the data panel, which it reads; the data panel's callback refreshes it.
 let printControls: PrintControls | null = null;
 
@@ -95,6 +145,7 @@ function showLang(lang: Lang): void {
   dataPanel.refresh();
   help.refresh();
   settings.refresh();
+  importPanel.refresh();
   printControls?.translate();
   showFontStatus();
   draw();
@@ -137,15 +188,34 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-lang]")
   });
 }
 
+// --- fonts ---------------------------------------------------------------------------------------------------
+
+/** A registry is in: the preview and the import list draw with it. */
+function fontsLoaded(registry: FontRegistry): void {
+  fonts = registry;
+  showFontStatus();
+  draw();
+  importPanel.refresh();
+}
+
+let allFonts: Promise<void> | null = null;
+
+/**
+ * Loads the NIIMBOT fonts too, once, the first time an imported template can be shown (the import dialog, or
+ * imported templates in the list). The base fonts are cached by the browser, so the second load fetches only
+ * the new files. A failed load is forgotten, so the next call tries again; meanwhile imported templates draw
+ * with the base fonts and a `missing-font` note.
+ */
+function loadAllFonts(): void {
+  allFonts ??= loadFonts(environment, ALL_FONTS).then(fontsLoaded, () => {
+    allFonts = null;
+  });
+}
+
 // The page is usable while the fonts load; the preview appears when they are in.
-loadFonts(environment, bundledFonts).then(
-  (registry) => {
-    fonts = registry;
-  },
-  () => {
-    fontsFailed = true;
-  },
-).finally(() => {
+loadFonts(environment, BASE_FONTS).then(fontsLoaded, () => {
+  fontsFailed = true;
   showFontStatus();
   draw();
 });
+if (imported.templates.length > 0) loadAllFonts();

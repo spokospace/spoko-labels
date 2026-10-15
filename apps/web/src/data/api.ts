@@ -167,7 +167,8 @@ async function readCapped(response: Response, maxBytes: number): Promise<Uint8Ar
   return bytes;
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
+/** A plain object: not null, not an array. */
+export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** A JSON value as cell text: strings as they are, numbers and booleans with `String()`, null as "", the rest as JSON. */

@@ -1,4 +1,4 @@
-import type { Element, NormalizedElement } from "@spokospace/labels-render";
+import type { Element, NormalizedElement, RenderData } from "@spokospace/labels-render";
 import { fold } from "./search.js";
 import { cell, makeRow, type Row } from "./table.js";
 
@@ -98,4 +98,18 @@ export function mapInput(fields: readonly Field[], mapping: Mapping, sourceColum
     rows: rows.map((row) => makeRow(entries.map(({ key, column }) => [key, cell(row, column)]))),
     columns,
   };
+}
+
+type Elements = Parameters<typeof templateFields>[0];
+
+/** Rows whose columns are their own keys (sample rows), mapped onto the template with the automatic picks. */
+export function autoMapInput(template: Elements, rows: readonly Row[]): MappedInput {
+  const fields = templateFields(template);
+  const columns = Object.keys(rows[0] ?? {});
+  return mapInput(fields, autoMapping(fields, columns), columns, rows);
+}
+
+/** What render() gets for the first mapped row: an empty row when there is none. */
+export function renderData(input: MappedInput | null): RenderData {
+  return { row: input?.rows[0] ?? {}, ...(input?.columns && { columns: input.columns }) };
 }

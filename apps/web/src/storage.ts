@@ -9,6 +9,8 @@ export const STORAGE_KEYS = {
   apiPath: "spoko-labels:api-path",
   /** The calibration, `{"x":0,"y":0.5}` in mm (A13). */
   offsetMm: "spoko-labels:offset-mm",
+  /** The templates imported from the NIIMBOT app, a JSON array of `{ id, name, importedAt, template }` (A7). */
+  importedTemplates: "spoko-labels:imported-templates",
 } as const;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;

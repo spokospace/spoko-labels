@@ -54,7 +54,7 @@ How it reads the file:
 - Isar keeps old copies of edited records. Identical copies collapse silently; for copies with different content, the newest timestamp wins.
 - The label size and print rotation come from the template object's fixed-size fields (the app's schema, stored in the same file). When a record does not match that layout, the size comes from the roll name instead.
 - Only what `importTemplates` needs leaves the scanner: the name, the label size, the roll names, the timestamp, the print rotation and, for each element, the keys in What is imported. Element ids, image data and URLs, thumbnails, cloud ids and the data source of bound elements (its id and sheet name) are dropped.
-- `TypeError` for anything other than a `Uint8Array`; `RangeError` above 64 MB (the real file is about 5 MB). No JSON value larger than 256 kB is read.
+- `TypeError` for anything other than a `Uint8Array`; `RangeError` above 64 MB (`MAX_FILE_BYTES`, exported so a page can check a file's size before reading it; the real file is about 5 MB). No JSON value larger than 256 kB is read.
 
 Checked against the layout of NIIMBOT for Windows as of October 2026 (the database written by the app in use then).
 

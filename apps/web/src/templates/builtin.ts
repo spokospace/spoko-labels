@@ -1,18 +1,13 @@
-import type { Shape, Template } from "@spokospace/labels-render";
-import type { Row } from "../data/table.js";
-import type { Lang, MessageKey } from "../i18n/index.js";
+import type { Shape } from "@spokospace/labels-render";
+import type { MessageKey } from "../i18n/index.js";
+import type { AppTemplate } from "./app-template.js";
 
 // Made-up templates for 50 x 30 mm labels, each with made-up sample rows. No real product, person, place or
 // code: names are obviously fictional, postal codes are 00-000 and links go to example.com.
 
-export interface BuiltinTemplate {
-  /** Stable: once deep links ship (`#template=<id>`), an id is not renamed or removed without a deprecation window. */
-  id: string;
+export interface BuiltinTemplate extends AppTemplate {
   /** The name shown in the list, from the i18n dictionary. */
   name: MessageKey;
-  template: Template;
-  /** Rows keyed by the template's bind names, written in each app language. */
-  sampleRows: Readonly<Record<Lang, readonly Row[]>>;
 }
 
 const LABEL = { width: 50, height: 30 };
