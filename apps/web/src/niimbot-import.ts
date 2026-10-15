@@ -28,7 +28,7 @@ const MB = MAX_FILE_BYTES / (1024 * 1024);
 
 export interface ImportPanelOptions {
   environment: RenderEnvironment;
-  /** The fonts for the thumbnails, or null while they load (then the list has no thumbnails). */
+  /** The fonts for the thumbnails: null while none are in (no thumbnails), the base set while the NIIMBOT set loads (redrawn when it is in). */
   fonts: () => FontRegistry | null;
   /** Called with the ticked templates, each with a fresh id and today's date; the caller stores and selects them. */
   onAdd: (templates: StoredTemplate[]) => void;
@@ -80,7 +80,9 @@ export function mountImportPanel(parent: HTMLElement, options: ImportPanelOption
   const statusEl = statusLine();
 
   const results = el("div", { className: "import-results", hidden: true });
+  // Announced when a file's result is in; the status line is empty then.
   const summary = el("p");
+  summary.setAttribute("role", "status");
   const notesHeading = el("h3", {}, "importFileNotes");
   const notesList = el("ul", { className: "warnings" });
   const pick = el("fieldset", { className: "templates" });
@@ -117,16 +119,19 @@ export function mountImportPanel(parent: HTMLElement, options: ImportPanelOption
     return box;
   }
 
-  function candidateItem(candidate: Candidate): HTMLLIElement {
+  function candidateItem(candidate: Candidate, n: number): HTMLLIElement {
     const { imported } = candidate;
-    const label = el("label", { className: "import-item" });
+    const li = el("li", { className: "import-item" });
+    const name = el("strong", { id: `import-name-${n}`, textContent: nameOf(imported) });
+    // The checkbox is named by the template's name alone; the thumbnail and the notes are its siblings.
     const input = el("input", { type: "checkbox", checked: candidate.checked });
+    input.setAttribute("aria-labelledby", name.id);
     input.addEventListener("change", () => {
       candidate.checked = input.checked;
       drawAddButton();
     });
     const text = el("span");
-    text.append(el("strong", { textContent: nameOf(imported) }), el("small", { textContent: templateSizeText(imported.template) }));
+    text.append(name, el("small", { textContent: templateSizeText(imported.template) }));
     // One line per distinct note: the same approximation on several elements reads once.
     const notes = [...new Set(imported.warnings.map((w) => importWarningText(w)))];
     if (notes.length > 0) {
@@ -134,9 +139,7 @@ export function mountImportPanel(parent: HTMLElement, options: ImportPanelOption
       notesList.append(...notes.map((note) => el("li", { textContent: note })));
       text.append(notesList);
     }
-    label.append(input, thumbnail(imported), text);
-    const li = el("li");
-    li.append(label);
+    li.append(input, thumbnail(imported), text);
     return li;
   }
 
@@ -187,9 +190,17 @@ export function mountImportPanel(parent: HTMLElement, options: ImportPanelOption
   async function readFile(file: Blob): Promise<void> {
     if (file.size > MAX_FILE_BYTES) return show({ kind: "error", text: t("importTooLarge", { limit: MB }) });
     show({ kind: "reading" });
+    let bytes: Uint8Array;
+    try {
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } catch {
+      return show({ kind: "error", text: t("importReadFailed") });
+    }
+    // Closed while reading: nothing is drawn into the closed dialog.
+    if (!dialog.open) return;
     let extracted: ExtractResult;
     try {
-      extracted = (options.extract ?? extractTemplates)(new Uint8Array(await file.arrayBuffer()));
+      extracted = (options.extract ?? extractTemplates)(bytes);
     } catch {
       return show({ kind: "error", text: t("importReadFailed") });
     }

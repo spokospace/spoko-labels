@@ -79,10 +79,10 @@ export function writeImported(templates: readonly StoredTemplate[]): boolean {
 }
 
 /**
- * One sample row per language for a template without sample data of its own: each named field holds its own
- * name, and each column a positional field reads ("Column C") holds its name too, so the preview shows which
- * field goes where. The columns before the last bound one are present and empty, so "Use sample data" lines
- * the positions up the way a sheet would.
+ * One sample row per language for a template without sample data of its own: each column a positional field
+ * reads ("Column C") holds its name, and each named field its own name, so the preview shows which field goes
+ * where. The columns before the last bound one are present and empty, and come first, so "Use sample data"
+ * lines the positions up the way a sheet would.
  */
 export function sampleRowsFor(template: Template): Readonly<Record<Lang, readonly Row[]>> {
   const fields = templateFields(template);
@@ -90,11 +90,11 @@ export function sampleRowsFor(template: Template): Readonly<Record<Lang, readonl
   const width = positions.length > 0 ? Math.max(...positions) + 1 : 0;
   const rowFor = (lang: Lang): Row =>
     makeRow([
-      ...fields.flatMap((f): [string, string][] => (f.kind === "name" ? [[f.name, f.name]] : [])),
       ...Array.from({ length: width }, (_, i): [string, string] => {
         const column = t("xlsxColumn", { letter: columnLetter(i) }, lang);
         return [column, positions.includes(i) ? column : ""];
       }),
+      ...fields.flatMap((f): [string, string][] => (f.kind === "name" ? [[f.name, f.name]] : [])),
     ]);
   const rows = {} as Record<Lang, readonly Row[]>;
   for (const lang of LANGS) rows[lang] = [rowFor(lang)];

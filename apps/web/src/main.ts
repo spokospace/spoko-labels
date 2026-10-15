@@ -50,15 +50,17 @@ function removeButton(entry: StoredTemplate | BrokenTemplate): HTMLButtonElement
   return button;
 }
 
-/** One radio in the list; an imported template gets its import date and Remove. */
-function templateOption(template: AppTemplate, stored?: StoredTemplate): HTMLLabelElement {
-  const option = el("label", { className: "template-option" });
+/** One radio in the list; an imported template gets its import date and Remove (outside the label, so the radio's name stays the template's). */
+function templateOption(template: AppTemplate, stored?: StoredTemplate): HTMLElement {
+  const option = el("div", { className: "template-option" });
+  const label = el("label");
   const input = el("input", { type: "radio", name: "template", value: template.id, checked: template.id === current.id });
   input.addEventListener("change", () => selectTemplate(template.id));
   const text = el("span");
   text.append(el("strong", { textContent: templateName(template) }), el("small", { textContent: templateSizeText(template.template) }));
   if (stored) text.append(el("small", { textContent: t("importedOn", { date: stored.importedAt }) }));
-  option.append(input, text);
+  label.append(input, text);
+  option.append(label);
   if (stored) option.append(removeButton(stored));
   return option;
 }
@@ -116,9 +118,12 @@ function addImported(stored: StoredTemplate[]): void {
 
 function removeImported(id: string): void {
   imported.remove(id);
+  const was = current;
   if (current.id === id) current = builtinTemplate(DEFAULT_TEMPLATE_ID) ?? current;
   renderTemplateList();
-  dataPanel.setTemplate(current);
+  // The Remove button is gone with the list; the data (picks, selection) stays unless the template changed.
+  byId("import-button").focus();
+  if (current !== was) dataPanel.setTemplate(current);
 }
 
 const openHelp = (section?: HelpSection): void => help.open(section);
@@ -193,29 +198,35 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-lang]")
 /** A registry is in: the preview and the import list draw with it. */
 function fontsLoaded(registry: FontRegistry): void {
   fonts = registry;
+  fontsFailed = false;
   showFontStatus();
   draw();
   importPanel.refresh();
+}
+
+/** A load failed: "fonts failed" only while no registry is in at all. */
+function fontsNotLoaded(): void {
+  fontsFailed = fonts === null;
+  showFontStatus();
+  draw();
 }
 
 let allFonts: Promise<void> | null = null;
 
 /**
  * Loads the NIIMBOT fonts too, once, the first time an imported template can be shown (the import dialog, or
- * imported templates in the list). The base fonts are cached by the browser, so the second load fetches only
- * the new files. A failed load is forgotten, so the next call tries again; meanwhile imported templates draw
- * with the base fonts and a `missing-font` note.
+ * imported templates in the list). The base fonts are cached by the browser, so this load fetches only the new
+ * files. A failed load is forgotten, so the next call tries again; meanwhile imported templates draw with the
+ * base fonts and a `missing-font` note.
  */
 function loadAllFonts(): void {
   allFonts ??= loadFonts(environment, ALL_FONTS).then(fontsLoaded, () => {
     allFonts = null;
+    fontsNotLoaded();
   });
 }
 
-// The page is usable while the fonts load; the preview appears when they are in.
-loadFonts(environment, BASE_FONTS).then(fontsLoaded, () => {
-  fontsFailed = true;
-  showFontStatus();
-  draw();
-});
+// The page is usable while the fonts load; the preview appears when they are in. With imported templates
+// stored, the full set is loaded at once: one load, so the base set can never replace the full one.
 if (imported.templates.length > 0) loadAllFonts();
+else loadFonts(environment, BASE_FONTS).then((registry) => fonts ?? fontsLoaded(registry), fontsNotLoaded);

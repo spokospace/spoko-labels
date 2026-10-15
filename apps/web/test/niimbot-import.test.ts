@@ -148,6 +148,7 @@ describe("the NIIMBOT import panel", () => {
   it("reads a file through the extractor, and words a file the browser cannot read", async () => {
     const extract = vi.fn<(bytes: Uint8Array) => ExtractResult>(() => extracted([crate]));
     const panel = mount({ extract });
+    panel.open();
     await panel.readFile(new Blob([new Uint8Array([1, 2, 3])]));
     expect(extract).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]));
     expect(items()).toHaveLength(1);
@@ -156,6 +157,18 @@ describe("the NIIMBOT import panel", () => {
     await panel.readFile(locked);
     expect(status()).toContain("Close the NIIMBOT app and try again");
     expect(items()).toHaveLength(0);
+  });
+
+  it("draws nothing into a dialog closed while the file was being read", async () => {
+    const extract = vi.fn<(bytes: Uint8Array) => ExtractResult>(() => extracted([crate]));
+    const panel = mount({ extract });
+    panel.open();
+    const reading = panel.readFile(new Blob([new Uint8Array([1])]));
+    panel.close();
+    await reading;
+    expect(extract).not.toHaveBeenCalled();
+    expect(items()).toHaveLength(0);
+    expect(status()).toBe("");
   });
 
   it("redraws its text in the other language", () => {
