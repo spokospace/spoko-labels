@@ -38,8 +38,14 @@ const rows = [{ Name: "Blue crate" }, { Name: "Red crate" }];
 const dialogOf = () => document.querySelector("spoko-print-dialog")?.shadowRoot as ShadowRoot;
 const button = (text: string) =>
   [...dialogOf().querySelectorAll("button")].find((b) => b.textContent === text) as HTMLButtonElement | undefined;
+const closeButton = () => dialogOf().querySelector<HTMLButtonElement>(".close");
 const until = async (check: () => boolean) => {
   for (let i = 0; i < 400 && !check(); i++) await delay(5);
+};
+/** The corner ×, once a batch has let it go. */
+const closeDialog = async () => {
+  await until(() => closeButton()?.disabled === false);
+  closeButton()?.click();
 };
 const ready = () => until(() => button("Print")?.disabled === false);
 
@@ -67,7 +73,7 @@ describe("printLabels: host bugs", () => {
     const { session } = await connected();
     const first = printLabels({ template, rows }, session);
     await expect(printLabels({ template, rows }, session)).rejects.toThrow(TypeError);
-    button("Close")?.click();
+    closeButton()?.click();
     await first;
   });
 });
@@ -83,7 +89,7 @@ describe("printLabels: the dialog", () => {
     button("Print")?.click();
     await until(() => dialogOf().textContent?.includes("Labels printed: 4.") ?? false);
     expect(prints()).toBe(4);
-    button("Close")?.click();
+    closeButton()?.click();
     expect(await outcome).toEqual<PrintOutcome>({ printed: 4, cancelled: false });
   });
 
@@ -94,12 +100,12 @@ describe("printLabels: the dialog", () => {
     const select = dialogOf().querySelector("select") as HTMLSelectElement;
     select.value = "5";
     select.dispatchEvent(new Event("change"));
-    button("Close")?.click();
+    closeButton()?.click();
     await outcome;
     const again = printLabels({ template, rows: [rows[0]!] }, session);
     await ready();
     expect((dialogOf().querySelector("select") as HTMLSelectElement).value).toBe("5");
-    button("Close")?.click();
+    closeButton()?.click();
     await again;
   });
 
@@ -107,7 +113,7 @@ describe("printLabels: the dialog", () => {
     const { session } = await connected();
     const outcome = printLabels({ template, rows }, session);
     await ready();
-    button("Close")?.click();
+    closeButton()?.click();
     expect(await outcome).toEqual({ printed: 0, cancelled: true });
   });
 
@@ -116,7 +122,7 @@ describe("printLabels: the dialog", () => {
     const outcome = printLabels({ template: { version: 1, size: { width: 50 }, elements: [] }, rows }, session);
     await until(() => dialogOf().textContent?.includes("The template is not valid") ?? false);
     expect(button("Print")?.disabled).toBe(true);
-    button("Close")?.click();
+    closeButton()?.click();
     expect(await outcome).toEqual({ printed: 0, cancelled: false, error: { code: "template", row: 0 } });
   });
 
@@ -130,7 +136,7 @@ describe("printLabels: the dialog", () => {
     button("Connect printer")?.click();
     expect(request).toHaveBeenCalledTimes(1);
     await ready();
-    button("Close")?.click();
+    closeButton()?.click();
     await outcome;
   });
 
@@ -153,8 +159,7 @@ describe("printLabels: the dialog", () => {
     dialog.close();
     await delay(1);
     expect(dialog.open).toBe(true);
-    await until(() => button("Close") !== undefined);
-    button("Close")?.click();
+    await closeDialog();
     expect(await outcome).toEqual({ printed: 2, cancelled: false });
   });
 
@@ -166,9 +171,26 @@ describe("printLabels: the dialog", () => {
     document.querySelector("spoko-print-dialog")?.remove();
     const second = printLabels({ template, rows: [rows[0]!] }, session);
     expect(await first).toEqual({ printed: 2, cancelled: false });
-    await until(() => button("Close") !== undefined);
-    button("Close")?.click();
+    await closeDialog();
     expect(await second).toEqual({ printed: 0, cancelled: true });
+  });
+
+  it("closes from the corner, and only Cancel is left while a batch prints", async () => {
+    const { session } = await connected();
+    const outcome = printLabels({ template, rows }, session);
+    await ready();
+    expect(closeButton()?.disabled).toBe(false);
+    expect(button("Cancel")?.hidden).toBe(true);
+    button("Print")?.click();
+    expect(closeButton()?.disabled).toBe(true);
+    expect(button("Cancel")?.hidden).toBe(false);
+    closeButton()?.click();
+    expect(dialogOf().querySelector("dialog")?.open).toBe(true);
+    button("Cancel")?.click();
+    await until(() => closeButton()?.disabled === false);
+    expect(button("Cancel")?.hidden).toBe(true);
+    closeButton()?.click();
+    expect(await outcome).toEqual({ printed: 0, cancelled: true });
   });
 
   it("does not close on Escape while printing", async () => {
@@ -179,8 +201,7 @@ describe("printLabels: the dialog", () => {
     const dialog = dialogOf().querySelector("dialog") as HTMLDialogElement;
     dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
     expect(dialog.open).toBe(true);
-    await until(() => button("Close") !== undefined);
-    button("Close")?.click();
+    await closeDialog();
     await outcome;
   });
 });
