@@ -51,14 +51,16 @@ const clampCopies = (value: number): number => Math.min(Math.max(Math.trunc(valu
 
 const CSS = `${THEME}
   dialog { border: 0; border-radius: var(--_radius); padding: .5rem 1.25rem 1rem; background: var(--_bg); color: var(--_fg);
-    width: min(36rem, calc(100vw - 2rem)); box-sizing: border-box; }
+    width: min(36rem, calc(100vw - 2rem)); box-sizing: border-box; overflow: auto; }
+  dialog:focus-visible { outline: none; }
   dialog::backdrop { background: rgb(0 0 0 / .45); }
   @media (max-width: 600px) { dialog { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border-radius: 0; } }
   /* The corner ×, kept in view while a tall dialog scrolls, on the dialog's colour so it reads over the label.
      It is a block at the top of the flow, and the heading is pulled up to sit centred beside it. */
-  .close { display: block; position: sticky; top: 0; width: 2.75rem; height: 2.75rem; margin: 0 -.75rem 0 auto; padding: 0;
+  .close { display: block; position: sticky; top: .5rem; width: 2.75rem; height: 2.75rem; margin: 0 -.75rem 0 auto; padding: 0;
     border: 0; border-radius: 50%; background: var(--_bg); font-size: 1.6rem; line-height: 1; }
-  h2 { display: flex; align-items: center; min-height: 2.75rem; font-size: 1.1rem; margin: -2.75rem 0 .5rem; padding-right: 2.5rem; }
+  h2 { display: flex; align-items: center; min-height: 2.75rem; font-size: 1.1rem; margin: -2.75rem 0 .5rem; padding-right: 2.5rem;
+    overflow-wrap: anywhere; }
   .stage { background: #fff; border: 1px solid color-mix(in srgb, var(--_fg) 30%, transparent); display: inline-block; max-width: 100%; }
   canvas { display: block; image-rendering: pixelated; max-width: 100%; height: auto; }
   .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
@@ -225,7 +227,7 @@ export class SpokoPrintDialog extends HTMLElement {
       "dialog",
       { partName: "dialog" },
       this.closeButton,
-      el(doc, "h2", { textContent: this.request.title ?? L("print") }),
+      el(doc, "h2", { id: "title", textContent: this.request.title ?? L("print") }),
       pager,
       el(doc, "div", { className: "stage" }, this.canvas),
       el(doc, "p", { className: "hint", textContent: L("warnings") }),
@@ -240,6 +242,7 @@ export class SpokoPrintDialog extends HTMLElement {
     // Focus starts on the dialog itself, not on the first button (the ×): Enter right after Print must not
     // close what just opened.
     this.dialog.tabIndex = -1;
+    this.dialog.setAttribute("aria-labelledby", "title");
     this.root.append(this.dialog);
 
     prev.addEventListener("click", () => this.go(-1));
@@ -259,7 +262,10 @@ export class SpokoPrintDialog extends HTMLElement {
     // Cancel and the progress stay reachable; otherwise finish.
     this.dialog.addEventListener("close", () => {
       if (!this.batch) this.finish();
-      else if (this.isConnected) this.dialog.showModal();
+      else if (this.isConnected) {
+        this.dialog.showModal();
+        this.cancelButton.focus();
+      }
       // Removed mid-batch: disconnectedCallback resolves when the batch ends.
     });
   }
@@ -382,7 +388,7 @@ export class SpokoPrintDialog extends HTMLElement {
 
   private updateState(): void {
     const state = this.session.state;
-    const printing = this.batch !== null;
+    const printing = !this.canClose;
     const connected = state.kind === "connected" || state.kind === "printing";
     this.status.textContent =
       state.kind === "printing" ? t(this.uiLang, "progress", { done: state.done, total: state.total }) : statusText(state, this.uiLang);
@@ -395,7 +401,8 @@ export class SpokoPrintDialog extends HTMLElement {
     this.closeButton.disabled = !this.canClose;
     // A control that just went hidden or disabled under the keyboard (Print once pressed, Cancel once the batch
     // ends, Connect once connected) would drop focus to the page: move it to the one action that is left.
-    const active = this.isConnected ? this.root.activeElement : null;
+    // Not while the chooser is up: Connect comes back enabled when it is dismissed, and should keep focus.
+    const active = this.isConnected && state.kind !== "connecting" ? this.root.activeElement : null;
     if (active instanceof HTMLButtonElement && (active.hidden || active.disabled)) {
       (printing ? this.cancelButton : this.closeButton).focus();
     }
@@ -404,9 +411,10 @@ export class SpokoPrintDialog extends HTMLElement {
     }
   }
 
-  /** A running batch keeps the dialog open: Cancel ends it, then the dialog can go. */
+  /** A running batch keeps the dialog open: Cancel ends it, then the dialog can go. `abort` is set before
+   * the batch starts (whose first state change arrives before `batch` is assigned) and cleared with it. */
   private get canClose(): boolean {
-    return this.batch === null;
+    return this.abort === null;
   }
 
   private close(): void {

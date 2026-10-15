@@ -187,6 +187,7 @@ describe("printLabels: the dialog", () => {
     expect(closeButton()?.disabled).toBe(true);
     expect(button("Cancel")?.hidden).toBe(false);
     expect(dialogOf().activeElement).toBe(button("Cancel"));
+    // Nothing awaited since Print: the fake printer ignores the signal, so the abort must land before label 1.
     closeButton()?.click();
     expect(dialogOf().querySelector("dialog")?.open).toBe(true);
     button("Cancel")?.click();
