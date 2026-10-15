@@ -50,13 +50,15 @@ const ZOOM = 2;
 const clampCopies = (value: number): number => Math.min(Math.max(Math.trunc(value) || 1, 1), MAX_COPIES);
 
 const CSS = `${THEME}
-  dialog { border: 0; border-radius: var(--_radius); padding: 1rem 1.25rem; background: var(--_bg); color: var(--_fg);
+  dialog { border: 0; border-radius: var(--_radius); padding: .5rem 1.25rem 1rem; background: var(--_bg); color: var(--_fg);
     width: min(36rem, calc(100vw - 2rem)); box-sizing: border-box; }
   dialog::backdrop { background: rgb(0 0 0 / .45); }
   @media (max-width: 600px) { dialog { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border-radius: 0; } }
-  .head { display: flex; align-items: flex-start; gap: .5rem; margin: 0 0 .75rem; }
-  h2 { font-size: 1.1rem; margin: 0; flex: 1; }
-  .close { flex: none; margin: -.35rem -.6rem 0 0; padding: 0 .5rem; border: 0; background: transparent; font-size: 1.6rem; line-height: 1.3; }
+  /* The corner ×, kept in view while a tall dialog scrolls, on the dialog's colour so it reads over the label.
+     It is a block at the top of the flow, and the heading is pulled up to sit centred beside it. */
+  .close { display: block; position: sticky; top: 0; width: 2.75rem; height: 2.75rem; margin: 0 -.75rem 0 auto; padding: 0;
+    border: 0; border-radius: 50%; background: var(--_bg); font-size: 1.6rem; line-height: 1; }
+  h2 { display: flex; align-items: center; min-height: 2.75rem; font-size: 1.1rem; margin: -2.75rem 0 .5rem; padding-right: 2.5rem; }
   .stage { background: #fff; border: 1px solid color-mix(in srgb, var(--_fg) 30%, transparent); display: inline-block; max-width: 100%; }
   canvas { display: block; image-rendering: pixelated; max-width: 100%; height: auto; }
   .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .6rem 0; }
@@ -170,6 +172,7 @@ export class SpokoPrintDialog extends HTMLElement {
     this.session.addEventListener("statechange", this.onState);
     this.session.addEventListener("navigationblocked", this.onBlocked);
     this.dialog.showModal();
+    this.dialog.focus();
     this.updateState();
     void this.prepare();
     return new Promise((resolve) => {
@@ -221,7 +224,8 @@ export class SpokoPrintDialog extends HTMLElement {
       doc,
       "dialog",
       { partName: "dialog" },
-      el(doc, "div", { className: "head" }, el(doc, "h2", { textContent: this.request.title ?? L("print") }), this.closeButton),
+      this.closeButton,
+      el(doc, "h2", { textContent: this.request.title ?? L("print") }),
       pager,
       el(doc, "div", { className: "stage" }, this.canvas),
       el(doc, "p", { className: "hint", textContent: L("warnings") }),
@@ -233,6 +237,9 @@ export class SpokoPrintDialog extends HTMLElement {
       el(doc, "div", { className: "row" }, this.connectButton, this.printButton, this.cancelButton),
       el(doc, "p", { className: "notice", textContent: L("harmonyNotice") }),
     );
+    // Focus starts on the dialog itself, not on the first button (the ×): Enter right after Print must not
+    // close what just opened.
+    this.dialog.tabIndex = -1;
     this.root.append(this.dialog);
 
     prev.addEventListener("click", () => this.go(-1));
@@ -386,6 +393,12 @@ export class SpokoPrintDialog extends HTMLElement {
     this.printButton.disabled = printing || state.kind !== "connected" || !this.fonts || !this.template;
     this.cancelButton.hidden = !printing;
     this.closeButton.disabled = !this.canClose;
+    // A control that just went hidden or disabled under the keyboard (Print once pressed, Cancel once the batch
+    // ends, Connect once connected) would drop focus to the page: move it to the one action that is left.
+    const active = this.isConnected ? this.root.activeElement : null;
+    if (active instanceof HTMLButtonElement && (active.hidden || active.disabled)) {
+      (printing ? this.cancelButton : this.closeButton).focus();
+    }
     if (state.kind === "disconnected" && state.error && state.error !== "chooser-cancelled" && !printing) {
       this.say(errorText(this.uiLang, state.error), true);
     }

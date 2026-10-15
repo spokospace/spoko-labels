@@ -48,7 +48,7 @@ printLabels({
 }): Promise<{ printed: number; cancelled: boolean; error?: { code: string; row: number } }>
 ```
 
-The dialog shows each row's label at exact dots (with arrows when there are several rows), the notes about it, copies and density, Connect when the printer is not connected, then Print, progress and Cancel. It resolves when the user closes it, with the × in its corner or Escape (neither works while a batch prints; Cancel does):
+The dialog shows each row's label at exact dots (with arrows when there are several rows), the notes about it, copies and density, Connect when the printer is not connected, then Print, progress and Cancel. It resolves when the user closes it, with the × in its corner or Escape (neither works while a batch prints; Cancel stops the batch first):
 - `printed` counts labels, copies included.
 - `cancelled` is true when the user closed the dialog without printing or cancelled a batch.
 - `error` names the first label that failed (`row` is 0-based) and why (a `labels-core` error code, `"template"` or `"render"`).

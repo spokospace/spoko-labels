@@ -181,15 +181,27 @@ describe("printLabels: the dialog", () => {
     await ready();
     expect(closeButton()?.disabled).toBe(false);
     expect(button("Cancel")?.hidden).toBe(true);
+    expect(dialogOf().activeElement).toBe(dialogOf().querySelector("dialog"));
+    button("Print")?.focus();
     button("Print")?.click();
     expect(closeButton()?.disabled).toBe(true);
     expect(button("Cancel")?.hidden).toBe(false);
+    expect(dialogOf().activeElement).toBe(button("Cancel"));
     closeButton()?.click();
     expect(dialogOf().querySelector("dialog")?.open).toBe(true);
     button("Cancel")?.click();
     await until(() => closeButton()?.disabled === false);
     expect(button("Cancel")?.hidden).toBe(true);
+    expect(dialogOf().activeElement).toBe(closeButton());
     closeButton()?.click();
+    expect(await outcome).toEqual({ printed: 0, cancelled: true });
+  });
+
+  it("closes on Escape while idle", async () => {
+    const { session } = await connected();
+    const outcome = printLabels({ template, rows }, session);
+    await ready();
+    dialogOf().querySelector("dialog")?.dispatchEvent(new Event("cancel", { cancelable: true }));
     expect(await outcome).toEqual({ printed: 0, cancelled: true });
   });
 
