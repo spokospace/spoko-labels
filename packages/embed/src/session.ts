@@ -7,6 +7,7 @@ import {
   type ErrorCode,
   type ImageLike,
   type PrinterModel,
+  type RfidInfo,
   type Transport,
 } from "@spokospace/labels-core";
 
@@ -25,6 +26,8 @@ export type Link = Transport & { readonly deviceName: string };
 export interface PrinterLike {
   readonly connected: boolean;
   info(): Promise<{ battery?: number }>;
+  /** The loaded roll's tag (labels-core's `readRfid`); optional, so a printer without it reads as no tag. */
+  readRfid?(): Promise<RfidInfo | null>;
   print(rows: Uint8Array[], options: { density?: number; copies?: number; offsetMm?: { x: number; y: number }; signal?: AbortSignal }): Promise<void>;
   disconnect(): Promise<void>;
 }
@@ -262,6 +265,21 @@ export class PrinterSession extends EventTarget {
 
   private connectedState(): SessionState {
     return { kind: "connected", name: this.name, ...(this.battery !== undefined && { battery: this.battery }) };
+  }
+
+  /**
+   * The loaded roll's tag, read through the command queue. `null` when disconnected, when no tag is loaded
+   * (third-party rolls), or on any error: a roll that cannot be read is not a reason to stop printing.
+   */
+  async readRoll(): Promise<RfidInfo | null> {
+    const printer = this.printer;
+    if (!printer?.readRfid || this.current.kind !== "connected") return null;
+    try {
+      const roll = await this.run(() => printer.readRfid?.() ?? Promise.resolve(null));
+      return this.printer === printer ? roll : null;
+    } catch {
+      return null;
+    }
   }
 
   private async refreshBattery(): Promise<void> {
