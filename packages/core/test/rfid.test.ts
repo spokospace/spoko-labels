@@ -20,7 +20,45 @@ function tagReply(info: RfidInfo, uidBytes: number[]): Uint8Array {
 }
 
 describe("parseRfid", () => {
-  it("reads a reply laid out as a B1 sent it for a 50x30 roll, ignoring the trailing bytes", () => {
+  it("reads a reply laid out as a B1 sent it for a 50x80 roll, with the nominal label count", () => {
+    // Counts from the hardware check (October 2026, #7): total 114, used 5 after one print, type 1, then
+    // 00 5f (95, the count in the roll name "T50*80-95white") and 8 more bytes. Identifiers are made up.
+    const enc = new TextEncoder();
+    const body = Uint8Array.from([
+      0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+      8, ...enc.encode("87654321"),
+      16, ...enc.encode("MADEUP0000000002"),
+      0x00, 0x72, 0x00, 0x05, 0x01,
+      0x00, 0x5f, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
+    expect(body.length).toBe(0x31);
+    expect(parseRfid(body)).toEqual({
+      uid: "0411223344556677",
+      barcode: "87654321",
+      serial: "MADEUP0000000002",
+      total: 114,
+      used: 5,
+      type: 1,
+      nominalLabels: 95,
+    });
+  });
+
+  it("leaves nominalLabels out when the reply ends after the type", () => {
+    const uid = [0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+    const info = parseRfid(tagReply({ uid: "", barcode: "B", serial: "S", total: 276, used: 5, type: 1 }, uid));
+    expect(info).not.toBeNull();
+    expect(info && "nominalLabels" in info).toBe(false);
+  });
+
+  it("leaves nominalLabels out when only one of its two bytes is there", () => {
+    const uid = [0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+    const reply = tagReply({ uid: "", barcode: "B", serial: "S", total: 276, used: 5, type: 1 }, uid);
+    const info = parseRfid(Uint8Array.from([...reply, 0x00]));
+    expect(info?.total).toBe(276);
+    expect(info && "nominalLabels" in info).toBe(false);
+  });
+
+  it("reads a reply laid out as a B1 sent it for a 50x30 roll, with the nominal label count", () => {
     // Layout and counts from the hardware check (October 2026); the tag's UID, barcode, serial and the 8
     // trailing bytes were masked in the log, so made-up values of the same lengths stand in for them.
     // The reply had 10 bytes after the type: 00 e6 (230, the count in the roll name "T50*30-230") and 8 more.
@@ -40,6 +78,7 @@ describe("parseRfid", () => {
       total: 276,
       used: 246,
       type: 1,
+      nominalLabels: 230,
     });
   });
 
