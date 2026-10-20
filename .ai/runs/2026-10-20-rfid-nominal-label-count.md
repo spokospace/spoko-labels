@@ -49,14 +49,16 @@ The `GET_RFID` reply trailer, after the length-prefixed barcode and serial: `u16
 
 ## Progress
 
+PR: #52
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: parser and tests
 
-- [ ] 1.1 Read the nominal count in `parseRfid` and document the counters in `RfidInfo`
-- [ ] 1.2 Unit tests for replies with and without the nominal count
+- [x] 1.1 Read the nominal count in `parseRfid` and document the counters in `RfidInfo` — 1b7c5b7
+- [x] 1.2 Unit tests for replies with and without the nominal count — 1b7c5b7
 
 ### Phase 2: docs and hardware-check page
 
-- [ ] 2.1 Correct the core README's RFID section and API row
-- [ ] 2.2 Show the new field in the hardware-check page's log line
+- [x] 2.1 Correct the core README's RFID section and API row — ee00861
+- [x] 2.2 Show the new field in the hardware-check page's log line — 2dda36b
