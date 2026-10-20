@@ -67,7 +67,24 @@ What the fields mean, from the rolls checked so far:
 | `total` | The capacity recorded on the tag. It is **not** the count in the name: on both rolls checked it was 1.2 × `nominalLabels` (276 for 230, 114 for 95). Whether the extra 20% are real labels or a margin is not known, so `total - used` is not a reliable count of the labels left. |
 | `type` | The tag's label category code (1 on both rolls checked). |
 
-The reply carries no width or height. The official app looks the size up from a server by `serial`/`barcode`, so mapping a roll to its size needs a catalogue keyed by `barcode` (tracked in #7).
+The reply carries no width or height. The tag stores them encrypted, and the official apps look the size up in the NIIMBOT cloud by `barcode`, which changes from batch to batch (#7). What a page can tell without a network is which sizes a roll's `nominalLabels` allows:
+
+```ts
+import { matchRoll, printedSize, rollCandidates } from "@spokospace/labels-core";
+
+const roll = await printer.readRfid();
+const label = printedSize(template.size, template.printRotation); // 30 x 50 turned 270 prints as 50 x 30
+const { verdict, candidates } = matchRoll(label, rollCandidates(roll?.nominalLabels));
+// "mismatch": no size sold with this count fits the label, so warn before printing
+```
+
+| Export | What it does |
+|---|---|
+| `rollCandidates(nominalLabels)` | The sizes sold with that label count, from roll names (#7): 95 → 50×80, 120 → 40×60, 150 → 50×50, 230 → 50×30 or 30×30, 320 → 40×20 or 50×20. Empty for an unknown or missing count. |
+| `printedSize(size, printRotation?)` | A design size turned into the size that passes the head (`RollSize`: `widthMm` across the head, `heightMm` along the feed); a quarter turn swaps the sides. |
+| `matchRoll(label, candidates, toleranceMm = 1)` | `match` when every candidate fits, `ambiguous` when only some do, `mismatch` when none does, `unknown` without candidates. |
+
+The table is a guess from names: a count shared by several sizes cannot prove a match, and a roll sold with an unusual count is `unknown`. Treat `mismatch` as a warning, not as a reason to refuse a print. Please report roll names with other counts.
 
 > **Checked on a B1 with genuine 50×30 and 50×80 rolls** (October 2026): one print raised `used` by one and left `total` unchanged, and `nominalLabels` matched the count in each roll's name. The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor, and other roll sizes are not checked yet. The `readRfid()` button on the [hardware check page](#hardware-check-page) reads a roll; please report results for other sizes.
 

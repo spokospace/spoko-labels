@@ -55,6 +55,8 @@ The dialog shows each row's label at exact dots (with arrows when there are seve
 
 Rows print one after another, one print job per label, so a cancel or a failure leaves an exact count. The density last used is remembered in the browser.
 
+**The loaded roll.** When the dialog opens with the printer connected, and again after Connect, it reads the roll's tag (one `GET_RFID` command through the session queue). If the roll's label count rules out the label's printed size (for example a 50 × 30 label on a 95-label, 50 × 80 roll), a warning appears above the buttons: "The loaded roll looks like 50 × 80 mm; this label is 50 × 30 mm." Print stays available. A matching roll, a count shared by several sizes, a roll without a tag (third-party rolls) or a failed read shows nothing. The size comes from `labels-core`'s offline table (`rollCandidates`); nothing is sent anywhere.
+
 `printLabels` rejects only for a bug in the calling code: `TypeError` for a bad request or when a dialog is already open, `RangeError` for 0 or more than 200 rows. A template with errors, a missing column or a printer problem is shown in the dialog instead.
 
 Printing needs no click; connecting does. So you may call `printLabels` after a round trip to your server.
@@ -73,7 +75,7 @@ The result comes back as a `spoko-labels:printed` event on `window` whose `detai
 
 `window.spokoLabels.session` (or `printerSession` from the package) holds the page's one connection:
 - **States.** `state` is one of: `unsupported`, `disconnected`, `busy-elsewhere`, `connecting`, `connected` (`name`, `battery`) and `printing` (`done`, `total`). It fires a `statechange` event when it changes.
-- **Methods.** `connect()` opens the device chooser; call it straight from a click. `disconnect()` closes the connection. `tryReconnect()` reconnects without the chooser, where Chrome allows it (today behind `chrome://flags/#enable-web-bluetooth-new-permissions-backend`).
+- **Methods.** `connect()` opens the device chooser; call it straight from a click. `disconnect()` closes the connection. `readRoll()` reads the loaded roll's tag through the command queue (labels-core's `RfidInfo`), or `null` when disconnected, without a tag, or on any error. `tryReconnect()` reconnects without the chooser, where Chrome allows it (today behind `chrome://flags/#enable-web-bluetooth-new-permissions-backend`).
 - **One tab at a time.** Only one tab of your app holds the printer, through a Web Lock. Other tabs show "Printer in use in another tab" until it lets go.
 - **While printing.**
   - Livewire navigation by link (`wire:navigate`) is refused, and reloading the page asks first, so a batch is not cut off.
