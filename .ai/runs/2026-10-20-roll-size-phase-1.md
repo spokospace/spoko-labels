@@ -37,11 +37,13 @@ Before printing, the embed print dialog reads the loaded roll and warns when its
 
 ## Progress
 
+PR: #54
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: matcher, session and dialog
 
-- [ ] 1.1 roll.ts in labels-core with unit tests
-- [ ] 1.2 readRoll() in the embed session with tests
-- [ ] 1.3 Dialog verdict paragraph with PL + EN strings and tests
-- [ ] 1.4 Docs
+- [x] 1.1 roll.ts in labels-core with unit tests — b03cb15
+- [x] 1.2 readRoll() in the embed session with tests — dc62613
+- [x] 1.3 Dialog verdict paragraph with PL + EN strings and tests — 5d3f896
+- [x] 1.4 Docs — 7fc8b6a
