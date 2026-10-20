@@ -1,6 +1,6 @@
 # Roll size detection and a label-size mismatch warning
 
-> Status: draft (autonomous defaults, see the end). Refs #7, #14, #19.
+> Status: approved design. On 2026-10-20 the maintainer chose to build Phase 1 now and defer the NIIMBOT cloud lookup (A4): the offline table already tells the rolls in use apart (50 × 30 with 230 labels, 50 × 80 with 95). Phases 2–3 stay described and start only when an ambiguous count or an unknown roll makes them worth the risk. Refs #7, #14, #19.
 
 ## 📝 TLDR
 Today a 50 × 30 template prints on a 50 × 80 roll without a word: the label lands shifted or cut, and the user finds out from wasted labels. This spec is about future behavior. Before printing, the print dialog reads the loaded roll, works out its label size and shows a warning when the size does not match the template. The size comes from two sources. The first is an offline table that turns the roll's nominal label count into candidate sizes. The second is an optional lookup in the NIIMBOT cloud, which is what the official apps use. The web app enables the lookup only with the user's consent. No roll identifier is committed to the repository.
@@ -116,15 +116,15 @@ rollLookup?: (barcode: string, signal: AbortSignal) => Promise<RollSize | null>;
   - Embed never calls it.
   - Every failure falls back to the offline table.
   - The client sits in one module that is easy to remove.
-  - Whether to ship it at all is a maintainer decision (A4).
+  - Deferred by the maintainer (A4): nothing in Phase 1 calls it.
 - **Privacy.** Sending `barcode` to a vendor is a new kind of outbound data for this project. It is limited to the code the official app already sends, and only after consent. No other field is sent.
 - **False warnings.** The table maps a count to a size from roll names, a heuristic. Being non-blocking keeps the cost low.
 - **Contracts.** Additive only. Rollback is removing the new exports before the first npm release, or deprecating them after it.
 
 ## 📋 Phasing
 1. **Offline matcher and dialog warning.** `labels-core` `roll.ts` plus the embed dialog. Ships on its own. It covers the 50 × 30 template on a 50 × 80 roll case, for the web app and the garazyn panel alike.
-2. **Cloud lookup.** `labels-niimbot` `lookupCloudRoll` plus `PrintRequest.rollLookup`. Ships without any UI: hosts can opt in. **Gated on A4:** it starts only after the maintainer confirms it. Without confirmation, the spec ends at Phase 1 and the cloud part moves to its own spec.
-3. **Web app opt-in.** The settings toggle, consent text, cache and wiring. Also gated on A4.
+2. **Cloud lookup.** `labels-niimbot` `lookupCloudRoll` plus `PrintRequest.rollLookup`. Ships without any UI: hosts can opt in. **Deferred (A4):** it starts only when the maintainer reopens it.
+3. **Web app opt-in.** The settings toggle, consent text, cache and wiring. Deferred with Phase 2.
 
 ## 📋 Implementation Plan
 ### Phase 1: offline matcher and dialog warning
@@ -146,10 +146,10 @@ rollLookup?: (barcode: string, signal: AbortSignal) => Promise<RollSize | null>;
 ## Resolved assumptions (autonomous defaults)
 | # | Question | Default | Rationale |
 |---|---|---|---|
-| A1 | Split the offline warning and the cloud lookup into two specs? | One spec, three independently shippable phases; Phases 2–3 gated on A4 | They share the matcher and the dialog UI. Phase 1 ships alone, and if A4 is declined, the cloud part splits off at no cost. |
+| A1 | Split the offline warning and the cloud lookup into two specs? | One spec, three independently shippable phases; Phases 2–3 deferred (A4) | They share the matcher and the dialog UI. Phase 1 ships alone. |
 | A2 | Where do the matcher and the table live? | `labels-core` (`roll.ts`) | Core owns `RfidInfo` and printer geometry, and it is pure. Render stays printer-agnostic. |
 | A3 | Does a mismatch block printing? | No, a warning only | The table is a heuristic, and deliberate prints on other rolls must keep working. |
-| A4 | Ship the NIIMBOT cloud lookup at all, and how? | Yes, opt-in, off by default, web app only, behind a host callback | The official apps' own mechanism, reversible and isolated. ⚠ NEEDS HUMAN CONFIRMATION (undocumented third-party API, unclear terms of use, first outbound data of this kind). |
+| A4 | Ship the NIIMBOT cloud lookup at all, and how? | Deferred (chosen by the maintainer). When reopened: opt-in, off by default, web app only, behind a host callback | The offline table covers the rolls in use; the cloud only helps with ambiguous counts (230, 320) and unknown rolls, against an undocumented API with unclear terms. |
 | A5 | Does embed call the cloud itself? | No, only via the host's `rollLookup` | Keeps the documented embed contract that it fetches and sends nothing. |
 | A6 | When is the roll read? | When the dialog opens (connected) and after Connect; no polling | One BLE round trip, and it does not compete with a running batch. |
 | A7 | Match tolerance | 1 mm on each side | Sizes are whole millimetres in roll names and cloud records, and the cloud reports `30.0`-style values. |
