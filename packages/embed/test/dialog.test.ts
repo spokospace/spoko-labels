@@ -231,7 +231,9 @@ describe("printLabels: the loaded roll", () => {
     h.printers[0]!.roll = roll;
     const outcome = printLabels({ template, rows, ...request }, session);
     await until(() => h.printers[0]!.calls.some((c) => c.kind === "rfid"));
-    await delay(20);
+    // The reply lands one tick after the command; wait until the dialog has had it.
+    await until(() => !h.printers[0]!.running);
+    await delay(5);
     return { h, outcome };
   }
 
@@ -306,5 +308,61 @@ describe("printLabels: the loaded roll", () => {
     expect(rollNote()?.textContent).toContain("50 × 80 mm");
     await closeDialog();
     await outcome;
+  });
+});
+
+describe("printLabels: the loaded roll across connections", () => {
+  const tag95 = { uid: "0411223344556677", barcode: "12345678", serial: "MADEUP0000000001", total: 114, used: 5, type: 1, nominalLabels: 95 };
+  const rollNote = () => dialogOf().querySelector<HTMLParagraphElement>(".warning");
+  const rfidCalls = (printer: FakePrinter) => printer.calls.filter((c) => c.kind === "rfid").length;
+
+  it("reads once per connection, even when the battery refresh re-announces the state", async () => {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    h.printers[0]!.roll = tag95;
+    const outcome = printLabels({ template, rows }, session);
+    await until(() => !(rollNote()?.hidden ?? true));
+    await session.refresh();
+    await delay(20);
+    expect(rfidCalls(h.printers[0]!)).toBe(1);
+    await closeDialog();
+    await outcome;
+  });
+
+  it("clears the warning on disconnect and drops a reply that arrives after it", async () => {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    let answer: (() => void) | undefined;
+    h.printers[0]!.roll = () => tag95;
+    const printer = h.printers[0]!;
+    const original = printer.readRfid.bind(printer);
+    printer.readRfid = () => new Promise((resolve) => (answer = () => void original().then(resolve)));
+    const outcome = printLabels({ template, rows }, session);
+    await until(() => answer !== undefined);
+    // disconnect() queues behind the held read: let the read finish, then the disconnect.
+    const disconnecting = session.disconnect();
+    answer?.();
+    await disconnecting;
+    await delay(20);
+    expect(rollNote()?.hidden).toBe(true);
+    await closeDialog();
+    await outcome;
+  });
+
+  it("ignores a reply that arrives after the dialog was removed", async () => {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    let answer: (() => void) | undefined;
+    const printer = h.printers[0]!;
+    printer.readRfid = () => new Promise((resolve) => (answer = () => resolve(tag95)));
+    const outcome = printLabels({ template, rows }, session);
+    await until(() => answer !== undefined);
+    const dialog = document.querySelector("spoko-print-dialog");
+    dialog?.remove();
+    answer?.();
+    expect(await outcome).toMatchObject({ printed: 0 });
   });
 });
