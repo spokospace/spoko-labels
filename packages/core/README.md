@@ -35,7 +35,7 @@ button.addEventListener("click", async () => {
 | `Printer.connect(model?)` | Opens the chooser and returns a connected `Printer`. |
 | `new Printer(transport, model?)` | A printer over any `Transport` (for tests, or another link). |
 | `printer.info()` | `{ battery?, serial?, firmware? }`. A value the printer does not answer is left out. `battery` is a small level (3 on a B1), not a percentage. `firmware` is formatted as `"5.26"` (the printer reports two bytes, 5 and 26, which is the integer 1306; this is what the official NIIMBOT app shows); the unformatted integer is in `firmwareRaw`. |
-| `printer.readRfid()` | `{ uid, barcode, serial, total, used, type }` for the loaded roll, or `null` when there is no tag. See [Reading the loaded roll](#reading-the-loaded-roll-rfid). Checked on a B1 with a 50×30 roll. |
+| `printer.readRfid()` | `{ uid, barcode, serial, total, used, type, nominalLabels? }` for the loaded roll, or `null` when there is no tag. See [Reading the loaded roll](#reading-the-loaded-roll-rfid). Checked on a B1 with 50×30 and 50×80 rolls. |
 | `printer.print(rows, options?)` | Prints one page. Options: `density` (integer within the model's range), `copies` (1 to 255; each copy is a separate print job), `offsetMm` (`{ x, y }` calibration in millimetres, like the official app; the B1 default is 0.5 mm down, see below), `onProgress({ stage, percent })`, `signal` (`AbortSignal`). |
 | `OFFSET_LIMITS_MM` | The calibration `print()` accepts: `offsetMm.x` from `-x` to `x` (8 mm), `offsetMm.y` from 0 to `y` (10 mm). Anything outside rejects with `invalid-argument`. |
 | `printer.disconnect()`, `printer.connected` | Close the link, check the link. |
@@ -55,12 +55,21 @@ A genuine NIIMBOT roll carries an RFID tag; the printer reads it to identify the
 
 ```ts
 const roll = await printer.readRfid();
-if (roll) console.log(`${roll.total - roll.used} of ${roll.total} labels left, type ${roll.type}`);
+if (roll) console.log(`${roll.used} labels printed from a ${roll.nominalLabels ?? "?"}-label roll, type ${roll.type}`);
 ```
 
-Use it to detect which roll is loaded (so the app can pick the matching template) and to show how many labels are left. `total - used` is the remaining count. Dimensions are not always on the tag — the official app looks them up from a server by `serial`/`barcode` — so there are no width/height fields.
+What the fields mean, from the rolls checked so far:
 
-> **Checked on a B1 with a genuine 50×30 roll** (October 2026): `total`, `used` and `type` came back consistent, and `total - used` matched the labels left on the roll. The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor, and other roll sizes are not checked yet. The `readRfid()` button on the [hardware check page](#hardware-check-page) reads a roll; please report results for other sizes.
+| Field | Meaning |
+|---|---|
+| `nominalLabels` | The label count in the roll's name, for example 95 for `T50*80-95white`. Left out when the reply ends before it. Several sizes share a count (50×30 and 30×30 rolls both hold 230), so it does not identify the size. |
+| `used` | Labels printed from this roll; one print adds one. |
+| `total` | The capacity recorded on the tag. It is **not** the count in the name: on both rolls checked it was 1.2 × `nominalLabels` (276 for 230, 114 for 95). Whether the extra 20% are real labels or a margin is not known, so `total - used` is not a reliable count of the labels left. |
+| `type` | The tag's label category code (1 on both rolls checked). |
+
+The reply carries no width or height. The official app looks the size up from a server by `serial`/`barcode`, so mapping a roll to its size needs a catalogue keyed by `barcode` (tracked in #7).
+
+> **Checked on a B1 with genuine 50×30 and 50×80 rolls** (October 2026): one print raised `used` by one and left `total` unchanged, and `nominalLabels` matched the count in each roll's name. The `GET_RFID` command and the reply layout come from community reverse engineering of NIIMBOT printers, not from the vendor, and other roll sizes are not checked yet. The `readRfid()` button on the [hardware check page](#hardware-check-page) reads a roll; please report results for other sizes.
 
 ### Aborting
 

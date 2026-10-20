@@ -228,9 +228,9 @@ $("rfid").addEventListener("click", async () => {
       log("readRfid(): null (no tag, or the printer did not report one)");
     } else {
       // identifiers stay out of the log: only their lengths are shown
-      const { uid, barcode, serial, total, used, type } = roll;
+      const { uid, barcode, serial, total, used, type, nominalLabels } = roll;
       const masked = { uid: `(${uid.length / 2} bytes)`, barcode: `(${barcode.length} chars)`, serial: `(${serial.length} chars)` };
-      log(`readRfid(): ${JSON.stringify({ ...masked, total, used, left: total - used, type })}`);
+      log(`readRfid(): ${JSON.stringify({ ...masked, total, used, left: total - used, type, nominalLabels })}`);
     }
   } catch (error) {
     log(`readRfid() failed: ${describe(error)}`);
