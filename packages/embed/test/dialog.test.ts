@@ -7,7 +7,7 @@ import { nodeEnvironment } from "../../render/test/node-environment.js";
 import { printLabels, type PrintOutcome, type PrintRequest } from "../src/dialog.js";
 import { defineElements } from "../src/index.js";
 import { PrinterSession } from "../src/session.js";
-import { delay, harness } from "./fakes.js";
+import { delay, FakeLink, FakePrinter, harness } from "./fakes.js";
 
 // happy-dom has no 2D canvas or font loading: render through labels-render's Node test environment instead.
 // Under happy-dom, the fonts' import.meta.url URLs are http URLs of the test server: read the files they name
@@ -214,6 +214,96 @@ describe("printLabels: the dialog", () => {
     const dialog = dialogOf().querySelector("dialog") as HTMLDialogElement;
     dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
     expect(dialog.open).toBe(true);
+    await closeDialog();
+    await outcome;
+  });
+});
+
+describe("printLabels: the loaded roll", () => {
+  // Made-up tag values; only `nominalLabels` matters here.
+  const tag = (nominalLabels?: number) => ({ uid: "0411223344556677", barcode: "12345678", serial: "MADEUP0000000001", total: 114, used: 5, type: 1, ...(nominalLabels !== undefined && { nominalLabels }) });
+  const rollNote = () => dialogOf().querySelector<HTMLParagraphElement>(".warning");
+
+  async function withRoll(roll: ReturnType<typeof tag> | null | (() => never), request: Partial<PrintRequest> = {}) {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    h.printers[0]!.roll = roll;
+    const outcome = printLabels({ template, rows, ...request }, session);
+    await until(() => h.printers[0]!.calls.some((c) => c.kind === "rfid"));
+    await delay(20);
+    return { h, outcome };
+  }
+
+  it("warns when a 50x30 label meets a 95-label (50x80) roll, and still prints", async () => {
+    const { h, outcome } = await withRoll(tag(95));
+    await ready();
+    expect(rollNote()?.hidden).toBe(false);
+    expect(rollNote()?.getAttribute("role")).toBe("status");
+    expect(rollNote()?.textContent).toBe("The loaded roll looks like 50 × 80 mm; this label is 50 × 30 mm. Change the roll or the template.");
+    expect(button("Print")?.disabled).toBe(false);
+    button("Print")?.click();
+    await until(() => dialogOf().textContent?.includes("Labels printed: 2.") ?? false);
+    expect(h.printers[0]!.calls.filter((c) => c.kind === "print")).toHaveLength(2);
+    await closeDialog();
+    await outcome;
+  });
+
+  it("says it in Polish", async () => {
+    const { outcome } = await withRoll(tag(95), { lang: "pl" });
+    expect(rollNote()?.textContent).toBe("Włożona rolka wygląda na 50 × 80 mm, a ta etykieta ma 50 × 30 mm. Zmień rolkę albo szablon.");
+    await closeDialog();
+    await outcome;
+  });
+
+  it("lists every size of a shared count that rules the label out", async () => {
+    const { outcome } = await withRoll(tag(320));
+    expect(rollNote()?.textContent).toContain("40 × 20 or 50 × 20 mm");
+    await closeDialog();
+    await outcome;
+  });
+
+  it("stays silent for a matching, ambiguous or unknown roll", async () => {
+    for (const roll of [tag(230), tag(undefined), null, () => { throw new Error("read failed"); }]) {
+      const { outcome } = await withRoll(roll as ReturnType<typeof tag>);
+      expect(rollNote()?.hidden).toBe(true);
+      expect(rollNote()?.textContent).toBe("");
+      await closeDialog();
+      await outcome;
+    }
+  });
+
+  it("matches an upright design printed turned on a 50x30 roll", async () => {
+    const upright = { ...template, size: { width: 30, height: 50 }, printRotation: 270, elements: [] };
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    h.printers[0]!.roll = tag(95);
+    const outcome = printLabels({ template: upright, rows }, session);
+    await ready();
+    await until(() => !(rollNote()?.hidden ?? true));
+    expect(rollNote()?.textContent).toContain("this label is 50 × 30 mm");
+    await closeDialog();
+    await outcome;
+  });
+
+  it("reads the roll after Connect when the dialog opened disconnected", async () => {
+    const printers: FakePrinter[] = [];
+    const h = harness(undefined, {
+      printer: (link) => {
+        const printer = new FakePrinter(link as FakeLink);
+        printer.roll = tag(95);
+        printers.push(printer);
+        return printer;
+      },
+    });
+    const session = new PrinterSession(h.deps);
+    const outcome = printLabels({ template, rows }, session);
+    await until(() => button("Connect printer")?.hidden === false);
+    expect(printers).toHaveLength(0);
+    button("Connect printer")?.click();
+    await until(() => !(rollNote()?.hidden ?? true));
+    expect(rollNote()?.textContent).toContain("50 × 80 mm");
     await closeDialog();
     await outcome;
   });
