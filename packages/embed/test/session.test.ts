@@ -324,3 +324,56 @@ describe("PrinterSession: printBatch", () => {
     });
   });
 });
+
+describe("PrinterSession: reading the roll", () => {
+  // Made-up tag values; no real roll identifiers.
+  const roll = { uid: "0411223344556677", barcode: "12345678", serial: "MADEUP0000000001", total: 114, used: 5, type: 1, nominalLabels: 95 };
+
+  it("is null while disconnected", async () => {
+    expect(await new PrinterSession(harness().deps).readRoll()).toBeNull();
+  });
+
+  it("reads the tag through the queue once connected", async () => {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    h.printers[0]!.roll = roll;
+    expect(await session.readRoll()).toEqual(roll);
+    expect(h.printers[0]!.calls.some((c) => c.kind === "rfid")).toBe(true);
+  });
+
+  it("waits for a running command instead of failing as busy", async () => {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    const printer = h.printers[0]!;
+    printer.roll = roll;
+    printer.infoDelay = 20;
+    const refreshing = session.refresh();
+    expect(await session.readRoll()).toEqual(roll);
+    await refreshing;
+  });
+
+  it("is null when no tag is loaded or the read fails", async () => {
+    const h = harness();
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    expect(await session.readRoll()).toBeNull();
+    h.printers[0]!.roll = () => {
+      throw new DisconnectedError();
+    };
+    expect(await session.readRoll()).toBeNull();
+  });
+
+  it("is null for a printer without readRfid", async () => {
+    const h = harness(undefined, {
+      printer: (link) => {
+        const printer = new FakePrinter(link as FakeLink);
+        return { connected: printer.connected, info: () => printer.info(), print: (rows, options) => printer.print(rows, options), disconnect: () => printer.disconnect() };
+      },
+    });
+    const session = new PrinterSession(h.deps);
+    await session.connect();
+    expect(await session.readRoll()).toBeNull();
+  });
+});

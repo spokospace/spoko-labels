@@ -4,6 +4,7 @@ export { parseRfid, type RfidInfo } from "./protocol/rfid.js";
 export { encodeRows, MAX_ROWS, shiftRows } from "./protocol/rows.js";
 export { imageToRows, type ImageLike } from "./image.js";
 export { B1, type PrinterModel } from "./model.js";
+export { matchRoll, printedSize, rollCandidates, type RollMatch, type RollSize, type RollVerdict } from "./roll.js";
 export type { Transport } from "./transport.js";
 export { WebBluetoothTransport } from "./web-bluetooth.js";
 export { OFFSET_LIMITS_MM, Printer, type PrinterInfo, type PrintOptions, type PrintProgress } from "./printer.js";

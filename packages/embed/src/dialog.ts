@@ -7,6 +7,7 @@ import {
   type RenderEnvironment,
   type RenderResult,
 } from "@spokospace/labels-render";
+import { matchRoll, printedSize, rollCandidates, type RollSize } from "@spokospace/labels-core";
 import { el } from "./dom.js";
 import { fontsFor } from "./fonts.js";
 import { errorText, ISSUES, langOf, t, type Lang, type MessageKey } from "./i18n.js";
@@ -75,6 +76,7 @@ const CSS = `${THEME}
   .status { font-weight: 600; min-height: 1.4em; }
   .hint, .notice { font-size: .8rem; opacity: .75; }
   .error { color: #dc2626; }
+  .warning { color: #b45309; font-weight: 600; }
 `;
 
 let environment: RenderEnvironment | null = null;
@@ -154,6 +156,11 @@ export class SpokoPrintDialog extends HTMLElement {
   private status!: HTMLParagraphElement;
   private hint!: HTMLParagraphElement;
   private message!: HTMLParagraphElement;
+  private rollNote!: HTMLParagraphElement;
+  /** Set once the roll was read for this connection; a new connection reads it again. */
+  private rollChecked = false;
+  /** Bumped on every read and disconnect, so a late reply from an older read is dropped. */
+  private rollRead = 0;
   private connectButton!: HTMLButtonElement;
   private printButton!: HTMLButtonElement;
   private cancelButton!: HTMLButtonElement;
@@ -221,6 +228,9 @@ export class SpokoPrintDialog extends HTMLElement {
     this.hint = el(doc, "p", { className: "hint", textContent: L("chooserHint") });
     this.message = el(doc, "p");
     this.message.setAttribute("aria-live", "polite");
+    // Its own live region: `message` is overwritten while printing, and the warnings list is not live.
+    this.rollNote = el(doc, "p", { className: "warning", hidden: true });
+    this.rollNote.setAttribute("role", "status");
 
     this.dialog = el(
       doc,
@@ -233,6 +243,7 @@ export class SpokoPrintDialog extends HTMLElement {
       el(doc, "p", { className: "hint", textContent: L("warnings") }),
       this.warnings,
       el(doc, "div", { className: "row" }, el(doc, "label", {}, `${L("copies")} `, this.copiesInput), el(doc, "label", {}, `${L("density")} `, this.densitySelect)),
+      this.rollNote,
       this.status,
       this.hint,
       this.message,
@@ -406,9 +417,37 @@ export class SpokoPrintDialog extends HTMLElement {
     if (active instanceof HTMLButtonElement && (active.hidden || active.disabled)) {
       (printing ? this.cancelButton : this.closeButton).focus();
     }
+    if (!connected) this.forgetRoll();
+    else if (state.kind === "connected" && this.template && !this.rollChecked) this.checkRoll(this.template);
     if (state.kind === "disconnected" && state.error && state.error !== "chooser-cancelled" && !printing) {
       this.say(errorText(this.uiLang, state.error), true);
     }
+  }
+
+  /**
+   * Reads the loaded roll once per connection and warns when its nominal label count rules out this label's
+   * printed size. Silent for a match, an ambiguous count, no tag or a failed read: it never stops a print.
+   */
+  private checkRoll(template: NormalizedTemplate): void {
+    this.rollChecked = true;
+    const read = ++this.rollRead;
+    void this.session.readRoll().then((roll) => {
+      if (read !== this.rollRead || !this.isConnected) return;
+      const label = printedSize(template.size, template.printRotation);
+      const { verdict, candidates } = matchRoll(label, rollCandidates(roll?.nominalLabels));
+      this.rollNote.hidden = verdict !== "mismatch";
+      this.rollNote.textContent =
+        verdict === "mismatch"
+          ? t(this.uiLang, "rollMismatch", { roll: candidates.map(formatSize).join(t(this.uiLang, "rollOr")), label: formatSize(label) })
+          : "";
+    });
+  }
+
+  private forgetRoll(): void {
+    this.rollChecked = false;
+    this.rollRead++;
+    this.rollNote.hidden = true;
+    this.rollNote.textContent = "";
   }
 
   /** A running batch keeps the dialog open: Cancel ends it, then the dialog can go. `abort` is set before
@@ -433,4 +472,10 @@ export class SpokoPrintDialog extends HTMLElement {
     if (this.opener instanceof HTMLElement && this.opener.isConnected) this.opener.focus();
     resolve(this.outcome.printed === 0 && !this.outcome.error ? { printed: 0, cancelled: true } : this.outcome);
   }
+}
+
+/** "50 × 30": millimetres, at most one decimal. */
+function formatSize(size: RollSize): string {
+  const mm = (value: number) => String(Math.round(value * 10) / 10);
+  return `${mm(size.widthMm)} × ${mm(size.heightMm)}`;
 }

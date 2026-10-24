@@ -1,6 +1,6 @@
 // Test doubles for the session: a link, a printer and the Web Locks API. labels-core's FakeTransport lives in
 // its own tests and is not exported, so these stand in at the level the session uses.
-import { B1, PrinterBusyError, type ImageLike } from "@spokospace/labels-core";
+import { B1, PrinterBusyError, type ImageLike, type RfidInfo } from "@spokospace/labels-core";
 import type { Link, LocksLike, PrinterLike, SessionDeps } from "../src/session.js";
 
 export class FakeLink implements Link {
@@ -33,7 +33,9 @@ export class FakeLink implements Link {
 /** A printer that, like labels-core's, rejects a command while another one runs. */
 export class FakePrinter implements PrinterLike {
   running = false;
-  readonly calls: { kind: "info" | "print"; options?: unknown }[] = [];
+  readonly calls: { kind: "info" | "print" | "rfid"; options?: unknown }[] = [];
+  /** The loaded roll's tag; `null` for no tag. A function runs for each read (throw to fail it). */
+  roll: RfidInfo | null | (() => RfidInfo | null) = null;
   infoDelay = 0;
   battery: number | undefined = 3;
   /** Called before each print; throw from it to fail that print. */
@@ -56,6 +58,13 @@ export class FakePrinter implements PrinterLike {
     return this.command(async () => {
       await delay(this.infoDelay);
       return this.battery === undefined ? {} : { battery: this.battery };
+    });
+  }
+  readRfid(): Promise<RfidInfo | null> {
+    this.calls.push({ kind: "rfid" });
+    return this.command(async () => {
+      await delay(1);
+      return typeof this.roll === "function" ? this.roll() : this.roll;
     });
   }
   print(_rows: Uint8Array[], options: unknown): Promise<void> {
